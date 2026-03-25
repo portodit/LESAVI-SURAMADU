@@ -81,7 +81,11 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   });
 
   if (import_id) allLops = allLops.filter(l => l.importId === Number(import_id));
-  // tahun is only for snapshot selection & target lookup — do NOT filter lops by reportDate
+  // Filter by report_date year — this matches Power BI's Date filter behaviour
+  if (tahun) {
+    const yr = Number(tahun);
+    allLops = allLops.filter(l => l.reportDate && new Date(l.reportDate as string).getFullYear() === yr);
+  }
   if (divisi) allLops = allLops.filter(l => l.divisi === String(divisi));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));

@@ -303,13 +303,12 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
 function KpiGrid({ data }: { data: FunnelData | undefined }) {
   if (!data) return null;
   const kpis = [
-    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: (data.unidentifiedLops || 0) > 0 ? `${data.unidentifiedLops} tdk teridentifikasi` : "proyek aktif", color: "text-foreground" },
+    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: "proyek aktif", color: "text-foreground" },
     { label: "Total Nilai Pipeline", value: fmtCompact(data.totalNilai), sub: "nilai seluruh LOP", color: "text-blue-600" },
-    { label: "Aktif AM", value: data.amCount.toString(), sub: "account manager teridentifikasi", color: "text-violet-600" },
     { label: "Jumlah Pelanggan", value: data.pelangganCount.toLocaleString("id-ID"), sub: "unique customer", color: "text-amber-600" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-3 gap-3">
       {kpis.map(k => (
         <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-3">
           <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">{k.label}</div>
@@ -353,6 +352,7 @@ export default function FunnelPage() {
   const [expandedAm, setExpandedAm] = useState<Record<string, boolean>>({});
   const [expandedPhase, setExpandedPhase] = useState<Record<string, boolean>>({});
   const [allExpanded, setAllExpanded] = useState(false);
+  const [filterTarget, setFilterTarget] = useState<"ho" | "fullho">("fullho");
 
   const { data: snapshots = [] } = useQuery<FunnelSnapshot[]>({
     queryKey: ["funnel-snapshots"],
@@ -492,37 +492,38 @@ export default function FunnelPage() {
 
   const effectiveTargetHo = data?.targetHo || 0;
   const effectiveTargetFullHo = data?.targetFullHo || 0;
-  const pct = effectiveTargetFullHo ? ((data?.realFullHo || 0) / effectiveTargetFullHo) * 100 : 0;
+  const activeTarget = filterTarget === "ho" ? effectiveTargetHo : effectiveTargetFullHo;
+  const pct = activeTarget ? ((data?.realFullHo || 0) / activeTarget) * 100 : 0;
 
   return (
     <div className="space-y-4 p-4">
 
-      {/* Filter Bar */}
-      <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm space-y-2.5">
-        {/* Row 1: Snapshot selectors */}
+      {/* Filter Bar — single row */}
+      <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-end gap-2 flex-wrap">
           <SelectDropdown label="Tahun" value={filterYear} onChange={v => { setFilterYear(v); setFilterMonths(new Set()); setImportId(null); }}
-            options={yearOptions} className="w-24 shrink-0" />
+            options={yearOptions} className="w-20 shrink-0" />
           <CheckboxDropdown label="Bulan" options={availableMonthsForYear}
             selected={filterMonths} onChange={setFilterMonths}
             placeholder="Semua bulan" labelFn={m => MONTHS_ID[parseInt(m)] || m}
-            summaryLabel="bulan" className="w-36 shrink-0" />
+            summaryLabel="bulan" className="w-32 shrink-0" />
           <SelectDropdown label="Snapshot" value={String(importId || "")}
             onChange={v => setImportId(Number(v))}
             options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Belum ada data" }]}
-            disabled={snapshotOptions.length === 0} className="flex-1 min-w-[160px]" />
+            disabled={snapshotOptions.length === 0} className="w-44 shrink-0" />
           <div className="w-px h-9 bg-border self-end" />
           <SelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
             options={[{ value: "all", label: "Semua Divisi" }, { value: "DPS", label: "DPS" }, { value: "DSS", label: "DSS" }]}
-            className="w-36 shrink-0" />
+            className="w-32 shrink-0" />
           <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
-            placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="flex-1 min-w-[140px]" />
+            placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-36 shrink-0" />
           <CheckboxDropdown label="Status Funnel" options={PHASES} selected={filterStatus} onChange={setFilterStatus}
-            placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="flex-1 min-w-[140px]" />
-          {kontrakOptions.length > 0 && (
-            <CheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
-              placeholder="Semua kontrak" summaryLabel="kontrak" className="flex-1 min-w-[140px]" />
-          )}
+            placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="w-36 shrink-0" />
+          <CheckboxDropdown label="Kategori Kontrak" options={kontrakOptions.length > 0 ? kontrakOptions : []} selected={filterKontrak} onChange={setFilterKontrak}
+            placeholder="Semua kontrak" summaryLabel="kontrak" className="w-36 shrink-0" />
+          <SelectDropdown label="Target" value={filterTarget} onChange={v => setFilterTarget(v as "ho" | "fullho")}
+            options={[{ value: "fullho", label: "Target Full HO" }, { value: "ho", label: "Target HO" }]}
+            className="w-36 shrink-0" />
           {hasActiveFilter && (
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-transparent uppercase">.</label>
@@ -552,15 +553,14 @@ export default function FunnelPage() {
               <FaseBarChart data={data} />
             </div>
             <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-              <h3 className="text-sm font-display font-black text-foreground uppercase tracking-wide mb-2">Capaian Real vs Target</h3>
-              <Gauge pct={pct} targetHo={effectiveTargetHo} targetFullHo={effectiveTargetFullHo} real={data?.realFullHo || 0} />
+              <h3 className="text-sm font-display font-black text-foreground uppercase tracking-wide mb-2">
+                Capaian Real vs {filterTarget === "ho" ? "Target HO" : "Target Full HO"}
+              </h3>
+              <Gauge pct={pct} targetHo={filterTarget === "ho" ? activeTarget : effectiveTargetHo} targetFullHo={filterTarget === "fullho" ? activeTarget : effectiveTargetFullHo} real={data?.realFullHo || 0} />
             </div>
           </div>
-          {/* Row 2: Ringkasan */}
-          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-            <h3 className="text-sm font-display font-black text-foreground uppercase tracking-wide mb-3">Ringkasan</h3>
-            <KpiGrid data={data} />
-          </div>
+          {/* Row 2: KPI Cards */}
+          <KpiGrid data={data} />
         </div>
       )}
 
@@ -616,57 +616,62 @@ export default function FunnelPage() {
                 const amLopCount = Array.from(am.phases.values()).flat().length;
                 const orderedPhases = [...PHASES.filter(p => am.phases.has(p)), ...Array.from(am.phases.keys()).filter(p => !PHASES.includes(p))];
 
+                // Red ring helpers
+                const ring = amExpanded ? "#ef4444" : undefined;
+                const ringStyle = (extra?: React.CSSProperties): React.CSSProperties =>
+                  ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, ...extra } : {};
+                const lastPhase = orderedPhases[orderedPhases.length - 1];
+
                 return (
                   <React.Fragment key={amKey}>
-                    {/* AM Row — dark header style */}
-                    <tr className="cursor-pointer select-none border-t-2 border-primary/30" style={{ background: "#1e293b" }} onClick={() => toggleAmRow(amKey)}>
+                    {/* AM Row */}
+                    <tr
+                      className="cursor-pointer select-none border-t-2 border-primary/30"
+                      style={{ background: "#7f1d1d", ...(ring ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` } : {}) }}
+                      onClick={() => toggleAmRow(amKey)}
+                    >
                       <td className="px-4 py-3 w-8">
-                        <ChevronRight className={cn("w-4 h-4 text-slate-300 transition-transform", amExpanded && "rotate-90")} />
+                        <ChevronRight className={cn("w-4 h-4 text-red-200 transition-transform", amExpanded && "rotate-90")} />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <span className="font-black text-white text-sm uppercase tracking-wide">{am.namaAm}</span>
                           <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi === "DPS" ? "bg-blue-900 text-blue-200" : "bg-violet-900 text-violet-200")}>
                             {am.divisi}
                           </span>
-                          <div className="flex gap-1 flex-wrap mt-0.5">
-                            {orderedPhases.map(p => {
-                              const lops = am.phases.get(p)!;
-                              const c = PHASE_COLORS[p];
-                              return (
-                                <span key={p} className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-white/10 text-slate-200">
-                                  {p}: {lops.length}
-                                </span>
-                              );
-                            })}
-                          </div>
                         </div>
                       </td>
                       <td className="px-3 py-3" colSpan={3}>
-                        <span className="text-xs text-slate-400 font-medium">{amLopCount} LOP</span>
+                        <span className="text-xs text-red-300 font-medium">{amLopCount} LOP</span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-black text-white font-mono text-sm">{fmtRupiah(amTotal)}</span>
                       </td>
                     </tr>
 
-                    {amExpanded && orderedPhases.map(phase => {
+                    {amExpanded && orderedPhases.map((phase) => {
                       const lops = am.phases.get(phase) || [];
                       const phaseKey = `${amKey}|${phase}`;
                       const phaseExpanded = !!expandedPhase[phaseKey];
                       const phaseTotal = lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
                       const c = PHASE_COLORS[phase];
+                      const isLastPhase = phase === lastPhase;
+                      const phaseIsBottomOfRing = isLastPhase && !phaseExpanded;
 
                       return (
                         <React.Fragment key={phaseKey}>
-                          {/* Phase Row — colored left border on gray */}
-                          <tr className="cursor-pointer select-none hover:brightness-95 transition-all" style={{ background: "#f1f5f9", borderLeft: `4px solid ${c?.bar || "#94a3b8"}` }} onClick={() => togglePhaseRow(phaseKey)}>
+                          {/* Phase Row */}
+                          <tr
+                            className="cursor-pointer select-none hover:brightness-95 transition-all"
+                            style={{ background: "#f1f5f9", borderLeft: `4px solid ${c?.bar || "#94a3b8"}`, ...ringStyle(phaseIsBottomOfRing && ring ? { borderBottom: `2px solid ${ring}`, borderRight: `2px solid ${ring}` } : {}) }}
+                            onClick={() => togglePhaseRow(phaseKey)}
+                          >
                             <td className="px-4 py-2.5 pl-6">
                               <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform", phaseExpanded && "rotate-90")} />
                             </td>
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-black text-slate-800 font-mono" style={{ color: c?.text }}>{phase}</span>
+                                <span className="text-sm font-black font-mono" style={{ color: c?.text }}>{phase}</span>
                                 <span className="text-sm font-bold text-slate-700">{PHASE_LABELS[phase]}</span>
                                 <span className="text-xs font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                               </div>
@@ -677,20 +682,25 @@ export default function FunnelPage() {
                             </td>
                           </tr>
 
-                          {phaseExpanded && lops.map((lop, idx) => (
-                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-blue-50/50 transition-colors border-l-4 border-transparent">
-                              <td className="px-4 py-2" />
-                              <td className="px-4 py-2 pl-12">
-                                <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
-                                  {lop.judulProyek}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
-                              <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
-                              <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[160px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                              <td className="px-4 py-2 text-right font-mono text-sm font-bold text-foreground whitespace-nowrap">{fmtRupiah(lop.nilaiProyek)}</td>
-                            </tr>
-                          ))}
+                          {phaseExpanded && lops.map((lop, idx) => {
+                            const isLastLop = idx === lops.length - 1;
+                            const isBottomOfRing = isLastPhase && isLastLop;
+                            return (
+                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-blue-50/50 transition-colors"
+                                style={ringStyle(isBottomOfRing && ring ? { borderBottom: `2px solid ${ring}` } : {})}>
+                                <td className="px-4 py-2" />
+                                <td className="px-4 py-2 pl-12">
+                                  <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
+                                    {lop.judulProyek}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
+                                <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
+                                <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[160px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                                <td className="px-4 py-2 text-right font-mono text-sm font-bold text-foreground whitespace-nowrap">{fmtRupiah(lop.nilaiProyek)}</td>
+                              </tr>
+                            );
+                          })}
                         </React.Fragment>
                       );
                     })}

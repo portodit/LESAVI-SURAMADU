@@ -6,11 +6,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dashboard for Account Manager (AM) performance monitoring with Telegram Bot integration.
 
 ## Key Master Tables (Data Quality)
-- **master_am**: 19 active AMs only (source='account_managers'). All 38 historical entries (funnel_historical + historical) deleted. NIK 850099 (Reni) always → 870022 (Havea). Auto-syncs from account_managers on startup.
+- **master_am**: 12 active AMs only. KATATA (405075) added. 8 inactive removed (SAFIRINA, HANIF, ANDIS, CORNELIA, DAMASTYA, DHEVI, FRISKARINE, RYAN). NIK 850099 → 870022 (Reni→Havea).
 - **master_customer**: 262 unique corporate customers, auto-populated from funnel imports.
-- **sales_funnel**: 2190 clean LOPs (358 garbage rows deleted — unresolved NIK + no master_am match). All LOP has valid nama_am.
-- API: `GET/POST/PATCH/DELETE /api/master-am` for master AM CRUD.
+- **sales_funnel**: ~1979 clean LOPs after removing SAFIRINA (202) + FRISKARINE (9) LOPs. Filtered by YEAR(report_date) = tahun at query time (matches Power BI Date filter).
+- **sales_funnel_target**: DPS 2026/3 HO=70.257B Full=97.076B; DSS 2026/3 HO=60.048B Full=73.780B.
+- API: `GET /api/funnel?tahun=YEAR` — NOW filters LOPs where YEAR(report_date) = tahun (critical for matching Power BI counts).
 - API: `GET /api/funnel/data-quality` for data cleaning proof (stats + steps).
+
+## Active AM List (12 AMs)
+ANA RUKMANA (402478), CAESAR RIO ANGGINA TORUAN (405690), ERVINA HANDAYANI (920064), HANDIKA DAGNA NEVANDA (980067), HAVEA PERTIWI (870022), KATATA VEKANIDYA SEKAR PUSPITASARI (405075), MOH RIZAL BIN MOH FERRY (850046), NADYA ZAHROTUL HAYATI (403613), NI MADE NOVI WIRANA (896661), NYARI KUSUMA NINGRUM (401431), VIVIN VIOLITA (910024), WILDAN ARIEF (404429)
 
 ## Data Cleaning Applied
 1. Filter witel = SURAMADU only
@@ -18,7 +22,8 @@ This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dash
 3. Reni→Havea: NIK 850099 → 870022 (unconditional)
 4. Reject NIK < 4 digits or > 9999999
 5. Delete rows where nik_am not in master_am AND nama_am empty (358 rows)
-6. Removed 38 historical AMs from master_am
+6. Removed 8 inactive AMs (incl. SAFIRINA, FRISKARINE) — 211 LOPs deleted
+7. Filter by YEAR(report_date) = selected year at query time
 
 ## Stack
 
