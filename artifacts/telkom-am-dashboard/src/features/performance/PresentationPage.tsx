@@ -70,8 +70,8 @@ function TrophyCard({ title, subtitle, am, value, realValue, targetValue, colorS
         </div>
         <span className="text-2xl leading-none">{scheme.icon}</span>
       </div>
-      <p className="font-display font-extrabold text-sm text-foreground truncate mb-2" title={am.namaAm}>{am.namaAm}</p>
-      <p className={cn("text-3xl font-display font-black tabular-nums leading-none mb-2", scheme.valueClr)}>{value}</p>
+      <p className="font-display font-bold text-sm text-foreground truncate mb-2" title={am.namaAm}>{am.namaAm}</p>
+      <p className={cn("text-3xl font-display font-bold tabular-nums leading-none mb-2", scheme.valueClr)}>{value}</p>
       <div className="grid grid-cols-2 gap-1.5">
         <div className="border border-current/20 rounded-md px-2 py-1.5 bg-background/40">
           <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Real</p>

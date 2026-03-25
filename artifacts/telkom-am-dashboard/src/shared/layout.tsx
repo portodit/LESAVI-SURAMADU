@@ -83,7 +83,7 @@ const NAV_ITEMS = [
   {
     label: "Visualisasi", icon: BarChart2,
     children: [
-      { href: "/visualisasi/performa", label: "Performa AM", icon: BarChart2 },
+      { href: "/visualisasi/performa", label: "Performa AM", icon: BarChart2, pageTitle: "Performansi Account Manager LESA VI WITEL SURAMADU" },
       { href: "/visualisasi/funnel", label: "Sales Funnel", icon: Filter },
       { href: "/visualisasi/activity", label: "Sales Activity", icon: Activity },
     ]
@@ -108,7 +108,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  const currentLabel = NAV_ITEMS.flatMap(i => [i, ...(i.children || [])]).find(i => (i as any).href === location)?.label || "Dashboard";
+  const currentNavItem = NAV_ITEMS.flatMap(i => [i, ...(i.children || [])]).find(i => (i as any).href === location) as any;
+  const currentLabel = currentNavItem?.pageTitle || currentNavItem?.label || "Dashboard";
 
   const SidebarInner = ({ isMobile = false }) => (
     <div className="flex flex-col h-full">
@@ -141,7 +142,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden whitespace-nowrap text-left"
               >
-                <p className="text-[13px] font-display font-black text-foreground leading-none tracking-tight">LESA VI SURAMADU</p>
+                <p className="text-[13px] font-display font-bold text-foreground leading-none tracking-tight">LESA VI SURAMADU</p>
                 <p className="text-[9px] font-bold text-muted-foreground tracking-widest leading-none mt-0.5">TELKOM REGIONAL 3</p>
               </motion.div>
             )}
@@ -195,7 +196,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150",
                     isChildActive
-                      ? "text-primary bg-primary/10 font-semibold"
+                      ? "text-primary bg-primary/10 font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
                   )}
                 >
@@ -224,7 +225,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                               className={cn(
                                 "block px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150",
                                 isActive
-                                  ? "bg-primary text-white shadow-sm shadow-primary/25 font-semibold"
+                                  ? "bg-primary text-white shadow-sm shadow-primary/25 font-medium"
                                   : "text-muted-foreground hover:text-primary hover:bg-primary/8"
                               )}
                             >
@@ -249,7 +250,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150",
                 collapsed && !isMobile ? "justify-center" : "",
                 isActive
-                  ? "bg-primary text-white shadow-md shadow-primary/25 font-semibold"
+                  ? "bg-primary text-white shadow-md shadow-primary/25 font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
               )}
             >
