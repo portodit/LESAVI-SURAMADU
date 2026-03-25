@@ -83,31 +83,83 @@ function sumKomponen(customers: any[], tipeRevenue: string): { target: number; r
 }
 
 // ─── Trophy Card ──────────────────────────────────────────────────────────────
-function TrophyCard({ title, subtitle, am, value, valueLabel, colorScheme }: {
-  title: string; subtitle: string; am: any; value: string; valueLabel: string;
-  colorScheme: 'gold' | 'blue';
+function TrophyCard({ title, period, am, value, realValue, targetValue, colorScheme }: {
+  title: string; period: string; am: any; value: string;
+  realValue: string; targetValue: string; colorScheme: 'gold' | 'blue';
 }) {
   const scheme = colorScheme === 'gold'
-    ? { icon: "🥇", bg: "from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/30", border: "border-amber-300 dark:border-amber-700", accent: "text-amber-700 dark:text-amber-400", valueClr: "text-amber-600 dark:text-amber-400" }
-    : { icon: "🏅", bg: "from-blue-50 via-indigo-50 to-sky-50 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-sky-950/30", border: "border-blue-300 dark:border-blue-700", accent: "text-blue-700 dark:text-blue-400", valueClr: "text-blue-600 dark:text-blue-400" };
+    ? {
+        icon: "🏆",
+        bg: "from-amber-500 to-orange-500",
+        card: "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30",
+        border: "border-amber-300 dark:border-amber-700",
+        accent: "text-amber-600 dark:text-amber-400",
+        badge: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700",
+        valueClr: "text-amber-600 dark:text-amber-400",
+        labelLine: "border-amber-200 dark:border-amber-800",
+      }
+    : {
+        icon: "🎖️",
+        bg: "from-blue-500 to-indigo-500",
+        card: "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30",
+        border: "border-blue-300 dark:border-blue-700",
+        accent: "text-blue-600 dark:text-blue-400",
+        badge: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700",
+        valueClr: "text-blue-600 dark:text-blue-400",
+        labelLine: "border-blue-200 dark:border-blue-800",
+      };
+
   if (!am) return (
-    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 min-h-[120px] flex flex-col justify-center`}>
-      <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", scheme.accent)}>{title}</p>
-      <p className="text-muted-foreground/50 text-sm">Belum ada data</p>
+    <div className={`rounded-2xl ${scheme.card} border ${scheme.border} overflow-hidden`}>
+      <div className={`bg-gradient-to-r ${scheme.bg} px-5 py-3`}>
+        <p className="text-[10px] font-black uppercase tracking-widest text-white/90">{title}</p>
+        <p className="text-xs font-bold text-white">{period}</p>
+      </div>
+      <div className="p-5 flex items-center justify-center min-h-[100px]">
+        <p className="text-muted-foreground/50 text-sm">Belum ada data</p>
+      </div>
     </div>
   );
+
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 min-w-0`}>
-      <div className="flex items-start justify-between mb-3">
+    <div className={`rounded-2xl ${scheme.card} border ${scheme.border} overflow-hidden`}>
+      {/* Coloured header strip */}
+      <div className={`bg-gradient-to-r ${scheme.bg} px-5 py-3 flex items-center justify-between`}>
         <div>
-          <p className={cn("text-[10px] font-bold uppercase tracking-widest", scheme.accent)}>{title}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/80">{title}</p>
+          <p className="text-sm font-extrabold text-white leading-tight">{period}</p>
         </div>
-        <span className="text-3xl leading-none">{scheme.icon}</span>
+        <span className="text-3xl leading-none drop-shadow">{scheme.icon}</span>
       </div>
-      <p className="font-display font-extrabold text-base text-foreground truncate mb-3" title={am.namaAm}>{am.namaAm}</p>
-      <p className={cn("text-4xl font-display font-black tabular-nums leading-none", scheme.valueClr)}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-2">{valueLabel}</p>
+
+      {/* Body */}
+      <div className="px-5 pt-4 pb-5">
+        {/* AM name */}
+        <p className="text-xl font-display font-black text-foreground leading-tight truncate" title={am.namaAm}>
+          {am.namaAm}
+        </p>
+        {/* Divisi badge */}
+        <span className={cn("inline-block mt-1.5 mb-4 text-[10px] font-bold px-2.5 py-0.5 rounded-full border", scheme.badge)}>
+          {am.divisi}
+        </span>
+
+        {/* Ach % — huge */}
+        <p className={cn("text-5xl font-display font-black tabular-nums leading-none mb-4", scheme.valueClr)}>
+          {value}
+        </p>
+
+        {/* Real & Target — both bold, dark */}
+        <div className={cn("border-t pt-3 space-y-1.5", scheme.labelLine)}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground">Real</span>
+            <span className="text-xs font-black tabular-nums text-foreground">{realValue}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground">Target</span>
+            <span className="text-xs font-bold tabular-nums text-foreground">{targetValue}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -172,7 +224,9 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[200px] max-w-[260px] overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{headerLabel ?? `Pilih ${unit}`}</span>
+            {headerLabel ? (
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{headerLabel}</span>
+            ) : <span />}
             <div className="flex gap-1.5">
               <button onClick={selectAll} className="text-[10px] text-primary font-semibold hover:underline">Semua</button>
               <span className="text-muted-foreground text-[10px]">·</span>
@@ -252,13 +306,13 @@ export default function PerformaVis() {
     }
   }, [perfImports]);
 
-  // Available periods "YYYY-MM" sorted newest first
+  // Available periods "YYYY-MM" sorted ascending (Jan → Dec, oldest first)
   const availablePeriodes = useMemo(() => {
     if (!allPerfs?.length) return [];
     let rows = allPerfs as any[];
     if (filterSnapshotId) rows = rows.filter(p => p.importId === filterSnapshotId);
     return [...new Set(rows.map(p => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))]
-      .sort().reverse();
+      .sort();
   }, [allPerfs, filterSnapshotId]);
 
   // Auto-select most recent period when data loads / snapshot changes
@@ -268,7 +322,7 @@ export default function PerformaVis() {
       const valid = new Set(availablePeriodes);
       const filtered = new Set([...prev].filter(p => valid.has(p)));
       if (filtered.size > 0) return filtered;
-      return new Set([availablePeriodes[0]]); // auto-select latest
+      return new Set([availablePeriodes[availablePeriodes.length - 1]]); // auto-select latest (last = newest in ascending order)
     });
   }, [availablePeriodes]);
 
@@ -521,9 +575,8 @@ export default function PerformaVis() {
             options={availablePeriodes}
             selected={filterPeriodes}
             onChange={setFilterPeriodes}
-            placeholder="Pilih Periode"
             labelFn={periodeLabel}
-            headerLabel="Pilih Periode"
+            headerLabel=""
             summaryLabel="Periode"
           />
 
@@ -590,21 +643,23 @@ export default function PerformaVis() {
             {/* Top #1 CM */}
             <TrophyCard
               colorScheme="gold"
-              title={`#1 Best CM · ${cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
-              subtitle={topCm ? `Divisi ${topCm.divisi}` : ""}
+              title="Top AM by Current Month"
+              period={cmPeriode ? periodeLabel(cmPeriode) : "—"}
               am={topCm}
               value={topCm ? formatPercent(topCm.cmAch) : "–"}
-              valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}  ·  Target: ${formatRupiah(topCm.cmTarget)}` : "Belum ada data"}
+              realValue={topCm ? formatRupiah(topCm.cmReal) : "–"}
+              targetValue={topCm ? formatRupiah(topCm.cmTarget) : "–"}
             />
 
             {/* Top #1 YTD */}
             <TrophyCard
               colorScheme="blue"
-              title={`#1 Best YTD · ${filterPeriodes.size > 1 ? `${filterPeriodes.size} Periode` : cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
-              subtitle={topYtd ? `Divisi ${topYtd.divisi}` : ""}
+              title="Top AM by YTD"
+              period={filterPeriodes.size > 1 ? `${filterPeriodes.size} Periode` : cmPeriode ? periodeLabel(cmPeriode) : "—"}
               am={topYtd}
               value={topYtd ? formatPercent(topYtd.ytdAch) : "–"}
-              valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}  ·  Target: ${formatRupiah(topYtd.ytdTarget)}` : "Belum ada data"}
+              realValue={topYtd ? formatRupiah(topYtd.ytdReal) : "–"}
+              targetValue={topYtd ? formatRupiah(topYtd.ytdTarget) : "–"}
             />
 
             {/* Distribusi Donut */}
