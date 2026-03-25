@@ -1,22 +1,22 @@
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { DashboardLayout } from "@/components/layout";
-
-import Login from "@/pages/login";
-import EmbedPerforma from "@/pages/embed-performa";
-import Dashboard from "@/pages/dashboard";
-import ImportData from "@/pages/import";
-import ImportDetail from "@/pages/import-detail";
-import PerformaVis from "@/pages/visualisasi/performa";
-import FunnelVis from "@/pages/visualisasi/funnel";
-import ActivityVis from "@/pages/visualisasi/activity";
-import TelegramBot from "@/pages/telegram";
-import PengaturanPage from "@/pages/pengaturan";
+import { Toaster } from "@/shared/ui/toaster";
+import { TooltipProvider } from "@/shared/ui/tooltip";
+import { AuthProvider, useAuth } from "@/shared/hooks/use-auth";
+import { DashboardLayout } from "@/shared/layout";
 import { Loader2 } from "lucide-react";
+
+import Login from "@/features/auth/LoginPage";
+import EmbedPerforma from "@/features/performance/PresentationPage";
+import Dashboard from "@/features/dashboard/DashboardPage";
+import ImportData from "@/features/import/ImportPage";
+import ImportDetail from "@/features/import/ImportDetailPage";
+import PerformaVis from "@/features/performance/PerformaPage";
+import FunnelVis from "@/features/funnel/FunnelPage";
+import ActivityVis from "@/features/activity/ActivityPage";
+import TelegramBot from "@/features/telegram/TelegramPage";
+import PengaturanPage from "@/features/settings/PengaturanPage";
 
 function AmManagement() {
   return (

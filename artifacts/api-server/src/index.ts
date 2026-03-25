@@ -1,7 +1,7 @@
 import app from "./app";
-import { logger } from "./lib/logger";
-import { ensureDefaultAdmin } from "./lib/auth";
-import { startTelegramPoller } from "./lib/telegramPoller";
+import { logger } from "./shared/logger";
+import { ensureDefaultAdmin } from "./shared/auth";
+import { startTelegramPoller } from "./features/telegram/poller";
 
 const rawPort = process.env["PORT"];
 

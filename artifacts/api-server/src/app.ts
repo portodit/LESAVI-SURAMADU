@@ -3,7 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import router from "./routes";
-import { logger } from "./lib/logger";
+import { logger } from "./shared/logger";
 
 const app: Express = express();
 

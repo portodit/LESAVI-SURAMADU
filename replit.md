@@ -25,20 +25,58 @@ This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dash
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   ├── api-server/         # Express API server
-│   └── telkom-am-dashboard/ # React frontend dashboard
-├── lib/                    # Shared libraries
+├── artifacts/
+│   ├── api-server/src/
+│   │   ├── app.ts                 # Express app setup
+│   │   ├── index.ts               # Server entry point
+│   │   ├── shared/
+│   │   │   ├── auth.ts            # Auth middleware + password utils
+│   │   │   └── logger.ts          # Pino logger
+│   │   ├── features/
+│   │   │   ├── performance/       # routes.ts, publicRoutes.ts
+│   │   │   ├── funnel/            # routes.ts
+│   │   │   ├── activity/          # routes.ts
+│   │   │   ├── import/            # routes.ts, excel.ts
+│   │   │   ├── am/                # routes.ts, publicRoutes.ts
+│   │   │   ├── telegram/          # routes.ts, service.ts, poller.ts, ai.ts
+│   │   │   ├── auth/              # routes.ts
+│   │   │   ├── settings/          # routes.ts
+│   │   │   └── health/            # routes.ts
+│   │   └── routes/
+│   │       └── index.ts           # Aggregates all feature routes
+│   └── telkom-am-dashboard/src/
+│       ├── App.tsx
+│       ├── main.tsx
+│       ├── index.css
+│       ├── shared/
+│       │   ├── ui/                # Design system (shadcn/ui components)
+│       │   ├── hooks/             # use-auth, use-mobile, use-toast
+│       │   ├── lib/utils.ts       # Tailwind cn() util
+│       │   └── layout.tsx         # DashboardLayout
+│       └── features/
+│           ├── auth/              # LoginPage.tsx
+│           ├── dashboard/         # DashboardPage.tsx
+│           ├── import/            # ImportPage.tsx, ImportDetailPage.tsx
+│           ├── performance/       # PerformaPage.tsx, PresentationPage.tsx
+│           ├── funnel/            # FunnelPage.tsx
+│           ├── activity/          # ActivityPage.tsx
+│           ├── telegram/          # TelegramPage.tsx
+│           └── settings/          # PengaturanPage.tsx
+├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts
-├── pnpm-workspace.yaml     # pnpm workspace
-├── tsconfig.base.json      # Shared TS options
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── scripts/
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
+
+## Fonts
+- `--font-sans`: Inter (body text, UI elements) — via Google Fonts
+- `--font-display`: Satoshi (headings, brand names, bold labels) — via Fontshare CDN
 
 ## Database Schema
 

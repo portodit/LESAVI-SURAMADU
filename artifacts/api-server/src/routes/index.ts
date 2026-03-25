@@ -1,15 +1,15 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import authRouter from "./auth";
-import amRouter from "./am";
-import importRouter from "./importData";
-import performanceRouter from "./performance";
-import funnelRouter from "./funnel";
-import activityRouter from "./activity";
-import telegramRouter from "./telegram";
-import settingsRouter from "./settings";
-import publicAmRouter from "./publicAm";
-import publicPerformanceRouter from "./publicPerformance";
+import healthRouter from "../features/health/routes";
+import authRouter from "../features/auth/routes";
+import amRouter from "../features/am/routes";
+import importRouter from "../features/import/routes";
+import performanceRouter from "../features/performance/routes";
+import funnelRouter from "../features/funnel/routes";
+import activityRouter from "../features/activity/routes";
+import telegramRouter from "../features/telegram/routes";
+import settingsRouter from "../features/settings/routes";
+import publicAmRouter from "../features/am/publicRoutes";
+import publicPerformanceRouter from "../features/performance/publicRoutes";
 
 const router: IRouter = Router();
 
