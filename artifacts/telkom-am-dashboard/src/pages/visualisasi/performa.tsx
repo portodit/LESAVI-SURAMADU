@@ -318,14 +318,28 @@ export default function PerformaVis() {
       .sort();
   }, [allPerfs, filterSnapshotId]);
 
-  // Auto-select most recent period when data loads / snapshot changes
+  // Periods that actually have revenue data (targetRevenue or realRevenue > 0)
+  const periodesWithData = useMemo(() => {
+    if (!allPerfs?.length) return new Set<string>();
+    let rows = allPerfs as any[];
+    if (filterSnapshotId) rows = rows.filter(p => p.importId === filterSnapshotId);
+    return new Set(
+      rows
+        .filter(p => (p.targetRevenue ?? 0) > 0 || (p.realRevenue ?? 0) > 0)
+        .map(p => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`)
+    );
+  }, [allPerfs, filterSnapshotId]);
+
+  // Auto-select only periods with actual data when snapshot changes
   React.useEffect(() => {
     if (availablePeriodes.length === 0) { setFilterPeriodes(new Set()); return; }
     setFilterPeriodes(prev => {
       const valid = new Set(availablePeriodes);
       const filtered = new Set([...prev].filter(p => valid.has(p)));
       if (filtered.size > 0) return filtered;
-      return new Set(availablePeriodes); // auto-select all available periods
+      // Fresh snapshot: prefer periods with real/target data, fallback to all
+      const withData = availablePeriodes.filter(p => periodesWithData.has(p));
+      return new Set(withData.length > 0 ? withData : availablePeriodes);
     });
   }, [availablePeriodes]);
 

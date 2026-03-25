@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { ChevronDown, ChevronRight, Camera, Menu, X, BarChart2, Filter, Activity, ChevronLeft, Check } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Camera, Menu, X, BarChart2, Filter, Activity, Check } from "lucide-react";
 
 const SLIDES = [
   { label: "Visualisasi Performa", icon: BarChart2 },
@@ -245,7 +245,6 @@ export default function EmbedPerforma() {
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [asideCollapsed, setAsideCollapsed] = useState(false);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -276,7 +275,15 @@ export default function EmbedPerforma() {
         setAllPerfs(data);
         const ps = [...new Set(data.map((p: any) => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))] as string[];
         ps.sort();
-        if (ps.length > 0) setFilterPeriodes(new Set(ps));
+        // Auto-select only periods that have real OR target revenue data (not empty months)
+        const psWithData = ps.filter(period => {
+          const [y, m] = period.split("-");
+          return data.some((p: any) =>
+            String(p.tahun) === y && String(p.bulan).padStart(2, "0") === m &&
+            ((p.targetRevenue ?? 0) > 0 || (p.realRevenue ?? 0) > 0)
+          );
+        });
+        setFilterPeriodes(new Set(psWithData.length > 0 ? psWithData : ps));
         setFilterDivisi("All");
         setFilterNamaAms(new Set());
       })
@@ -402,13 +409,13 @@ export default function EmbedPerforma() {
   return (
     <div className="h-screen bg-background font-sans text-foreground text-sm flex flex-col overflow-hidden">
 
-      {/* ─── Mobile Sidebar Overlay ─────────────────────── */}
+      {/* ─── Slide Navigation Overlay (all screen sizes) ────── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
+        <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="relative w-56 bg-card border-r border-border flex flex-col shadow-2xl z-10">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-xs font-bold text-foreground">Menu Slide</span>
+              <span className="text-xs font-bold text-foreground">Navigasi Slide</span>
               <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
               </button>
@@ -441,21 +448,26 @@ export default function EmbedPerforma() {
       <div className="bg-card border-b border-border shrink-0 z-30">
         {/* Main row — always visible */}
         <div className="flex items-center gap-2 px-3 py-2">
-          {/* Hamburger */}
+          {/* Hamburger — always visible */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            title="Navigasi slide"
           >
             <Menu className="w-4 h-4" />
           </button>
-          {/* Logo + Brand */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Logo + Brand — click to open slide nav */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity"
+            title="Navigasi slide"
+          >
             <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-8 object-contain" />
-            <div className="leading-tight">
+            <div className="leading-tight text-left">
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
               <p className="text-sm font-bold text-foreground">AM Performance Report</p>
             </div>
-          </div>
+          </button>
           {/* Desktop-only divider + filters */}
           {currentSlide === 0 && (
             <>
@@ -555,93 +567,8 @@ export default function EmbedPerforma() {
         )}
       </div>
 
-      {/* ─── Body: Permanent Sidebar + Scrollable Content ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-
-        {/* Permanent Desktop Left Panel (PowerPoint-style, collapsible) */}
-        <aside
-          className="hidden md:flex flex-col border-r border-border bg-card shrink-0 transition-[width] duration-200 overflow-hidden"
-          style={{ width: asideCollapsed ? 44 : 176 }}
-        >
-          {/* Panel header with toggle */}
-          <div className={cn(
-            "flex items-center border-b border-border shrink-0",
-            asideCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 pt-3 pb-2.5"
-          )}>
-            {!asideCollapsed && (
-              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Navigasi Slide</p>
-            )}
-            <button
-              onClick={() => setAsideCollapsed(v => !v)}
-              title={asideCollapsed ? "Perluas panel" : "Ciutkan panel"}
-              className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
-            >
-              {asideCollapsed
-                ? <ChevronRight className="w-3.5 h-3.5" />
-                : <ChevronLeft className="w-3.5 h-3.5" />
-              }
-            </button>
-          </div>
-
-          {/* Slide items */}
-          <div className={cn("flex-1 py-2 overflow-y-auto", asideCollapsed ? "px-1.5 space-y-1.5" : "px-2 space-y-1")}>
-            {SLIDES.map((slide, i) => {
-              const Icon = slide.icon;
-              const isActive = currentSlide === i;
-              if (asideCollapsed) {
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    title={slide.label}
-                    className={cn(
-                      "w-full flex items-center justify-center py-2.5 rounded-xl transition-all duration-150",
-                      isActive
-                        ? "bg-primary text-white shadow-sm shadow-primary/25"
-                        : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    )}
-                  >
-                    <span className={cn(
-                      "text-[11px] font-black",
-                      isActive ? "text-white" : "text-muted-foreground"
-                    )}>{i + 1}</span>
-                  </button>
-                );
-              }
-              return (
-                <button
-                  key={i}
-                  onClick={() => setCurrentSlide(i)}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-all duration-150",
-                    isActive
-                      ? "bg-primary text-white shadow-sm shadow-primary/25 font-semibold"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  )}
-                >
-                  <span className={cn(
-                    "w-5 h-5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0",
-                    isActive ? "bg-white/20 text-white" : "bg-secondary/80 text-muted-foreground"
-                  )}>{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <Icon className={cn("w-3 h-3 mb-0.5", isActive ? "text-white/80" : "text-muted-foreground")} />
-                    <p className="text-[10px] leading-tight truncate">{slide.label}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer hint */}
-          {!asideCollapsed && (
-            <div className="px-3 py-2.5 border-t border-border">
-              <p className="text-[9px] text-muted-foreground/50 leading-tight">← → untuk berpindah slide</p>
-            </div>
-          )}
-        </aside>
-
-        {/* Main scrollable content */}
-        <div className="flex-1 overflow-y-auto">
+      {/* ─── Main Scrollable Content ─────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
 
       {/* ─── Slide: Sales Funnel (placeholder) ───────────── */}
       {currentSlide === 1 && (
@@ -881,8 +808,7 @@ export default function EmbedPerforma() {
       </div>
       )}
       <div className="px-4 py-2 text-[10px] text-muted-foreground/40 text-right">Telkom AM Dashboard · Data diperbarui otomatis</div>
-        </div>{/* end main scrollable */}
-      </div>{/* end body flex */}
+      </div>{/* end main scrollable */}
     </div>
   );
 }

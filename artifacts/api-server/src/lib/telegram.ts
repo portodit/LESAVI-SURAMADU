@@ -247,12 +247,19 @@ export async function buildTelegramMessage(
   return msgs.join("\n\n");
 }
 
-export async function sendToTelegram(botToken: string, chatId: string, message: string): Promise<void> {
+export async function sendToTelegram(
+  botToken: string,
+  chatId: string,
+  message: string,
+  replyMarkup?: object
+): Promise<void> {
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  const body: Record<string, unknown> = { chat_id: chatId, text: message, parse_mode: "Markdown" };
+  if (replyMarkup) body.reply_markup = replyMarkup;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -260,6 +267,16 @@ export async function sendToTelegram(botToken: string, chatId: string, message: 
     throw new Error(data.description || "Telegram API error");
   }
 }
+
+export async function answerCallbackQuery(botToken: string, callbackQueryId: string): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId }),
+  }).catch(() => {});
+}
+
+export { greetingByTime };
 
 export async function sendReminderToAllAMs(
   period: string,
