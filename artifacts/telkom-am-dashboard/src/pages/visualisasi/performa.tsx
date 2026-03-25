@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import {
   Trophy, Database, AlertCircle, TrendingUp, Medal, ChevronDown,
-  ChevronRight, Camera, ChevronUp, Star, Expand, Minimize2, Check, X
+  ChevronRight, Camera, ChevronUp, Star, Expand, Minimize2, Check, X, Copy
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -57,11 +57,8 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }
   return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">{value}</text>;
 };
 
-function formatSnapshotLabel(createdAt: string, type: string): string {
-  const date = format(new Date(createdAt), "d MMMM yyyy", { locale: idLocale });
-  if (type === "performance") return `SNAPSHOT PERFORMANSI AM WITEL SURAMADU (${date.toUpperCase()})`;
-  if (type === "funnel") return `SNAPSHOT SALES FUNNEL WITEL SURAMADU (${date.toUpperCase()})`;
-  return `SNAPSHOT SALES ACTIVITY WITEL SURAMADU (${date.toUpperCase()})`;
+function formatSnapshotLabel(createdAt: string): string {
+  return format(new Date(createdAt), "d MMM yyyy", { locale: idLocale });
 }
 
 // Parse komponenDetail JSON safely
@@ -86,21 +83,21 @@ function sumKomponen(customers: any[], tipeRevenue: string): { target: number; r
 }
 
 // ─── Trophy Card ──────────────────────────────────────────────────────────────
-function TrophyCard({ title, subtitle, am, value, valueLabel, badge, colorScheme }: {
-  title: string; subtitle: string; am: any; value: string; valueLabel: string; badge?: string;
+function TrophyCard({ title, subtitle, am, value, valueLabel, colorScheme }: {
+  title: string; subtitle: string; am: any; value: string; valueLabel: string;
   colorScheme: 'gold' | 'blue';
 }) {
   const scheme = colorScheme === 'gold'
     ? { icon: "🥇", bg: "from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/30", border: "border-amber-300 dark:border-amber-700", accent: "text-amber-700 dark:text-amber-400", valueClr: "text-amber-600 dark:text-amber-400" }
     : { icon: "🏅", bg: "from-blue-50 via-indigo-50 to-sky-50 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-sky-950/30", border: "border-blue-300 dark:border-blue-700", accent: "text-blue-700 dark:text-blue-400", valueClr: "text-blue-600 dark:text-blue-400" };
   if (!am) return (
-    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 flex-1 min-h-[120px] flex flex-col justify-center`}>
+    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 min-h-[120px] flex flex-col justify-center`}>
       <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", scheme.accent)}>{title}</p>
       <p className="text-muted-foreground/50 text-sm">Belum ada data</p>
     </div>
   );
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 flex-1 min-w-0`}>
+    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 min-w-0`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className={cn("text-[10px] font-bold uppercase tracking-widest", scheme.accent)}>{title}</p>
@@ -108,11 +105,8 @@ function TrophyCard({ title, subtitle, am, value, valueLabel, badge, colorScheme
         </div>
         <span className="text-3xl leading-none">{scheme.icon}</span>
       </div>
-      <p className="font-display font-extrabold text-base text-foreground truncate mb-0.5" title={am.namaAm}>{am.namaAm}</p>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs text-muted-foreground">{am.divisi}</span>
-        {badge && <span className={cn("text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border bg-white/60 dark:bg-white/10", scheme.accent)}>{badge}</span>}
-      </div>
+      <p className="font-display font-extrabold text-base text-foreground truncate mb-1" title={am.namaAm}>{am.namaAm}</p>
+      <p className="text-xs text-muted-foreground mb-3">{am.divisi}</p>
       <p className={cn("text-4xl font-display font-black tabular-nums leading-none", scheme.valueClr)}>{value}</p>
       <p className="text-xs text-muted-foreground mt-2">{valueLabel}</p>
     </div>
@@ -235,6 +229,7 @@ function periodeLabel(p: string): string {
 export default function PerformaVis() {
   // Filter state
   const [filterSnapshotId, setFilterSnapshotId] = useState<number | null>(null);
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set()); // "YYYY-MM"
   const [filterDivisi, setFilterDivisi] = useState("All");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
@@ -251,6 +246,13 @@ export default function PerformaVis() {
     ((importHistory || []) as any[]).filter(i => i.type === "performance").sort((a, b) => b.id - a.id),
     [importHistory]
   );
+
+  // Auto-select most recent snapshot when import history loads
+  useEffectRef(() => {
+    if (perfImports.length > 0 && filterSnapshotId === null) {
+      setFilterSnapshotId(perfImports[0].id);
+    }
+  }, [perfImports]);
 
   // Available periods "YYYY-MM" sorted newest first
   const availablePeriodes = useMemo(() => {
@@ -490,26 +492,23 @@ export default function PerformaVis() {
 
   return (
     <div className="space-y-4">
-      {/* ─── Filter Bar ──────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-
-        {/* Row 1: Snapshot + Periode Bulan */}
-        <div className="flex items-end gap-3 flex-wrap">
-          {/* 1. Versi Snapshot */}
-          <div className="flex flex-col gap-1 min-w-[200px] max-w-[240px]">
+      {/* ─── Filter Bar ─────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-xl px-4 py-3">
+        <div className="flex items-end gap-2.5 flex-wrap">
+          {/* 1. Snapshot */}
+          <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <Camera className="w-3 h-3" /> Versi Snapshot
+              <Camera className="w-3 h-3" /> Snapshot
             </label>
             <select
               value={filterSnapshotId ?? ""}
-              onChange={e => { setFilterSnapshotId(e.target.value ? Number(e.target.value) : null); setFilterPeriodes(new Set()); }}
-              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              disabled={!perfImports.length}
+              onChange={e => { setFilterSnapshotId(Number(e.target.value)); setFilterPeriodes(new Set()); }}
+              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-40 min-w-[110px]"
             >
-              <option value="">— Semua Snapshot —</option>
+              {perfImports.length === 0 && <option value="">Belum ada data</option>}
               {perfImports.map((imp: any) => (
-                <option key={imp.id} value={imp.id}>
-                  {formatSnapshotLabel(imp.createdAt, imp.type)}
-                </option>
+                <option key={imp.id} value={imp.id}>{formatSnapshotLabel(imp.createdAt)}</option>
               ))}
             </select>
           </div>
@@ -525,10 +524,7 @@ export default function PerformaVis() {
             headerLabel="Pilih Periode"
             summaryLabel="Periode"
           />
-        </div>
 
-        {/* Row 2: Divisi + Nama AM + Tipe Rank + Tipe Revenue + Info */}
-        <div className="flex items-end gap-3 flex-wrap">
           {/* 3. Divisi */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Divisi</label>
@@ -536,14 +532,14 @@ export default function PerformaVis() {
               value={filterDivisi}
               onChange={e => { setFilterDivisi(e.target.value); setFilterNamaAms(new Set()); }}
               disabled={!divisiOptions.length}
-              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-40"
+              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-40 min-w-[100px]"
             >
               <option value="All">Semua Divisi</option>
               {divisiOptions.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
-          {/* 4. Nama AM — multi-select checkbox dropdown */}
+          {/* 4. Nama AM */}
           <CheckboxDropdown
             label="Nama AM"
             options={amNames}
@@ -560,7 +556,7 @@ export default function PerformaVis() {
             <select
               value={filterTipeRank}
               onChange={e => setFilterTipeRank(e.target.value)}
-              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[100px]"
             >
               {TIPE_RANK.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -572,25 +568,21 @@ export default function PerformaVis() {
             <select
               value={filterTipeRevenue}
               onChange={e => setFilterTipeRevenue(e.target.value)}
-              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[90px]"
             >
               {TIPE_REVENUE.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
-          {/* Info */}
-          <div className="ml-auto text-sm text-muted-foreground hidden lg:flex items-center gap-2">
-            {cmPeriode && (
-              <span className="font-semibold text-foreground">
-                CM: {periodeLabel(cmPeriode)}
-                {filterPeriodes.size > 1 && (
-                  <span className="font-normal text-muted-foreground ml-1">
-                    | YTD: {[...filterPeriodes].sort().map(periodeLabel).join(" + ")}
-                  </span>
-                )}
-              </span>
-            )}
-            {!noDataAtAll && hasData && <span className="text-xs text-muted-foreground">· {amTableData.length} AM</span>}
+          {/* Embed button */}
+          <div className="flex flex-col gap-1 ml-auto">
+            <label className="text-[10px] font-semibold text-transparent uppercase tracking-wide">Embed</label>
+            <button
+              onClick={() => setShowEmbedModal(true)}
+              className="h-8 px-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap"
+            >
+              <Star className="w-3 h-3" /> Embed Code
+            </button>
           </div>
         </div>
       </div>
@@ -604,44 +596,24 @@ export default function PerformaVis() {
           {/* ─── Trophy Section — Top #1 CM · Top #1 YTD · Distribusi ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Top #1 CM */}
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Best CM — {cmPeriode ? periodeLabel(cmPeriode) : "—"}
-                </h3>
-              </div>
-              <TrophyCard
-                colorScheme="gold"
-                title="#1 Achievement CM"
-                subtitle={topCm ? `Divisi ${topCm.divisi}` : ""}
-                am={topCm}
-                value={topCm ? formatPercent(topCm.cmAch) : "–"}
-                valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}  ·  Target: ${formatRupiah(topCm.cmTarget)}` : "Belum ada data"}
-                badge={topCm?.statusWarna?.toUpperCase()}
-              />
-            </div>
+            <TrophyCard
+              colorScheme="gold"
+              title={`#1 Best CM · ${cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
+              subtitle={topCm ? `Divisi ${topCm.divisi}` : ""}
+              am={topCm}
+              value={topCm ? formatPercent(topCm.cmAch) : "–"}
+              valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}  ·  Target: ${formatRupiah(topCm.cmTarget)}` : "Belum ada data"}
+            />
 
             {/* Top #1 YTD */}
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <Medal className="w-3.5 h-3.5 text-blue-500" />
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Best YTD — {filterPeriodes.size > 1
-                    ? `${[...filterPeriodes].sort().length} Periode`
-                    : cmPeriode ? periodeLabel(cmPeriode) : "—"}
-                </h3>
-              </div>
-              <TrophyCard
-                colorScheme="blue"
-                title="#1 Achievement YTD"
-                subtitle={topYtd ? `Divisi ${topYtd.divisi}` : ""}
-                am={topYtd}
-                value={topYtd ? formatPercent(topYtd.ytdAch) : "–"}
-                valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}  ·  Target: ${formatRupiah(topYtd.ytdTarget)}` : "Belum ada data"}
-                badge={topYtd?.statusWarna?.toUpperCase()}
-              />
-            </div>
+            <TrophyCard
+              colorScheme="blue"
+              title={`#1 Best YTD · ${filterPeriodes.size > 1 ? `${filterPeriodes.size} Periode` : cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
+              subtitle={topYtd ? `Divisi ${topYtd.divisi}` : ""}
+              am={topYtd}
+              value={topYtd ? formatPercent(topYtd.ytdAch) : "–"}
+              valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}  ·  Target: ${formatRupiah(topYtd.ytdTarget)}` : "Belum ada data"}
+            />
 
             {/* Distribusi Donut */}
             <div className="bg-card border border-border rounded-xl p-4 flex flex-col">
@@ -700,10 +672,10 @@ export default function PerformaVis() {
                       <th className="px-4 py-2.5 w-6"></th>
                       <th className="px-4 py-2.5">Nama AM</th>
                       <th className="px-3 py-2.5 text-center">Rank</th>
-                      <th className="px-3 py-2.5 text-right">CM %</th>
-                      <th className="px-3 py-2.5 text-right">YTD %</th>
                       <th className="px-4 py-2.5 text-right">Target CM</th>
                       <th className="px-4 py-2.5 text-right">Real CM</th>
+                      <th className="px-3 py-2.5 text-right">CM %</th>
+                      <th className="px-3 py-2.5 text-right">YTD %</th>
                       <th className="px-3 py-2.5 text-center">Status</th>
                     </tr>
                   </thead>
@@ -726,22 +698,19 @@ export default function PerformaVis() {
                             </td>
                             <td className="px-4 py-2.5 font-medium text-foreground">
                               <div className="flex items-center gap-1.5">
-                                {row.displayRank <= 3 && (
-                                  <span className="text-sm">{row.displayRank === 1 ? "🥇" : row.displayRank === 2 ? "🥈" : "🥉"}</span>
-                                )}
-                                <span className="truncate max-w-[130px]" title={row.namaAm}>{row.namaAm}</span>
+                                <span className="truncate max-w-[140px]" title={row.namaAm}>{row.namaAm}</span>
                                 <span className="text-[10px] text-muted-foreground shrink-0">{row.divisi}</span>
                               </div>
                             </td>
                             <td className="px-3 py-2.5 text-center font-bold text-muted-foreground">{row.displayRank}</td>
+                            <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">{formatRupiah(row.cmTarget)}</td>
+                            <td className="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">{formatRupiah(row.cmReal)}</td>
                             <td className={cn("px-3 py-2.5 text-right font-bold tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
                             <td className={cn("px-3 py-2.5 text-right font-bold tabular-nums", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-muted-foreground")}>
                               {(row.ytdAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
-                            <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">{formatRupiah(row.cmTarget)}</td>
-                            <td className="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">{formatRupiah(row.cmReal)}</td>
                             <td className="px-3 py-2.5 text-center">
                               <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border", getStatusColor(row.statusWarna))}>
                                 {row.statusWarna.toUpperCase()}
@@ -863,6 +832,68 @@ export default function PerformaVis() {
           </div>
         </>
       )}
+
+      {/* ─── Embed Code Modal ─────────────────────────────── */}
+      {showEmbedModal && (
+        <EmbedModal onClose={() => setShowEmbedModal(false)} />
+      )}
+    </div>
+  );
+}
+
+// ─── Embed Modal ───────────────────────────────────────────────────────────────
+function EmbedModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = React.useState(false);
+  const baseUrl = typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.host}`
+    : "";
+  const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+  const embedUrl = `${baseUrl}${basePath}/embed/performa`;
+  const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  allowfullscreen\n  style="border:none; border-radius:12px;"\n></iframe>`;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(iframeCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Embed ke Canva / Website</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+          Salin kode HTML di bawah ini dan tempel ke <strong>Canva</strong> melalui fitur <em>Embed → Custom Embed Code</em>, atau di website manapun.
+          Halaman embed <strong>tidak memerlukan login</strong>.
+        </p>
+        <div className="bg-secondary/60 rounded-xl p-3 font-mono text-[11px] leading-relaxed text-foreground whitespace-pre-wrap break-all mb-3 max-h-40 overflow-y-auto border border-border">
+          {iframeCode}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCopy}
+            className="flex-1 h-9 rounded-lg bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+          >
+            {copied ? <><Check className="w-3.5 h-3.5" /> Disalin!</> : <><Copy className="w-3.5 h-3.5" /> Salin Kode</>}
+          </button>
+          <a
+            href={embedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-9 px-4 rounded-lg bg-secondary border border-border text-xs font-semibold flex items-center gap-1.5 hover:bg-secondary/80 transition-colors text-foreground"
+          >
+            Buka Preview
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

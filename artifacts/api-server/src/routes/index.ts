@@ -9,6 +9,7 @@ import activityRouter from "./activity";
 import telegramRouter from "./telegram";
 import settingsRouter from "./settings";
 import publicAmRouter from "./publicAm";
+import publicPerformanceRouter from "./publicPerformance";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(activityRouter);
 router.use(telegramRouter);
 router.use(settingsRouter);
 router.use(publicAmRouter);
+router.use(publicPerformanceRouter);
 
 export default router;

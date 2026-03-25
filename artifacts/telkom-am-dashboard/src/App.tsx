@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { DashboardLayout } from "@/components/layout";
 
 import Login from "@/pages/login";
+import EmbedPerforma from "@/pages/embed-performa";
 import Dashboard from "@/pages/dashboard";
 import ImportData from "@/pages/import";
 import ImportDetail from "@/pages/import-detail";
@@ -92,6 +93,7 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/am-public/:slug" component={PublicAmPage} />
+      <Route path="/embed/performa" component={EmbedPerforma} />
       <Route component={ProtectedApp} />
     </Switch>
   );
