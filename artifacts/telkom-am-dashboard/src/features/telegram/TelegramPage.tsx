@@ -834,7 +834,7 @@ function KoneksiAmSection() {
             <span className="font-semibold text-primary">Cara termudah:</span> Klik{" "}
             <span className="font-semibold text-foreground">"Generate Semua Link"</span> → popup muncul → salin & bagikan ke AM.
             AM cukup klik link, otomatis terhubung. Format kode:{" "}
-            <code className="text-[11px] bg-secondary px-1 py-0.5 rounded font-mono">ES-LESA-VI-NIK</code> · berlaku 24 jam.
+            <code className="text-[11px] bg-secondary px-1 py-0.5 rounded font-mono">LESAVI-NIK</code> · berlaku 24 jam.
           </p>
         </div>
 

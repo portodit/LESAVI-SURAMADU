@@ -266,7 +266,7 @@ export async function pollOnce() {
         lastSeen: new Date().toISOString(),
       });
 
-      const isVerifCode = (s: string) => /^\d{6}$/.test(s) || /^ES-LESA-VI-\d+$/i.test(s);
+      const isVerifCode = (s: string) => /^\d{6}$/.test(s) || /^LESAVI-\d+$/i.test(s);
 
       const tryLinkByCode = async (code: string, source: string) => {
         const now = new Date();

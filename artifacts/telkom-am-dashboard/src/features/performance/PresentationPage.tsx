@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { ChevronDown, ChevronLeft, ChevronRight, Camera, X, BarChart2, Filter, Activity, Check, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Camera, X, BarChart2, Filter, Activity, Check, Maximize2, Minimize2, Search } from "lucide-react";
 
 const SLIDES = [
   { label: "Visualisasi Performa", icon: BarChart2 },
@@ -253,6 +253,7 @@ export default function EmbedPerforma() {
   const [filterTipeRank, setFilterTipeRank] = useState("Ach MTD");
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -431,6 +432,22 @@ export default function EmbedPerforma() {
     const ytdR = amTableData.reduce((s, r) => s + r.ytdReal, 0);
     return { cmTarget: cmT, cmReal: cmR, cmAch: cmT > 0 ? cmR / cmT * 100 : 0, ytdAch: ytdT > 0 ? ytdR / ytdT * 100 : 0, ytdReal: ytdR };
   }, [amTableData]);
+
+  const filteredAmData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return amTableData;
+    return amTableData.filter(row =>
+      row.namaAm.toLowerCase().includes(q) ||
+      (row.customers || []).some((c: any) =>
+        (c.namaCustomer ?? c.customerName ?? c.nama ?? "").toLowerCase().includes(q)
+      )
+    );
+  }, [amTableData, searchQuery]);
+
+  const effectiveExpandedRows = useMemo(() => {
+    if (!searchQuery.trim()) return expandedRows;
+    return new Set(filteredAmData.map(r => r.nik));
+  }, [searchQuery, filteredAmData, expandedRows]);
 
   const toggleRow = useCallback((nik: string) => {
     setExpandedRows(prev => { const n = new Set(prev); if (n.has(nik)) n.delete(nik); else n.add(nik); return n; });
@@ -686,8 +703,23 @@ export default function EmbedPerforma() {
 
             {/* Table */}
             <div className="bg-card border border-border rounded-xl">
-              <div className="px-4 py-3 border-b border-border bg-secondary/30">
+              <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="text-sm font-bold text-foreground">AM Performance Report</h3>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Cari AM atau pelanggan..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="pl-7 pr-7 py-1.5 text-xs bg-background border border-border rounded-lg w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="p-3">
                 <div className="border border-border rounded-lg overflow-visible">
@@ -705,8 +737,8 @@ export default function EmbedPerforma() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {amTableData.map(row => {
-                      const isExpanded = expandedRows.has(row.nik);
+                    {filteredAmData.map(row => {
+                      const isExpanded = effectiveExpandedRows.has(row.nik);
                       const hasCustomers = row.customers.length > 0;
                       return (
                         <React.Fragment key={row.nik}>

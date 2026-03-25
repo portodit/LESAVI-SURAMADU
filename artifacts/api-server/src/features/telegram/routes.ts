@@ -32,7 +32,7 @@ router.post("/telegram/register-code", requireAuth, async (req, res): Promise<vo
   const [existing] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.id, amId));
   if (!existing) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
 
-  const code = `ES-LESA-VI-${existing.nik}`;
+  const code = `LESAVI-${existing.nik}`;
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await db.update(accountManagersTable).set({
@@ -156,7 +156,7 @@ router.post("/telegram/bulk-generate-codes", requireAuth, async (req, res): Prom
 
   const results = [];
   for (const am of unconnected) {
-    const code = `ES-LESA-VI-${am.nik}`;
+    const code = `LESAVI-${am.nik}`;
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 jam
     await db.update(accountManagersTable)
       .set({ telegramCode: code, telegramCodeExpiry: expiry })
@@ -199,7 +199,7 @@ router.post("/telegram/gen-link/:amId", requireAuth, async (req, res): Promise<v
   const [existing] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.id, amId));
   if (!existing) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
 
-  const code = `ES-LESA-VI-${existing.nik}`;
+  const code = `LESAVI-${existing.nik}`;
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 jam
 
   await db.update(accountManagersTable)
@@ -237,7 +237,7 @@ router.post("/telegram/gen-links-bulk", requireAuth, async (req, res): Promise<v
 
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const results = await Promise.all(nonDgsAms.map(async am => {
-    const code = `ES-LESA-VI-${am.nik}`;
+    const code = `LESAVI-${am.nik}`;
     await db.update(accountManagersTable)
       .set({ telegramCode: code, telegramCodeExpiry: expiry })
       .where(eq(accountManagersTable.id, am.id));

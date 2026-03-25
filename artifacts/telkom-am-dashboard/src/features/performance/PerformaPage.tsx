@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import {
   Trophy, Database, AlertCircle, TrendingUp, Medal, ChevronDown,
-  ChevronRight, Camera, ChevronUp, Expand, Minimize2, Check, X
+  ChevronRight, Camera, ChevronUp, Expand, Minimize2, Check, X, Search
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -297,6 +297,7 @@ export default function PerformaVis() {
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: allPerfs, isLoading } = useListPerformance();
   const { data: importHistory } = useListImportHistory();
@@ -490,6 +491,22 @@ export default function PerformaVis() {
       { name: "Ach <80%", value: lt80, color: "#CC0000" },
     ];
   }, [amTableData]);
+
+  const filteredAmData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return amTableData;
+    return amTableData.filter(row =>
+      row.namaAm.toLowerCase().includes(q) ||
+      (row.customers || []).some((c: any) =>
+        (c.namaCustomer ?? c.customerName ?? c.nama ?? "").toLowerCase().includes(q)
+      )
+    );
+  }, [amTableData, searchQuery]);
+
+  const effectiveExpandedRows = useMemo(() => {
+    if (!searchQuery.trim()) return expandedRows;
+    return new Set(filteredAmData.map(r => r.nik));
+  }, [searchQuery, filteredAmData, expandedRows]);
 
   // Trend chart (for CM year)
   const trendData = useMemo(() => {
@@ -724,18 +741,35 @@ export default function PerformaVis() {
           <div>
             {/* Table */}
             <div className="bg-card border border-border rounded-xl">
-              <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between">
+              <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-primary" />
                   AM Performance Report
                 </h3>
-                <button
-                  onClick={handleExpandAll}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
-                >
-                  {expandAll ? <Minimize2 className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
-                  {expandAll ? "Collapse Semua" : "Expand Semua AM"}
-                </button>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Cari AM atau pelanggan..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="pl-7 pr-7 py-1.5 text-xs bg-background border border-border rounded-lg w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleExpandAll}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap"
+                  >
+                    {expandAll ? <Minimize2 className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
+                    {expandAll ? "Collapse Semua" : "Expand Semua AM"}
+                  </button>
+                </div>
               </div>
               <div className="p-3">
                 <div className="border border-border rounded-lg overflow-visible">
@@ -753,8 +787,8 @@ export default function PerformaVis() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {amTableData.map(row => {
-                      const isExpanded = expandedRows.has(row.nik);
+                    {filteredAmData.map(row => {
+                      const isExpanded = effectiveExpandedRows.has(row.nik);
                       const customers = row.customers || [];
                       const hasCustomers = customers.length > 0;
                       const totalReal = customers.reduce((s: number, c: any) => s + (c.realTotal ?? 0), 0);
