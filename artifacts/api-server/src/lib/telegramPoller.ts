@@ -1,4 +1,4 @@
-import { db, accountManagersTable, appSettingsTable } from "@workspace/db";
+import { db, accountManagersTable, appSettingsTable, telegramBotUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { sendToTelegram } from "./telegram";
 import { logger } from "./logger";
@@ -22,6 +22,31 @@ export function getBotUsers(): BotUser[] {
   return [...botUsersMap.values()].sort(
     (a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime()
   );
+}
+
+async function upsertBotUser(user: BotUser) {
+  botUsersMap.set(user.chatId, user);
+  try {
+    await db.insert(telegramBotUsersTable).values({
+      chatId: user.chatId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      lastMessage: user.lastMessage,
+      lastSeen: new Date(user.lastSeen),
+    }).onConflictDoUpdate({
+      target: telegramBotUsersTable.chatId,
+      set: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        lastMessage: user.lastMessage,
+        lastSeen: new Date(user.lastSeen),
+      },
+    });
+  } catch (err) {
+    logger.debug({ err }, "Failed to persist bot user to DB (non-fatal)");
+  }
 }
 
 async function pollOnce() {
@@ -51,8 +76,8 @@ async function pollOnce() {
       const username = msg.from?.username || "";
       const text = (msg.text || "").trim();
 
-      // Always record this user in the in-memory store
-      botUsersMap.set(chatId, {
+      // Always record this user in the in-memory store AND persist to DB
+      await upsertBotUser({
         chatId,
         firstName,
         lastName,
@@ -97,8 +122,7 @@ async function pollOnce() {
             .set({ telegramChatId: chatId, telegramCode: null, telegramCodeExpiry: null })
             .where(eq(accountManagersTable.id, am.id));
 
-          // Remove from unlinked store (now linked to AM)
-          botUsersMap.set(chatId, { ...botUsersMap.get(chatId)!, lastMessage: "✅ Linked" });
+          await upsertBotUser({ ...botUsersMap.get(chatId)!, lastMessage: "✅ Linked" });
 
           await sendToTelegram(token, chatId,
             `✅ *Berhasil terhubung!*\n\nHalo, *${am.nama}*! 👋\nDivisi: ${am.divisi}\n\nAkun Telegram kamu sudah terhubung ke Bot RLEGS Suramadu.\nKamu akan menerima notifikasi performa secara otomatis dari admin.`

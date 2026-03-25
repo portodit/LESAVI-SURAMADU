@@ -5,4 +5,5 @@ export * from "./salesFunnel";
 export * from "./salesActivity";
 export * from "./dataImports";
 export * from "./telegramLogs";
+export * from "./telegramBotUsers";
 export * from "./appSettings";

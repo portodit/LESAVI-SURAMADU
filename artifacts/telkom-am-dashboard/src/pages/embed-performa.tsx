@@ -567,7 +567,7 @@ export default function EmbedPerforma() {
                 <h3 className="text-sm font-bold text-foreground">AM Performance Report</h3>
               </div>
               <div className="p-3">
-                <div className="border border-border rounded-xl overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
@@ -660,25 +660,25 @@ export default function EmbedPerforma() {
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-secondary/60 border-t-2 border-border">
+                      <td className="px-2 py-3" />
+                      <td className="px-4 py-3 font-bold text-sm text-foreground" colSpan={2}>Total ({amTableData.length} AM)</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiah(totals.cmTarget)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiah(totals.cmReal)}</td>
+                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
+                        <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
+                        <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
+                      </td>
+                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
+                        <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
+                        <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               </div>
-              </div>
-              {/* Summary */}
-              <div className="mt-0 grid grid-cols-2 lg:grid-cols-4 gap-2 p-3 border-t border-border">
-                {[
-                  { label: "CM Real", value: formatRupiah(totals.cmReal), color: "text-foreground", bold: true },
-                  { label: "CM Target", value: formatRupiah(totals.cmTarget), color: "text-muted-foreground", bold: false },
-                  { label: `CM Ach (${totals.cmAch.toFixed(1)}%)`, value: totals.cmAch >= 100 ? "Tercapai" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target",
-                    color: totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600", bold: true },
-                  { label: `YTD Ach (${totals.ytdAch.toFixed(1)}%)`, value: formatRupiah(totals.ytdReal),
-                    color: totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-muted-foreground", bold: true },
-                ].map(item => (
-                  <div key={item.label} className="bg-secondary/40 rounded-xl px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{item.label}</p>
-                    <p className={cn("text-xs tabular-nums", item.bold ? "font-bold" : "font-normal", item.color)}>{item.value}</p>
-                  </div>
-                ))}
               </div>
             </div>
 

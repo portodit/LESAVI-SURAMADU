@@ -704,7 +704,7 @@ export default function PerformaVis() {
                 </button>
               </div>
               <div className="p-3">
-                <div className="border border-border rounded-xl overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -809,17 +809,16 @@ export default function PerformaVis() {
                     <tr className="bg-secondary/60 border-t-2 border-border">
                       <td className="px-2 py-3" />
                       <td className="px-4 py-3 font-bold text-sm text-foreground" colSpan={2}>Total ({amTableData.length} AM)</td>
-                      <td className={cn("px-3 py-3 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiah(totals.cmTarget)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiah(totals.cmReal)}</td>
+                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                         <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
                       </td>
-                      <td className={cn("px-3 py-3 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
+                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
                         <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiah(totals.cmTarget)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiah(totals.cmReal)}</td>
-                      <td />
                     </tr>
                   </tfoot>
                 </table>

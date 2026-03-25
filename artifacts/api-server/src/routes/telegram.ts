@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, telegramLogsTable, accountManagersTable, appSettingsTable } from "@workspace/db";
+import { db, telegramLogsTable, accountManagersTable, appSettingsTable, telegramBotUsersTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { sendReminderToAllAMs, sendToTelegram } from "../lib/telegram";
@@ -46,6 +46,7 @@ router.post("/telegram/register-code", requireAuth, async (req, res): Promise<vo
 router.get("/telegram/updates", requireAuth, async (req, res): Promise<void> => {
   try {
     const botUsers = getBotUsers(); // in-memory: users seen since last restart
+    const dbBotUsers = await db.select().from(telegramBotUsersTable); // persisted across restarts
     const ams = await db.select().from(accountManagersTable);
 
     // Build map of chatId → AM info for AMs already linked
@@ -54,8 +55,23 @@ router.get("/telegram/updates", requireAuth, async (req, res): Promise<void> => 
       linkedAms.map(a => [a.telegramChatId!, { nik: a.nik, nama: a.nama, id: a.id }])
     );
 
-    // Start with in-memory users (most recently active first)
+    // Start with DB-persisted users (survive server restarts)
     const subscriberMap = new Map<string, any>();
+    for (const u of dbBotUsers) {
+      subscriberMap.set(u.chatId, {
+        chatId: u.chatId,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        username: u.username,
+        lastMessage: u.lastMessage,
+        lastSeen: u.lastSeen?.toISOString() ?? null,
+        linked: amByChatId.has(u.chatId),
+        linkedNik: amByChatId.get(u.chatId)?.nik ?? null,
+        linkedNama: amByChatId.get(u.chatId)?.nama ?? null,
+        linkedAmId: amByChatId.get(u.chatId)?.id ?? null,
+      });
+    }
+    // Merge in-memory (more recent data wins)
     for (const u of botUsers) {
       subscriberMap.set(u.chatId, {
         chatId: u.chatId,
