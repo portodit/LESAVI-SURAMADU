@@ -52,10 +52,11 @@ export async function generateBasaBasi(namaLengkap: string): Promise<string> {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 80 },
+      config: { maxOutputTokens: 300 },
     });
     const text = response.text?.trim();
-    return text || BASA_BASI_FALLBACK[day];
+    // Guard against truncated responses (less than 15 chars = something went wrong)
+    return (text && text.length >= 15) ? text : BASA_BASI_FALLBACK[day];
   } catch (err) {
     logger.debug({ err }, "Gemini basa-basi error (non-fatal)");
     return BASA_BASI_FALLBACK[day] || BASA_BASI_FALLBACK[1];
@@ -94,10 +95,11 @@ export async function generatePerfFeedback(
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 120 },
+      config: { maxOutputTokens: 400 },
     });
     const text = response.text?.trim();
-    return text || fallback;
+    // Guard against truncated responses
+    return (text && text.length >= 20) ? text : fallback;
   } catch (err) {
     logger.debug({ err }, "Gemini perf feedback error (non-fatal)");
     return fallback;

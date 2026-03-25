@@ -51,6 +51,15 @@ const MAIN_KEYBOARD = {
   ],
 };
 
+const PERF_NAV_KEYBOARD = {
+  inline_keyboard: [
+    [
+      { text: "◀️ Pilih Bulan Lain", callback_data: "perf:menu" },
+      { text: "🏠 Menu Utama",       callback_data: "nav:main"  },
+    ],
+  ],
+};
+
 const MONTH_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 // ── Message builders ────────────────────────────────────────────────────────
@@ -187,6 +196,8 @@ export async function pollOnce() {
             await sendToTelegram(token, cbChatId,
               `_Data performansi untuk *${MONTH_NAMES[now.getMonth() + 1]} ${now.getFullYear()}* belum tersedia kak *${amFirstName}*. Mungkin belum diimport bulan ini._`
             ).catch(() => {});
+          } else {
+            await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => {});
           }
           continue;
         }
@@ -223,8 +234,16 @@ export async function pollOnce() {
               await sendToTelegram(token, cbChatId,
                 `_Data performansi untuk *${MONTH_NAMES[mo]} ${yr}* tidak ditemukan kak *${amFirstName}*._`
               ).catch(() => {});
+            } else {
+              await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => {});
             }
           }
+          continue;
+        }
+
+        // ── nav:main — kembali ke menu utama ─────────────────────────────
+        if (cbData === "nav:main") {
+          await sendToTelegram(token, cbChatId, `Pilih menu di bawah untuk akses data:`, MAIN_KEYBOARD).catch(() => {});
           continue;
         }
 

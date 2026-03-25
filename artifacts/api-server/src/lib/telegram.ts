@@ -136,11 +136,9 @@ async function buildPerformanceMessage(
   const greeting = greetingByTime();
   const fallbackFeedback = rankFeedback(firstName, rankCm, achCm);
 
-  // Run AI calls in parallel for speed
-  const [basaBasi, feedback] = await Promise.all([
-    generateBasaBasi(firstName),
-    generatePerfFeedback(firstName, achCm, rankCm, totalAMs, MONTH_NAMES[month], year, fallbackFeedback),
-  ]);
+  // Run AI calls sequentially to avoid rate limiting on the proxy
+  const basaBasi = await generateBasaBasi(firstName);
+  const feedback = await generatePerfFeedback(firstName, achCm, rankCm, totalAMs, MONTH_NAMES[month], year, fallbackFeedback);
 
   let msg = `📊 *LAPORAN PERFORMANSI ACCOUNT MANAGER*\n`;
   msg += `LESA VI — Witel Suramadu\n\n`;
