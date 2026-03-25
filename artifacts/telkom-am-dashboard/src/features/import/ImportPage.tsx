@@ -2,8 +2,9 @@ import React, { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useImportPerformance, useImportFunnel, useImportActivity, useListImportHistory } from "@workspace/api-client-react";
 import { useToast } from "@/shared/hooks/use-toast";
+import { Button } from "@/shared/ui/button";
 import {
-  UploadCloud, CheckCircle2, History, Loader2, Link2, Calendar, BarChart2, Filter,
+  UploadCloud, CheckCircle2, History, Loader2, Calendar, BarChart2, Filter,
   Activity, AlertCircle, ArrowRight, FolderOpen, X, FileSpreadsheet, Trash2,
   Eye, AlertTriangle, RefreshCw
 } from "lucide-react";
@@ -16,12 +17,6 @@ const TABS = [
   { id: "funnel", label: "Sales Funnel", icon: Filter, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200", type: "funnel" },
   { id: "activity", label: "Sales Activity", icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", type: "activity" },
 ];
-
-const DEFAULT_URLS: Record<string, string> = {
-  performansi: "",
-  funnel: "https://telkomind-my.sharepoint.com/:x:/r/personal/ayu_dewi_telkom_co_id/Documents/SALES%20FUNNELING%20LESA%20VI_2026/Sales_Funnel_Suramadu/TREG3_SALES_FUNNEL_20260211.xlsx?d=wd1e305d704b14a65a61d3e656fcf2907&csf=1&web=1&e=29WOBV",
-  activity: "https://telkomind-my.sharepoint.com/:x:/r/personal/ayu_dewi_telkom_co_id/Documents/SALES%20FUNNELING%20LESA%20VI_2026/Sales_Activity_Suramadu/TREG3_ACTIVITY_20260316.xlsx?d=we2417815fc5d4b0a871d7eba2c607baf&csf=1&web=1&e=hcVnC5",
-};
 
 function extractDateFromFilename(source: string): { display: string; isoDate: string; period: string } | null {
   const match = source.match(/[_-](\d{8})[._?&]/);
@@ -49,12 +44,6 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function formatPeriod(period: string) {
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-  const [y, m] = period.split("-");
-  return `${MONTHS[parseInt(m, 10) - 1] || m} ${y}`;
-}
-
 function formatSnapshotTitle(createdAt: string, type: string): string {
   const date = format(new Date(createdAt), "d MMMM yyyy", { locale: id });
   const upper = date.toUpperCase();
@@ -63,7 +52,6 @@ function formatSnapshotTitle(createdAt: string, type: string): string {
   return `SNAPSHOT SALES ACTIVITY WITEL SURAMADU (${upper})`;
 }
 
-type ImportMode = "url" | "file";
 type ConflictInfo = {
   error: string;
   existingId: number;
@@ -74,19 +62,9 @@ type ConflictInfo = {
   pendingTab: string;
 };
 
-type DetailRecord = {
-  id: number;
-  type: string;
-  period: string;
-  rowsImported: number;
-  createdAt: string;
-};
-
 export default function ImportData() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("performansi");
-  const [mode, setMode] = useState<ImportMode>("url");
-  const [urls, setUrls] = useState<Record<string, string>>(DEFAULT_URLS);
   const [files, setFiles] = useState<Record<string, File | null>>({ performansi: null, funnel: null, activity: null });
   const [snapshotOverride, setSnapshotOverride] = useState<Record<string, string>>({ performansi: "", funnel: "", activity: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,52 +81,39 @@ export default function ImportData() {
   const actMut = useImportActivity();
 
   const activeTabData = TABS.find(t => t.id === activeTab)!;
-  const currentUrl = urls[activeTab] || "";
   const currentFile = files[activeTab] || null;
   const currentSnapshotOverride = snapshotOverride[activeTab] || "";
 
-  const urlDetected = currentUrl ? extractDateFromFilename(currentUrl) : null;
   const fileDetected = currentFile ? extractDateFromFilename(currentFile.name) : null;
-  const autoDetected = mode === "url" ? urlDetected : fileDetected;
 
-  const finalSnapshotDate = currentSnapshotOverride || autoDetected?.isoDate || null;
-  const finalPeriod = finalSnapshotDate ? finalSnapshotDate.slice(0, 7) : autoDetected?.period || null;
+  const finalSnapshotDate = currentSnapshotOverride || fileDetected?.isoDate || null;
+  const finalPeriod = finalSnapshotDate ? finalSnapshotDate.slice(0, 7) : fileDetected?.period || null;
 
   const isPending =
     (activeTab === "performansi" && perfMut.isPending) ||
     (activeTab === "funnel" && funnelMut.isPending) ||
     (activeTab === "activity" && actMut.isPending);
 
-  // Filter history by current tab type
   const filteredHistory = history?.filter(h => h.type === activeTabData.type) || [];
 
-  // Detect same-day imports (today)
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const sameDayImport = filteredHistory.find(h => format(new Date(h.createdAt), "yyyy-MM-dd") === todayStr);
 
   const buildBody = async (): Promise<any | null> => {
-    const body: any = {};
-    if (mode === "url") {
-      if (!currentUrl.trim()) {
-        toast({ title: "URL Kosong", description: "Masukkan URL SharePoint terlebih dahulu", variant: "destructive" });
-        return null;
-      }
-      body.url = currentUrl.trim();
-    } else {
-      if (!currentFile) {
-        toast({ title: "File Kosong", description: "Pilih file Excel terlebih dahulu", variant: "destructive" });
-        return null;
-      }
-      try {
-        body.fileData = await fileToBase64(currentFile);
-      } catch {
-        toast({ title: "Gagal Membaca File", description: "File tidak dapat dibaca", variant: "destructive" });
-        return null;
-      }
+    if (!currentFile) {
+      toast({ title: "File Kosong", description: "Pilih file Excel terlebih dahulu", variant: "destructive" });
+      return null;
     }
-    if (finalPeriod) body.period = finalPeriod;
-    if (finalSnapshotDate) body.snapshotDate = finalSnapshotDate;
-    return body;
+    try {
+      const fileData = await fileToBase64(currentFile);
+      const body: any = { fileData };
+      if (finalPeriod) body.period = finalPeriod;
+      if (finalSnapshotDate) body.snapshotDate = finalSnapshotDate;
+      return body;
+    } catch {
+      toast({ title: "Gagal Membaca File", description: "File tidak dapat dibaca", variant: "destructive" });
+      return null;
+    }
   };
 
   const runImport = async (body: any, tab: string) => {
@@ -169,7 +134,6 @@ export default function ImportData() {
   const handleSync = async () => {
     const body = await buildBody();
     if (!body) return;
-
     try {
       await runImport(body, activeTab);
     } catch (e: any) {
@@ -208,7 +172,8 @@ export default function ImportData() {
   const handleDeleteImport = async (importId: number) => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/import/${importId}`, { method: "DELETE", credentials: "include" });
+      const base = (import.meta.env.BASE_URL || "").replace(/\/$/, "");
+      const res = await fetch(`${base}/api/import/${importId}`, { method: "DELETE", credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghapus");
       toast({ title: "Import Dihapus", description: data.message });
@@ -247,21 +212,19 @@ export default function ImportData() {
                 <div className="flex justify-between"><span className="text-amber-700">Waktu import lama:</span><span className="font-semibold text-amber-900">{conflictInfo.importedAt ? format(new Date(conflictInfo.importedAt), "dd MMM yyyy, HH:mm", { locale: id }) : "-"}</span></div>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
+                  size="sm"
+                  variant="destructive"
                   onClick={handleOverwrite}
                   disabled={isOverwriting}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 disabled:opacity-60 transition-colors shadow-sm"
+                  className="bg-amber-600 hover:bg-amber-700"
                 >
-                  {isOverwriting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  {isOverwriting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
                   Timpa Data Lama
-                </button>
-                <button
-                  onClick={() => setConflictInfo(null)}
-                  disabled={isOverwriting}
-                  className="px-4 py-2 rounded-xl border border-amber-300 bg-white text-xs font-bold text-amber-800 hover:bg-amber-50 transition-colors"
-                >
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setConflictInfo(null)} disabled={isOverwriting}>
                   Batalkan
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -292,100 +255,51 @@ export default function ImportData() {
 
         <div className="p-6 space-y-5">
           {/* Title row */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-center gap-3">
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", activeTabData.bg, activeTabData.border, "border")}>
               <activeTabData.icon className={cn("w-5 h-5", activeTabData.color)} />
             </div>
-            <div>
-              <h3 className="font-display font-bold text-base text-foreground">Import {activeTabData.label}</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Import dari URL SharePoint atau upload file Excel (.xlsx) secara langsung. Data akan otomatis dibersihkan sesuai pipeline cleaning.
-              </p>
-            </div>
-          </div>
-
-          {/* Mode toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("url")}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all border",
-                mode === "url"
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "text-muted-foreground border-border hover:border-primary/30 hover:text-primary bg-secondary/40"
-              )}
-            >
-              <Link2 className="w-3.5 h-3.5" /> URL SharePoint
-            </button>
-            <button
-              onClick={() => setMode("file")}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all border",
-                mode === "file"
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "text-muted-foreground border-border hover:border-primary/30 hover:text-primary bg-secondary/40"
-              )}
-            >
-              <FolderOpen className="w-3.5 h-3.5" /> Upload File
-            </button>
+            <h3 className="font-display font-bold text-base text-foreground">Import {activeTabData.label}</h3>
           </div>
 
           <div className="space-y-3">
-            {/* URL Mode */}
-            {mode === "url" && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <Link2 className="w-3.5 h-3.5" /> URL File Excel SharePoint
-                </label>
-                <textarea
-                  value={currentUrl}
-                  onChange={e => setUrls(prev => ({ ...prev, [activeTab]: e.target.value }))}
-                  placeholder={`Tempel URL SharePoint untuk ${activeTabData.label}...\nContoh: https://telkomind-my.sharepoint.com/:x:/r/...`}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-secondary/40 border border-border rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all resize-none placeholder:text-muted-foreground/50 placeholder:font-sans"
-                />
-              </div>
-            )}
-
-            {/* File Upload Mode */}
-            {mode === "file" && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5" /> File Excel (.xlsx / .xls)
-                </label>
-                {currentFile ? (
-                  <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                    <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-emerald-800 truncate">{currentFile.name}</p>
-                      <p className="text-xs text-emerald-600">{(currentFile.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                    <button onClick={clearFile} className="text-emerald-400 hover:text-emerald-700 transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
+            {/* File Upload */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <FolderOpen className="w-3.5 h-3.5" /> File Excel (.xlsx / .xls)
+              </label>
+              {currentFile ? (
+                <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-emerald-800 truncate">{currentFile.name}</p>
+                    <p className="text-xs text-emerald-600">{(currentFile.size / 1024).toFixed(0)} KB</p>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full px-4 py-6 border-2 border-dashed border-border rounded-xl text-center hover:border-primary/40 hover:bg-primary/3 transition-all group"
-                  >
-                    <UploadCloud className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40 group-hover:text-primary/50 transition-colors" />
-                    <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Klik untuk pilih file Excel</p>
-                    <p className="text-xs text-muted-foreground/60 mt-0.5">Format: .xlsx atau .xls</p>
+                  <button onClick={clearFile} className="text-emerald-400 hover:text-emerald-700 transition-colors">
+                    <X className="w-4 h-4" />
                   </button>
-                )}
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileSelect} />
-              </div>
-            )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full px-4 py-6 border-2 border-dashed border-border rounded-xl text-center hover:border-primary/40 hover:bg-primary/[0.03] transition-all group"
+                >
+                  <UploadCloud className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40 group-hover:text-primary/50 transition-colors" />
+                  <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Klik untuk pilih file Excel</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">Format: .xlsx atau .xls</p>
+                </button>
+              )}
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileSelect} />
+            </div>
 
             {/* Auto-detected date info */}
-            {autoDetected && (
+            {fileDetected && (
               <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
                 <Calendar className="w-3.5 h-3.5 shrink-0" />
-                <span>Snapshot terdeteksi dari nama file: <strong>{autoDetected.display}</strong> (Periode: {autoDetected.period})</span>
+                <span>Snapshot terdeteksi dari nama file: <strong>{fileDetected.display}</strong> (Periode: {fileDetected.period})</span>
               </div>
             )}
-            {!autoDetected && (mode === "url" ? currentUrl : currentFile) && (
+            {!fileDetected && currentFile && (
               <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-amber-50 border-amber-200 text-amber-700 text-xs font-medium">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Tanggal tidak terdeteksi dari nama file — gunakan field di bawah untuk mengisi tanggal snapshot secara manual</span>
@@ -421,42 +335,37 @@ export default function ImportData() {
                 />
               </div>
               {currentSnapshotOverride && (
-                <button
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setSnapshotOverride(prev => ({ ...prev, [activeTab]: "" }))}
-                  className="h-9 px-3 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg bg-secondary/40 hover:bg-secondary transition-colors"
                 >
                   Reset
-                </button>
+                </Button>
               )}
-              {/* Import button inline */}
-              <button
+              <Button
                 onClick={handleSync}
-                disabled={isPending || (mode === "url" ? !currentUrl.trim() : !currentFile)}
-                className={cn(
-                  "inline-flex items-center gap-2 h-9 px-5 rounded-xl text-sm font-semibold transition-all",
-                  "bg-primary text-white shadow-md shadow-primary/20",
-                  "hover:shadow-lg hover:shadow-primary/30",
-                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm"
-                )}
+                disabled={isPending || !currentFile}
+                className="h-9 px-5 gap-2"
               >
                 {isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Mengimport...</>
                 ) : (
                   <><UploadCloud className="w-4 h-4" /> Import Sekarang <ArrowRight className="w-3.5 h-3.5" /></>
                 )}
-              </button>
+              </Button>
             </div>
 
-            {/* Period info (below date row) */}
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/40" />
-              {finalPeriod && !isPending && (
+            {/* Period info */}
+            {finalPeriod && !isPending && (
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border/40" />
                 <span className="text-xs text-muted-foreground">
                   periode: <span className="font-semibold text-foreground">{finalPeriod}</span>
                   {finalSnapshotDate && <> &middot; snapshot: <span className="font-semibold text-foreground">{finalSnapshotDate}</span></>}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Cleaning info banner */}
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-secondary/60 border border-border text-xs text-muted-foreground">
@@ -472,7 +381,7 @@ export default function ImportData() {
         </div>
       </div>
 
-      {/* History Table - filtered by current tab type */}
+      {/* History Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-border flex items-center gap-3">
           <History className="w-4 h-4 text-muted-foreground" />
@@ -484,12 +393,12 @@ export default function ImportData() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-secondary/30 text-muted-foreground text-xs font-semibold uppercase tracking-wide">
-                <th className="px-6 py-3">Versi Snapshot</th>
-                <th className="px-5 py-3">Periode</th>
-                <th className="px-5 py-3 text-right">Baris</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Aksi</th>
+              <tr className="bg-secondary/30 border-b border-border">
+                <th className="px-6 py-3 text-xs font-bold text-foreground uppercase tracking-wide">Versi Snapshot</th>
+                <th className="px-5 py-3 text-xs font-bold text-foreground uppercase tracking-wide">Periode</th>
+                <th className="px-5 py-3 text-xs font-bold text-foreground uppercase tracking-wide text-right">Baris</th>
+                <th className="px-5 py-3 text-xs font-bold text-foreground uppercase tracking-wide">Status</th>
+                <th className="px-5 py-3 text-xs font-bold text-foreground uppercase tracking-wide text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -510,38 +419,42 @@ export default function ImportData() {
                     {deleteConfirmId === h.id ? (
                       <div className="flex items-center justify-end gap-2">
                         <span className="text-xs text-red-600 font-semibold">Hapus semua data?</span>
-                        <button
+                        <Button
+                          size="sm"
+                          variant="destructive"
                           onClick={() => handleDeleteImport(h.id)}
                           disabled={isDeleting}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
                         >
-                          {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                          {isDeleting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
                           Ya, Hapus
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => setDeleteConfirmId(null)}
                           disabled={isDeleting}
-                          className="px-2.5 py-1 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                         >
                           Batal
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
-                        <button
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => navigate(`/import/detail/${h.id}`)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-muted-foreground hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all"
-                          title="Lihat detail data snapshot ini"
+                          className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
                         >
-                          <Eye className="w-3 h-3" /> Lihat Data
-                        </button>
-                        <button
+                          <Eye className="w-3 h-3 mr-1" /> Lihat Data
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => setDeleteConfirmId(h.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-muted-foreground hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
-                          title="Hapus import ini beserta semua datanya"
+                          className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
                         >
-                          <Trash2 className="w-3 h-3" /> Hapus
-                        </button>
+                          <Trash2 className="w-3 h-3 mr-1" /> Hapus
+                        </Button>
                       </div>
                     )}
                   </td>
