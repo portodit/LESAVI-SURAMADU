@@ -94,6 +94,7 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/am-public/:slug" component={PublicAmPage} />
       <Route path="/embed/performa" component={EmbedPerforma} />
+      <Route path="/presentation" component={EmbedPerforma} />
       <Route component={ProtectedApp} />
     </Switch>
   );

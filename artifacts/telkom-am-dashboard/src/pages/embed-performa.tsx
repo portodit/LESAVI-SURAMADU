@@ -139,7 +139,7 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
       <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
       <button
         onClick={toggle}
-        className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] flex items-center gap-1 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full whitespace-nowrap"
+        className="h-7 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] flex items-center gap-1 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full whitespace-nowrap"
       >
         <span className="flex-1 text-left truncate">{displayLabel}</span>
         <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
@@ -148,9 +148,15 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
         <div
           ref={dropRef}
           style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
-          className="bg-popover border border-border rounded-xl shadow-lg min-w-[180px] max-h-60 overflow-y-auto p-1.5"
+          className="bg-popover border border-border rounded-xl shadow-lg min-w-[180px] max-h-72 overflow-y-auto p-1.5"
         >
-          <div className="px-2 py-1.5 font-semibold text-[11px] text-muted-foreground uppercase tracking-wider border-b border-border mb-1">{headerLabel || label}</div>
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border mb-1">
+            <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{headerLabel || label}</span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => onChange(new Set(options))} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors">Semua</button>
+              <button onClick={() => onChange(new Set())} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary hover:bg-secondary/80 text-muted-foreground font-semibold transition-colors">Kosongkan</button>
+            </div>
+          </div>
           {options.map(opt => (
             <label key={opt} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-secondary cursor-pointer text-xs">
               <input type="checkbox" className="rounded" checked={selected.has(opt)} onChange={() => {
@@ -204,7 +210,7 @@ function SelectDropdown({ label, value, onChange, options, className, disabled }
         onClick={toggle}
         disabled={disabled}
         className={cn(
-          "h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] flex items-center gap-1 w-full disabled:opacity-40 transition-colors",
+          "h-7 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] flex items-center gap-1 w-full disabled:opacity-40 transition-colors",
           open && "border-primary/50 bg-secondary/70"
         )}
       >
@@ -462,7 +468,7 @@ export default function EmbedPerforma() {
       {/* ─── Top Navbar ───────────── */}
       <div className="bg-card border-b border-border shrink-0 z-30">
         {/* Main row — always visible */}
-        <div className="flex items-center gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-2.5">
           {/* Logo + Brand */}
           <div className="flex items-center gap-2 shrink-0">
             <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-8 object-contain" />

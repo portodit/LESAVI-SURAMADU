@@ -1,0 +1,59 @@
+import { GoogleGenAI } from "@google/genai";
+import { logger } from "./logger";
+
+let _ai: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI | null {
+  if (_ai) return _ai;
+  const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+  if (!baseUrl || !apiKey) return null;
+  _ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "", baseUrl } });
+  return _ai;
+}
+
+const DAYS_ID = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+export async function chatWithGemini(
+  userMessage: string,
+  context: { amName?: string; divisi?: string }
+): Promise<string | null> {
+  const ai = getAI();
+  if (!ai) return null;
+
+  const now = new Date();
+  const dayName = DAYS_ID[now.getDay()];
+  const hour = now.getHours();
+
+  const lines = [
+    `Kamu adalah BOT LESA VI, asisten pintar sales AM di Telkom Witel Suramadu TREG 3.`,
+    `Hari ini hari ${dayName}, pukul ${hour}.00.`,
+    context.amName
+      ? `Kamu sedang ngobrol dengan AM bernama ${context.amName}${context.divisi ? ` dari Divisi ${context.divisi}` : ""}.`
+      : `Kamu sedang ngobrol dengan pengguna yang belum terhubung ke sistem.`,
+    ``,
+    `Panduan respons:`,
+    `- Singkat dan hangat, maksimal 4 kalimat.`,
+    `- Bahasa Indonesia santai tapi sopan, pakai sapaan "kak".`,
+    `- Boleh beri pantun atau humor ringan yang relevan dengan hari atau konteks.`,
+    `- Sesekali selipkan semangat untuk mengejar target, prospek baru, atau pergerakan LOP.`,
+    `- Jangan jawab hal di luar dunia sales/telekomunikasi/pekerjaan.`,
+    `- Format teks biasa, tidak perlu markdown berlebihan.`,
+  ];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: userMessage }] }],
+      config: {
+        systemInstruction: lines.join("\n"),
+        maxOutputTokens: 200,
+      },
+    });
+    const text = response.text?.trim();
+    return text || null;
+  } catch (err) {
+    logger.debug({ err }, "Gemini chat error (non-fatal)");
+    return null;
+  }
+}
