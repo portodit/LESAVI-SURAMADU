@@ -14,7 +14,7 @@ import { id as idLocale } from "date-fns/locale";
 
 const MONTHS_LABEL = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const TIPE_RANK = ["Ach MTD","Ach YTD","Real Revenue"];
-const TIPE_REVENUE = ["Semua","Reguler","Sustain","Scaling","NGTMA"];
+const TIPE_REVENUE = ["Reguler","Sustain","Scaling","NGTMA"];
 
 function EmptyState() {
   return (
@@ -289,7 +289,7 @@ export default function PerformaVis() {
   const [filterDivisi, setFilterDivisi] = useState("All");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach MTD");
-  const [filterTipeRevenue, setFilterTipeRevenue] = useState("Semua");
+  const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(false);
 
@@ -314,6 +314,7 @@ export default function PerformaVis() {
     if (!allPerfs?.length) return [];
     let rows = allPerfs as any[];
     if (filterSnapshotId) rows = rows.filter(p => p.importId === filterSnapshotId);
+    rows = rows.filter(p => (p.targetRevenue != null && p.targetRevenue > 0) || (p.realRevenue != null && p.realRevenue > 0));
     return [...new Set(rows.map(p => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))]
       .sort();
   }, [allPerfs, filterSnapshotId]);
@@ -425,7 +426,8 @@ export default function PerformaVis() {
       };
     }).filter(Boolean) as any[];
 
-    // Apply divisi + namaAm filters
+    // Apply divisi + namaAm filters (always exclude DGS)
+    result = result.filter(r => r.divisi !== "DGS");
     if (filterDivisi !== "All") result = result.filter(r => r.divisi === filterDivisi);
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
 
@@ -474,6 +476,7 @@ export default function PerformaVis() {
       const mNum = idx + 1;
       let rows = (allPerfs as any[]).filter(p =>
         String(p.tahun) === cmYear && p.bulan === mNum &&
+        p.divisi !== "DGS" &&
         (filterSnapshotId === null || p.importId === filterSnapshotId) &&
         (filterDivisi === "All" || p.divisi === filterDivisi)
       );
@@ -491,7 +494,7 @@ export default function PerformaVis() {
     return [...new Set(
       (allPerfs as any[])
         .filter(p => p.tahun === y && p.bulan === m)
-        .map(p => p.divisi).filter(Boolean)
+        .map(p => p.divisi).filter((d: any) => d && d !== "DGS")
     )].sort() as string[];
   }, [allPerfs, cmPeriode]);
 
@@ -503,6 +506,7 @@ export default function PerformaVis() {
       (allPerfs as any[])
         .filter(p =>
           p.tahun === y && p.bulan === m &&
+          p.divisi !== "DGS" &&
           (filterDivisi === "All" || p.divisi === filterDivisi)
         ).map(p => p.namaAm)
     )].sort() as string[];

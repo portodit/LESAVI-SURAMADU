@@ -18,7 +18,7 @@ const SLIDES = [
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 const MONTHS_LABEL = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const TIPE_RANK = ["Ach MTD","Real Revenue","YTD"];
-const TIPE_REVENUE = ["Semua","Reguler","Sustain","Scaling","NGTMA"];
+const TIPE_REVENUE = ["Reguler","Sustain","Scaling","NGTMA"];
 
 function periodeLabel(ym: string) {
   const [y, m] = ym.split("-");
@@ -237,7 +237,7 @@ export default function EmbedPerforma() {
   const [filterDivisi, setFilterDivisi] = useState("All");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach MTD");
-  const [filterTipeRevenue, setFilterTipeRevenue] = useState("Semua");
+  const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -281,8 +281,11 @@ export default function EmbedPerforma() {
   }, [snapshotId]);
 
   const availablePeriodes = useMemo(() => {
-    return [...new Set(allPerfs.map((p: any) => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))]
-      .sort();
+    return [...new Set(
+      allPerfs
+        .filter((p: any) => (p.targetRevenue != null && p.targetRevenue > 0) || (p.realRevenue != null && p.realRevenue > 0))
+        .map((p: any) => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`)
+    )].sort();
   }, [allPerfs]);
 
   // Latest selected period (for CM)
@@ -326,6 +329,7 @@ export default function EmbedPerforma() {
         customers: parseKomponen(cmRow.komponenDetail),
       };
     }).filter(Boolean) as any[];
+    result = result.filter(r => r.divisi !== "DGS");
     if (filterDivisi !== "All") result = result.filter(r => r.divisi === filterDivisi);
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
     result.sort((a, b) => {
@@ -338,12 +342,12 @@ export default function EmbedPerforma() {
 
   const divisiOptions = useMemo(() => {
     if (!allPerfs.length || !cmMonth) return [];
-    return [...new Set(allPerfs.filter((p: any) => p.bulan === cmMonth).map((p: any) => p.divisi).filter(Boolean))].sort() as string[];
+    return [...new Set(allPerfs.filter((p: any) => p.bulan === cmMonth).map((p: any) => p.divisi).filter((d: any) => d && d !== "DGS"))].sort() as string[];
   }, [allPerfs, cmMonth]);
 
   const amNames = useMemo(() => {
     if (!allPerfs.length || !cmMonth) return [];
-    let rows = allPerfs.filter((p: any) => p.bulan === cmMonth);
+    let rows = allPerfs.filter((p: any) => p.bulan === cmMonth && p.divisi !== "DGS");
     if (filterDivisi !== "All") rows = rows.filter(p => p.divisi === filterDivisi);
     return [...new Set(rows.map((p: any) => p.namaAm).filter(Boolean))].sort() as string[];
   }, [allPerfs, cmMonth, filterDivisi]);
@@ -368,6 +372,7 @@ export default function EmbedPerforma() {
       const mNum = idx + 1;
       const rows = allPerfs.filter((p: any) =>
         String(p.tahun) === cmYear && p.bulan === mNum &&
+        p.divisi !== "DGS" &&
         (filterDivisi === "All" || p.divisi === filterDivisi)
       );
       const target = rows.reduce((s, p) => s + (p.targetRevenue ?? 0), 0);
