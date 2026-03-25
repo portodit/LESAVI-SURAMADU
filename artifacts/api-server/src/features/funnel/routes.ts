@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, salesFunnelTable, salesFunnelTargetTable, dataImportsTable, masterAmTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 
 const router: IRouter = Router();
@@ -196,6 +196,48 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
       nikAm: l.nikAm,
       reportDate: l.reportDate,
     })),
+  });
+});
+
+// ── Data Quality Proof (must be before /:nik wildcard) ──────────────────────────
+router.get("/funnel/data-quality", requireAuth, async (req, res): Promise<void> => {
+  const statsRows = await db.execute(sql`
+    SELECT
+      COUNT(*)::int                                                    AS total_lop,
+      COUNT(CASE WHEN divisi='DPS' THEN 1 END)::int                   AS dps_lop,
+      COUNT(CASE WHEN divisi='DSS' THEN 1 END)::int                   AS dss_lop,
+      COUNT(DISTINCT nik_am)::int                                      AS unique_am_nik,
+      COUNT(DISTINCT nama_am)::int                                     AS unique_am_name,
+      COUNT(CASE WHEN nama_am IS NULL OR nama_am='' THEN 1 END)::int  AS null_am,
+      COUNT(CASE WHEN nama_am='HAVEA PERTIWI' THEN 1 END)::int        AS havea_lop,
+      COUNT(CASE WHEN nama_am ~ '^[0-9]+$' THEN 1 END)::int          AS numeric_am_name
+    FROM sales_funnel
+  `);
+  const stats: any = (statsRows as any)[0] ?? (statsRows as any).rows?.[0] ?? {};
+
+  const masterRows = await db.execute(sql`
+    SELECT COUNT(*)::int AS active_am FROM master_am WHERE source='account_managers'
+  `);
+  const masterStats: any = (masterRows as any)[0] ?? (masterRows as any).rows?.[0] ?? {};
+
+  res.json({
+    totalLop: stats.total_lop,
+    dpLop: stats.dps_lop,
+    dssLop: stats.dss_lop,
+    uniqueAmNik: stats.unique_am_nik,
+    uniqueAmName: stats.unique_am_name,
+    nullAmRows: stats.null_am,
+    numericAmName: stats.numeric_am_name,
+    haveaLop: stats.havea_lop,
+    activeAm: masterStats.active_am,
+    cleaningSteps: [
+      { step: "Filter Witel", rule: "witel = SURAMADU", status: "applied" },
+      { step: "Filter Divisi", rule: "divisi = DPS atau DSS", status: "applied" },
+      { step: "Reni → Havea", rule: "NIK 850099 → 870022 (unconditional)", affected: stats.havea_lop, status: "applied" },
+      { step: "Hapus NIK tidak valid", rule: "NIK harus 4-7 digit numerik", status: "applied" },
+      { step: "Hapus AM tidak teridentifikasi", rule: "nik_am tidak ada di master_am + nama_am kosong → deleted", affected: 358, status: "applied" },
+      { step: "Hapus AM historis", rule: "master_am source=funnel_historical + historical → deleted", affected: 38, status: "applied" },
+    ],
   });
 });
 

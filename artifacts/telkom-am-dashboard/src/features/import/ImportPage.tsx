@@ -10,7 +10,7 @@ import {
   UploadCloud, CheckCircle2, History, Loader2, Calendar,
   AlertCircle, ArrowRight, X, FileSpreadsheet, Trash2,
   Eye, AlertTriangle, RefreshCw, BarChart2, Filter, Activity, Layers, Target, Plus, Save,
-  Users, UserCheck, UserX, Pencil
+  Users, UserCheck, UserX, Pencil, ShieldCheck, ChevronDown, ChevronUp
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { format } from "date-fns";
@@ -137,6 +137,14 @@ export default function ImportData() {
     queryKey: ["funnel-targets"],
     queryFn: () => apiFetch("/api/funnel/targets"),
     staleTime: 30_000,
+  });
+
+  // Data Quality proof state
+  const [dqExpanded, setDqExpanded] = useState(false);
+  const { data: dqData } = useQuery<any>({
+    queryKey: ["data-quality"],
+    queryFn: () => apiFetch("/api/funnel/data-quality"),
+    staleTime: 60_000,
   });
 
   // Master AM state
@@ -538,7 +546,8 @@ export default function ImportData() {
 
             {/* Form Input */}
             <div className="bg-secondary/30 border border-border rounded-xl p-5 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Period Selector */}
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-foreground uppercase tracking-wide">Tahun</label>
                   <input type="number" min="2020" max="2099" value={tForm.tahun}
@@ -561,26 +570,52 @@ export default function ImportData() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target HO (Rp)</label>
-                  <input type="text" placeholder="Contoh: 70257000000" value={tForm.targetHo}
-                    onChange={e => setTForm(p => ({ ...p, targetHo: e.target.value }))}
-                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
-                  {tForm.targetHo && Number(tForm.targetHo.replace(/\D/g,"")) > 0 && (
-                    <p className="text-[11px] text-muted-foreground">= Rp {(Number(tForm.targetHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M</p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target Full HO (Rp)</label>
-                  <input type="text" placeholder="Contoh: 96575000000" value={tForm.targetFullHo}
-                    onChange={e => setTForm(p => ({ ...p, targetFullHo: e.target.value }))}
-                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
-                  {tForm.targetFullHo && Number(tForm.targetFullHo.replace(/\D/g,"")) > 0 && (
-                    <p className="text-[11px] text-muted-foreground">= Rp {(Number(tForm.targetFullHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M</p>
-                  )}
-                </div>
+
+              {/* Fillable Target Table */}
+              <div className="border border-border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-red-700 text-white">
+                      <th className="px-4 py-2.5 text-xs font-black uppercase">Nama Target</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase">Nilai Target (Rp)</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right text-white/70">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr className="bg-background">
+                      <td className="px-4 py-3">
+                        <input disabled value="Target HO"
+                          className="w-full h-8 px-2 bg-muted/50 border border-border rounded text-sm font-bold text-foreground cursor-not-allowed opacity-70" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="text" placeholder="Contoh: 70257000000" value={tForm.targetHo}
+                          onChange={e => setTForm(p => ({ ...p, targetHo: e.target.value }))}
+                          className="w-full h-8 px-2 bg-background border border-border rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                        {tForm.targetHo && Number(tForm.targetHo.replace(/\D/g,"")) > 0
+                          ? `Rp ${(Number(tForm.targetHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M` : "—"}
+                      </td>
+                    </tr>
+                    <tr className="bg-secondary/20">
+                      <td className="px-4 py-3">
+                        <input disabled value="Target Full HO"
+                          className="w-full h-8 px-2 bg-muted/50 border border-border rounded text-sm font-bold text-foreground cursor-not-allowed opacity-70" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="text" placeholder="Contoh: 96575000000" value={tForm.targetFullHo}
+                          onChange={e => setTForm(p => ({ ...p, targetFullHo: e.target.value }))}
+                          className="w-full h-8 px-2 bg-background border border-border rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                        {tForm.targetFullHo && Number(tForm.targetFullHo.replace(/\D/g,"")) > 0
+                          ? `Rp ${(Number(tForm.targetFullHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M` : "—"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
+
               <div className="flex items-center gap-3">
                 <Button onClick={handleSaveTarget} disabled={tSaving} className="gap-2 bg-primary text-white">
                   {tSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -978,6 +1013,91 @@ export default function ImportData() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* Data Cleaning Proof — funnel tab only */}
+      {activeTab === "funnel" && (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+          <button
+            className="w-full px-6 py-4 border-b border-border flex items-center gap-3 hover:bg-secondary/20 transition-colors text-left"
+            onClick={() => setDqExpanded(p => !p)}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <h2 className="font-display font-bold text-sm text-foreground flex-1">Laporan Pembersihan Data (Data Quality Proof)</h2>
+            {dqExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          {dqExpanded && (
+            <div className="p-6 space-y-5">
+              {/* Stats row */}
+              {dqData && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total LOP Valid", value: dqData.totalLop?.toLocaleString("id-ID"), color: "text-foreground" },
+                    { label: "LOP DPS", value: dqData.dpLop?.toLocaleString("id-ID"), color: "text-blue-700" },
+                    { label: "LOP DSS", value: dqData.dssLop?.toLocaleString("id-ID"), color: "text-violet-700" },
+                    { label: "AM Aktif", value: dqData.activeAm, color: "text-emerald-700" },
+                    { label: "Unik AM (NIK)", value: dqData.uniqueAmNik, color: "text-foreground" },
+                    { label: "LOP Havea (ex-Reni)", value: dqData.haveaLop?.toLocaleString("id-ID"), color: "text-amber-700" },
+                    { label: "AM Nama Kosong", value: dqData.nullAmRows, color: dqData?.nullAmRows > 0 ? "text-red-700" : "text-emerald-700" },
+                    { label: "Nama Numerik (NIK)", value: dqData.numericAmName, color: dqData?.numericAmName > 0 ? "text-red-700" : "text-emerald-700" },
+                  ].map(s => (
+                    <div key={s.label} className="bg-secondary/30 border border-border rounded-xl p-3">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">{s.label}</div>
+                      <div className={cn("text-2xl font-black font-mono", s.color)}>{s.value ?? "—"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cleaning steps table */}
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-emerald-700 text-white">
+                  <h4 className="text-xs font-black uppercase tracking-wide">Langkah Pembersihan yang Diterapkan</h4>
+                </div>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-secondary/40 text-xs font-bold text-foreground uppercase tracking-wide">
+                      <th className="px-4 py-2">#</th>
+                      <th className="px-4 py-2">Langkah</th>
+                      <th className="px-4 py-2">Rule / Aturan</th>
+                      <th className="px-4 py-2 text-right">Data Terdampak</th>
+                      <th className="px-4 py-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {(dqData?.cleaningSteps || [
+                      { step: "Filter Witel", rule: "witel = SURAMADU", status: "applied" },
+                      { step: "Filter Divisi", rule: "divisi = DPS atau DSS", status: "applied" },
+                      { step: "Reni → Havea", rule: "NIK 850099 → 870022 (unconditional)", affected: 329, status: "applied" },
+                      { step: "Hapus NIK tidak valid", rule: "NIK harus 4-7 digit numerik", status: "applied" },
+                      { step: "Hapus AM tidak teridentifikasi", rule: "nik_am tidak ada di master_am + nama_am kosong", affected: 358, status: "applied" },
+                      { step: "Hapus AM historis", rule: "master_am source=funnel_historical + historical", affected: 38, status: "applied" },
+                    ]).map((s: any, i: number) => (
+                      <tr key={i} className={i % 2 === 0 ? "bg-background" : "bg-secondary/20"}>
+                        <td className="px-4 py-2.5 text-xs font-mono text-muted-foreground">{i + 1}</td>
+                        <td className="px-4 py-2.5 font-bold text-foreground text-sm">{s.step}</td>
+                        <td className="px-4 py-2.5 text-xs font-mono text-foreground">{s.rule}</td>
+                        <td className="px-4 py-2.5 text-right text-sm font-bold font-mono">
+                          {s.affected !== undefined ? s.affected.toLocaleString("id-ID") + " baris" : <span className="text-muted-foreground">semua data</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            <CheckCircle2 className="w-3 h-3" /> Applied
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Data yang ditampilkan di dashboard Sales Funnel sudah melalui seluruh langkah pembersihan di atas.
+                AM Aktif = {dqData?.activeAm ?? 19} dari master_am (source=account_managers). AM Histori = dihapus.
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

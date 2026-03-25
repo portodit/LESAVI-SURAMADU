@@ -206,7 +206,7 @@ function Gauge({ pct, targetHo, targetFullHo, real }: { pct: number; targetHo: n
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="160" height="110" viewBox="0 0 160 110">
+      <svg width="240" height="165" viewBox="0 0 160 110">
         <path d={arc(startAngle, endAngle, r)} fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round" />
         {hasTarget && clamp > 0 && (
           <path d={arc(startAngle, startAngle + fillDeg, r)} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" />
@@ -274,30 +274,23 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
   const maxCount = Math.max(...PHASES.map(p => phaseMap[p].count), 1);
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {PHASES.map(phase => {
         const d = phaseMap[phase];
         const pct = (d.count / maxCount) * 100;
         const c = PHASE_COLORS[phase];
         return (
-          <div key={phase} className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 w-20 shrink-0">
-              <span className="text-sm font-black font-mono" style={{ color: c.text }}>{phase}</span>
-              <span className="text-[10px] text-muted-foreground hidden sm:inline truncate">{PHASE_LABELS[phase]}</span>
+          <div key={phase} className="flex items-center gap-2">
+            <div className="w-6 shrink-0">
+              <span className="text-xs font-black font-mono" style={{ color: c.text }}>{phase}</span>
             </div>
-            <div className="flex-1 bg-secondary rounded h-7 overflow-hidden relative">
-              <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: c.bar }} />
-              {d.count > 0 && (
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-black leading-none"
-                  style={{ color: pct > 25 ? "white" : c.text }}>
-                  {d.count} proyek
-                </span>
-              )}
-              {d.count === 0 && (
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">0 proyek</span>
-              )}
+            <div className="flex-1 bg-secondary rounded h-6 overflow-hidden">
+              <div className="h-full rounded transition-all duration-500" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: c.bar }} />
             </div>
-            <span className="text-sm font-bold font-mono text-foreground w-24 text-right shrink-0">{fmtCompact(d.nilai)}</span>
+            <span className="text-xs font-black font-mono w-16 shrink-0" style={{ color: c.text }}>
+              {d.count} proyek
+            </span>
+            <span className="text-xs font-bold font-mono text-muted-foreground w-20 text-right shrink-0">{fmtCompact(d.nilai)}</span>
           </div>
         );
       })}
@@ -360,8 +353,6 @@ export default function FunnelPage() {
   const [expandedAm, setExpandedAm] = useState<Record<string, boolean>>({});
   const [expandedPhase, setExpandedPhase] = useState<Record<string, boolean>>({});
   const [allExpanded, setAllExpanded] = useState(false);
-  const [targetHoOverride, setTargetHoOverride] = useState<string>("");
-  const [targetFullHoOverride, setTargetFullHoOverride] = useState<string>("");
 
   const { data: snapshots = [] } = useQuery<FunnelSnapshot[]>({
     queryKey: ["funnel-snapshots"],
@@ -499,20 +490,12 @@ export default function FunnelPage() {
   const lopBadge = filteredLops.length !== (data?.totalLop || 0)
     ? `${filteredLops.length} / ${data?.totalLop || 0}` : filteredLops.length.toLocaleString("id-ID");
 
-  const effectiveTargetHo = targetHoOverride ? parseFloat(targetHoOverride) * 1e9 : (data?.targetHo || 0);
-  const effectiveTargetFullHo = targetFullHoOverride ? parseFloat(targetFullHoOverride) * 1e9 : (data?.targetFullHo || 0);
+  const effectiveTargetHo = data?.targetHo || 0;
+  const effectiveTargetFullHo = data?.targetFullHo || 0;
   const pct = effectiveTargetFullHo ? ((data?.realFullHo || 0) / effectiveTargetFullHo) * 100 : 0;
 
   return (
     <div className="space-y-4 p-4">
-
-      {/* Page Title */}
-      <div>
-        <h1 className="text-base font-black text-foreground uppercase tracking-tight leading-tight">
-          Sales Funneling LOP MYTENS LESA VI Witel Suramadu
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Monitoring pipeline proyek Account Manager — Witel Suramadu · DPS & DSS</p>
-      </div>
 
       {/* Filter Bar */}
       <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm space-y-2.5">
@@ -549,36 +532,6 @@ export default function FunnelPage() {
               </button>
             </div>
           )}
-        </div>
-        {/* Row 2: Target overrides */}
-        <div className="flex items-end gap-2 flex-wrap border-t border-border/60 pt-2.5">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">Target HO <span className="text-muted-foreground font-normal normal-case">(Milyar)</span></label>
-            <input type="number" min="0" step="0.1" value={targetHoOverride} onChange={e => setTargetHoOverride(e.target.value)}
-              placeholder={effectiveTargetHo > 0 ? (effectiveTargetHo/1e9).toFixed(2) : "e.g. 5.5"}
-              className="h-9 px-3 w-36 bg-secondary/50 border border-border rounded-lg text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">Target Full HO <span className="text-muted-foreground font-normal normal-case">(Milyar)</span></label>
-            <input type="number" min="0" step="0.1" value={targetFullHoOverride} onChange={e => setTargetFullHoOverride(e.target.value)}
-              placeholder={effectiveTargetFullHo > 0 ? (effectiveTargetFullHo/1e9).toFixed(2) : "e.g. 8.0"}
-              className="h-9 px-3 w-36 bg-secondary/50 border border-border rounded-lg text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50" />
-          </div>
-          {(targetHoOverride || targetFullHoOverride) && (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-transparent uppercase">.</label>
-              <button onClick={() => { setTargetHoOverride(""); setTargetFullHoOverride(""); }}
-                className="h-9 flex items-center gap-1 px-3 text-xs text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors whitespace-nowrap">
-                <X className="w-3 h-3" /> Reset target
-              </button>
-            </div>
-          )}
-          <p className="text-[11px] text-muted-foreground self-end pb-1.5 ml-1">
-            {targetHoOverride || targetFullHoOverride
-              ? "Menggunakan target manual (override)"
-              : effectiveTargetHo > 0 ? `Target dari DB: HO ${(effectiveTargetHo/1e9).toFixed(2)}M · Full HO ${(effectiveTargetFullHo/1e9).toFixed(2)}M`
-              : "Belum ada target tersimpan — input manual di atas atau import di menu Target HO"}
-          </p>
         </div>
       </div>
 
@@ -665,15 +618,15 @@ export default function FunnelPage() {
 
                 return (
                   <React.Fragment key={amKey}>
-                    {/* AM Row */}
-                    <tr className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => toggleAmRow(amKey)}>
-                      <td className="px-4 py-3 bg-secondary/20">
-                        <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", amExpanded && "rotate-90")} />
+                    {/* AM Row — dark header style */}
+                    <tr className="cursor-pointer select-none border-t-2 border-primary/30" style={{ background: "#1e293b" }} onClick={() => toggleAmRow(amKey)}>
+                      <td className="px-4 py-3 w-8">
+                        <ChevronRight className={cn("w-4 h-4 text-slate-300 transition-transform", amExpanded && "rotate-90")} />
                       </td>
-                      <td className="px-4 py-3 bg-secondary/20">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-black text-foreground text-sm uppercase">{am.namaAm}</span>
-                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi === "DPS" ? "bg-blue-100 text-blue-800" : "bg-violet-100 text-violet-800")}>
+                          <span className="font-black text-white text-sm uppercase tracking-wide">{am.namaAm}</span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi === "DPS" ? "bg-blue-900 text-blue-200" : "bg-violet-900 text-violet-200")}>
                             {am.divisi}
                           </span>
                           <div className="flex gap-1 flex-wrap mt-0.5">
@@ -681,19 +634,19 @@ export default function FunnelPage() {
                               const lops = am.phases.get(p)!;
                               const c = PHASE_COLORS[p];
                               return (
-                                <span key={p} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", c?.pill || "bg-muted text-muted-foreground")}>
-                                  {p}: {lops.length} proyek
+                                <span key={p} className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-white/10 text-slate-200">
+                                  {p}: {lops.length}
                                 </span>
                               );
                             })}
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3 bg-secondary/20" colSpan={3}>
-                        <span className="text-xs text-muted-foreground font-medium">{amLopCount} LOP</span>
+                      <td className="px-3 py-3" colSpan={3}>
+                        <span className="text-xs text-slate-400 font-medium">{amLopCount} LOP</span>
                       </td>
-                      <td className="px-4 py-3 bg-secondary/20 text-right">
-                        <span className="font-black text-foreground font-mono text-sm">{fmtRupiah(amTotal)}</span>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-black text-white font-mono text-sm">{fmtRupiah(amTotal)}</span>
                       </td>
                     </tr>
 
@@ -702,31 +655,33 @@ export default function FunnelPage() {
                       const phaseKey = `${amKey}|${phase}`;
                       const phaseExpanded = !!expandedPhase[phaseKey];
                       const phaseTotal = lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+                      const c = PHASE_COLORS[phase];
 
                       return (
                         <React.Fragment key={phaseKey}>
-                          {/* Phase Row */}
-                          <tr className="hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => togglePhaseRow(phaseKey)}>
-                            <td className="px-4 py-2.5 pl-8">
-                              <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", phaseExpanded && "rotate-90")} />
+                          {/* Phase Row — colored left border on gray */}
+                          <tr className="cursor-pointer select-none hover:brightness-95 transition-all" style={{ background: "#f1f5f9", borderLeft: `4px solid ${c?.bar || "#94a3b8"}` }} onClick={() => togglePhaseRow(phaseKey)}>
+                            <td className="px-4 py-2.5 pl-6">
+                              <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform", phaseExpanded && "rotate-90")} />
                             </td>
-                            <td className="px-4 py-2.5 pl-10">
+                            <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
-                                <PhaseBadge phase={phase} showLabel />
-                                <span className="text-xs text-muted-foreground font-medium">{lops.length} proyek</span>
+                                <span className="text-sm font-black text-slate-800 font-mono" style={{ color: c?.text }}>{phase}</span>
+                                <span className="text-sm font-bold text-slate-700">{PHASE_LABELS[phase]}</span>
+                                <span className="text-xs font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                               </div>
                             </td>
                             <td colSpan={3} className="px-3 py-2.5" />
                             <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-bold text-muted-foreground font-mono">{fmtRupiah(phaseTotal)}</span>
+                              <span className="text-sm font-black text-slate-700 font-mono">{fmtRupiah(phaseTotal)}</span>
                             </td>
                           </tr>
 
                           {phaseExpanded && lops.map((lop, idx) => (
-                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-muted/30 transition-colors">
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-blue-50/50 transition-colors border-l-4 border-transparent">
                               <td className="px-4 py-2" />
-                              <td className="px-4 py-2 pl-14">
-                                <div className="text-sm text-foreground font-medium leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
+                              <td className="px-4 py-2 pl-12">
+                                <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
                                   {lop.judulProyek}
                                 </div>
                               </td>

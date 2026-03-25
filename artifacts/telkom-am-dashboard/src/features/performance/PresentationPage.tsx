@@ -398,7 +398,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real }: { pct:number; targetHo:n
   const hasTarget=targetFullHo>0;
   return (
     <div className="flex flex-col items-center">
-      <svg width="160" height="110" viewBox="0 0 160 110">
+      <svg width="240" height="165" viewBox="0 0 160 110">
         <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round"/>
         {hasTarget&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round"/>}
         {hasTarget?(
@@ -450,21 +450,21 @@ function FSFaseBarChart({ data }: { data:any }) {
   for(const s of (data.byStatus||[])) { if(phaseMap[s.status]){phaseMap[s.status].count=s.count;phaseMap[s.status].nilai=s.totalNilai;} }
   const maxCount=Math.max(...FS_PHASES.map(p=>phaseMap[p].count),1);
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {FS_PHASES.map(phase=>{
         const d=phaseMap[phase]; const pct=(d.count/maxCount)*100; const c=FS_PHASE_COLORS[phase];
         return (
-          <div key={phase} className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 w-20 shrink-0">
-              <span className="text-sm font-black font-mono" style={{color:c.text}}>{phase}</span>
-              <span className="text-[10px] text-muted-foreground hidden sm:inline truncate">{FS_PHASE_LABELS[phase]}</span>
+          <div key={phase} className="flex items-center gap-2">
+            <div className="w-6 shrink-0">
+              <span className="text-xs font-black font-mono" style={{color:c.text}}>{phase}</span>
             </div>
-            <div className="flex-1 bg-secondary rounded h-7 overflow-hidden relative">
-              <div className="h-full rounded transition-all duration-500" style={{width:`${pct}%`,backgroundColor:c.bar}}/>
-              {d.count>0&&<span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-black leading-none" style={{color:pct>25?"white":c.text}}>{d.count} proyek</span>}
-              {d.count===0&&<span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">0 proyek</span>}
+            <div className="flex-1 bg-secondary rounded h-6 overflow-hidden">
+              <div className="h-full rounded transition-all duration-500" style={{width:`${Math.max(pct,2)}%`,backgroundColor:c.bar}}/>
             </div>
-            <span className="text-sm font-bold font-mono text-foreground w-24 text-right shrink-0">{fmtCompactFS(d.nilai)}</span>
+            <span className="text-xs font-black font-mono w-16 shrink-0" style={{color:c.text}}>
+              {d.count} proyek
+            </span>
+            <span className="text-xs font-bold font-mono text-muted-foreground w-20 text-right shrink-0">{fmtCompactFS(d.nilai)}</span>
           </div>
         );
       })}

@@ -6,10 +6,19 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dashboard for Account Manager (AM) performance monitoring with Telegram Bot integration.
 
 ## Key Master Tables (Data Quality)
-- **master_am**: Canonical list of AM Witel Suramadu (57 total; 19 active, 38 historical). Auto-populated on import. NIK 850099 (Reni) always remapped → 870022 (Havea).
+- **master_am**: 19 active AMs only (source='account_managers'). All 38 historical entries (funnel_historical + historical) deleted. NIK 850099 (Reni) always → 870022 (Havea). Auto-syncs from account_managers on startup.
 - **master_customer**: 262 unique corporate customers, auto-populated from funnel imports.
-- On funnel import: null `nama_am` resolved via master_am lookup; garbage NIKs (< 4 digits or > 9999999) rejected.
+- **sales_funnel**: 2190 clean LOPs (358 garbage rows deleted — unresolved NIK + no master_am match). All LOP has valid nama_am.
 - API: `GET/POST/PATCH/DELETE /api/master-am` for master AM CRUD.
+- API: `GET /api/funnel/data-quality` for data cleaning proof (stats + steps).
+
+## Data Cleaning Applied
+1. Filter witel = SURAMADU only
+2. Filter divisi = DPS + DSS only
+3. Reni→Havea: NIK 850099 → 870022 (unconditional)
+4. Reject NIK < 4 digits or > 9999999
+5. Delete rows where nik_am not in master_am AND nama_am empty (358 rows)
+6. Removed 38 historical AMs from master_am
 
 ## Stack
 
