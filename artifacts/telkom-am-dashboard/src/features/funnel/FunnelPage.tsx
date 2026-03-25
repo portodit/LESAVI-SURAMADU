@@ -1,310 +1,302 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/utils";
-import { ChevronRight, ChevronDown, Search, X, ChevronsUpDown, Check } from "lucide-react";
+import { ChevronRight, ChevronDown, Search, X, TrendingUp, Expand, Minimize2 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-interface FunnelSnapshot {
-  id: number;
-  period: string;
-  rowsImported: number;
-  createdAt: string;
-}
+interface FunnelSnapshot { id: number; period: string; rowsImported: number; createdAt: string; }
 
 interface LopRow {
-  id: number;
-  lopid: string;
-  judulProyek: string;
-  pelanggan: string;
-  nilaiProyek: number;
-  divisi: string;
-  segmen: string | null;
-  statusF: string | null;
-  proses: string | null;
-  statusProyek: string | null;
-  kategoriKontrak: string | null;
-  estimateBulan: string | null;
-  namaAm: string | null;
-  nikAm: string | null;
-  reportDate: string | null;
+  id: number; lopid: string; judulProyek: string; pelanggan: string; nilaiProyek: number;
+  divisi: string; segmen: string | null; statusF: string | null; proses: string | null;
+  statusProyek: string | null; kategoriKontrak: string | null; estimateBulan: string | null;
+  namaAm: string | null; nikAm: string | null; reportDate: string | null;
 }
 
 interface FunnelData {
-  totalLop: number;
-  totalNilai: number;
-  targetFullHo: number;
-  realFullHo: number;
-  shortage: number;
-  amCount: number;
-  pelangganCount: number;
+  totalLop: number; totalNilai: number; targetHo: number; targetFullHo: number;
+  realFullHo: number; shortage: number; amCount: number; pelangganCount: number;
   byStatus: { status: string; count: number; totalNilai: number }[];
   byAm: { namaAm: string; nik: string; divisi: string; totalLop: number; totalNilai: number; byStatus: any[] }[];
   lops: LopRow[];
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PHASES = ["F0", "F1", "F2", "F3", "F4", "F5"];
-
-const PHASE_LABELS: Record<string, string> = {
-  F0: "Lead", F1: "Prospect", F2: "Quote", F3: "Negosiasi", F4: "Closing", F5: "Won/Closed",
+const PHASE_LABELS: Record<string, string> = { F0:"Lead", F1:"Prospect", F2:"Quote", F3:"Negosiasi", F4:"Closing", F5:"Won/Closed" };
+const PHASE_COLORS: Record<string, { pill: string; bar: string; text: string }> = {
+  F0: { pill: "bg-sky-100 text-sky-800",    bar: "#38bdf8", text: "#0369a1" },
+  F1: { pill: "bg-blue-100 text-blue-800",  bar: "#3b82f6", text: "#1d4ed8" },
+  F2: { pill: "bg-indigo-100 text-indigo-800", bar: "#6366f1", text: "#4338ca" },
+  F3: { pill: "bg-violet-100 text-violet-800", bar: "#7c3aed", text: "#5b21b6" },
+  F4: { pill: "bg-orange-100 text-orange-800", bar: "#f97316", text: "#c2410c" },
+  F5: { pill: "bg-emerald-100 text-emerald-800", bar: "#10b981", text: "#065f46" },
 };
 
-const PHASE_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
-  F0: { bg: "bg-blue-50", text: "text-blue-700", bar: "#93c5fd" },
-  F1: { bg: "bg-blue-100", text: "text-blue-800", bar: "#3b82f6" },
-  F2: { bg: "bg-indigo-50", text: "text-indigo-700", bar: "#818cf8" },
-  F3: { bg: "bg-indigo-100", text: "text-indigo-800", bar: "#6366f1" },
-  F4: { bg: "bg-violet-100", text: "text-violet-800", bar: "#8b5cf6" },
-  F5: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "#10b981" },
-};
-
-const KONTRAK_LABELS: Record<string, string> = {
-  GTMA: "GTMA", "New GTMA": "New GTMA", "Non-GTMA": "Non-GTMA",
-};
+const MONTHS_ID = ["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Okt","Nov","Des"];
 
 function fmtRupiah(n: number): string {
   if (!n && n !== 0) return "–";
-  if (n >= 1e12) return `Rp ${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `Rp ${(n / 1e9).toFixed(2)}M`;
-  if (n >= 1e6) return `Rp ${Math.round(n / 1e6)} jt`;
+  if (n >= 1e12) return `Rp ${(n/1e12).toFixed(2)}T`;
+  if (n >= 1e9)  return `Rp ${(n/1e9).toFixed(2)}M`;
+  if (n >= 1e6)  return `Rp ${Math.round(n/1e6)} jt`;
   return `Rp ${n.toLocaleString("id-ID")}`;
 }
-
-function fmtRupiahCompact(n: number): string {
-  if (!n && n !== 0) return "–";
-  if (n >= 1e12) return `${(n / 1e12).toFixed(1)}T`;
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}M`;
-  if (n >= 1e6) return `${Math.round(n / 1e6)} jt`;
+function fmtCompact(n: number): string {
+  if (!n) return "–";
+  if (n >= 1e12) return `${(n/1e12).toFixed(1)}T`;
+  if (n >= 1e9)  return `${(n/1e9).toFixed(1)}M`;
+  if (n >= 1e6)  return `${Math.round(n/1e6)} jt`;
   return String(n);
 }
-
-function periodLabel(period: string): string {
-  const [y, m] = period.split("-");
-  const months = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
-  return `${months[parseInt(m)] || m} ${y}`;
+function periodLabel(p: string): string {
+  const [y, m] = p.split("-");
+  return `${MONTHS_ID[parseInt(m)] || m} ${y}`;
 }
 
-// ─── API Fetcher ─────────────────────────────────────────────────────────────
+// ─── API ─────────────────────────────────────────────────────────────────────
 
-const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const apiUrl = (path: string) => `${basePath}${path}`;
-
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { credentials: "include" });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  const r = await fetch(`${BASE}${path}`, { credentials: "include" });
+  if (!r.ok) throw new Error(`API ${r.status}`);
+  return r.json();
 }
 
-// ─── Multi-select Dropdown ───────────────────────────────────────────────────
+// ─── SelectDropdown (matches PerformaPage style) ──────────────────────────────
 
-interface MultiSelectProps {
-  label: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onChange: (v: string[]) => void;
-  placeholder?: string;
-  align?: "left" | "right";
-}
-
-function MultiSelect({ label, options, selected, onChange, placeholder = "Semua", align = "left" }: MultiSelectProps) {
+function SelectDropdown({ label, value, onChange, options, disabled, className }: {
+  label?: string; value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[]; disabled?: boolean; className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
+  const current = options.find(o => o.value === value);
+  return (
+    <div className={cn("flex flex-col gap-1 relative", className)} ref={ref}>
+      {label && <label className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</label>}
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        className={cn(
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors text-left",
+          open && "border-primary/50 ring-2 ring-primary/20"
+        )}
+      >
+        <span className="flex-1 truncate font-medium text-foreground">{current?.label ?? value}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[160px] max-h-64 overflow-y-auto py-1">
+          {options.map(opt => (
+            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2",
+                opt.value === value ? "font-semibold text-primary bg-primary/5" : "text-foreground")}>
+              {opt.value === value && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+              {opt.value !== value && <span className="w-1.5 shrink-0" />}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const isAll = selected.length === 0 || selected.length === options.length;
-  const displayLabel = isAll ? placeholder : selected.length === 1 ? options.find(o => o.value === selected[0])?.label || selected[0] : `${selected.length} dipilih`;
+// ─── CheckboxDropdown (matches PerformaPage style) ────────────────────────────
 
-  const toggle = (val: string) => {
-    if (selected.includes(val)) {
-      const next = selected.filter(v => v !== val);
-      onChange(next);
-    } else {
-      onChange([...selected, val]);
-    }
+function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, summaryLabel, className }: {
+  label: string; options: string[]; selected: Set<string>; onChange: (next: Set<string>) => void;
+  placeholder?: string; labelFn?: (v: string) => string; summaryLabel?: string; className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const getLabel = (v: string) => labelFn ? labelFn(v) : v;
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  const toggle = (item: string) => {
+    const next = new Set(selected);
+    if (next.has(item)) next.delete(item); else next.add(item);
+    onChange(next);
   };
+  const unit = summaryLabel ?? "item";
+  const displayText = selected.size === 0
+    ? (placeholder ?? "Semua")
+    : selected.size === options.length ? `Semua ${unit}`
+    : selected.size === 1 ? getLabel([...selected][0])
+    : `${selected.size} ${unit} dipilih`;
 
   return (
-    <div className="flex flex-col gap-0.5" ref={ref}>
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">{label}</span>
-      <div className="relative">
-        <button
-          onClick={() => setOpen(o => !o)}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 bg-background border rounded-md text-xs whitespace-nowrap min-w-[110px] justify-between transition-colors",
-            open ? "border-primary ring-1 ring-primary/20" : "border-border hover:border-border/80"
-          )}
-        >
-          <span className={cn("truncate max-w-[100px]", !isAll && "text-primary font-medium")}>{displayLabel}</span>
-          {!isAll && <span className="bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{selected.length}</span>}
-          <ChevronsUpDown className="w-3 h-3 text-muted-foreground shrink-0" />
-        </button>
-
-        {open && (
-          <div className={cn(
-            "absolute top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden min-w-[180px]",
-            align === "right" ? "right-0" : "left-0"
-          )}>
-            <div className="p-1">
-              <button
-                onClick={() => onChange([])}
-                className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors text-left",
-                  isAll ? "bg-primary/10 text-primary font-medium" : "hover:bg-secondary")}
-              >
-                <Check className={cn("w-3.5 h-3.5", isAll ? "opacity-100" : "opacity-0")} />
-                {placeholder}
+    <div className={cn("flex flex-col gap-1 relative", className)} ref={ref}>
+      <label className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        disabled={options.length === 0}
+        className={cn(
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors text-left",
+          open && "border-primary/50 ring-2 ring-primary/20"
+        )}
+      >
+        <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
+        {selected.size > 0 && selected.size < options.length && (
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{selected.size}</span>
+        )}
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[200px] max-w-[260px] overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+            <div className="flex gap-1.5">
+              <button onClick={() => onChange(new Set(options))} className="text-[11px] text-primary font-semibold hover:underline">Semua</button>
+              <span className="text-muted-foreground text-[11px]">·</span>
+              <button onClick={() => onChange(new Set())} className="text-[11px] text-muted-foreground font-semibold hover:text-foreground hover:underline">Kosongkan</button>
+            </div>
+          </div>
+          <div className="max-h-56 overflow-y-auto py-1">
+            {options.map(opt => (
+              <button key={opt} onClick={() => toggle(opt)}
+                className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary flex items-center gap-2 transition-colors",
+                  selected.has(opt) ? "font-semibold text-primary bg-primary/5" : "text-foreground")}>
+                <span className={cn("w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center",
+                  selected.has(opt) ? "bg-primary border-primary" : "border-border")}>
+                  {selected.has(opt) && <span className="text-white text-[8px] font-black">✓</span>}
+                </span>
+                {getLabel(opt)}
               </button>
-              <div className="h-px bg-border my-1" />
-              {options.map(opt => {
-                const checked = selected.includes(opt.value);
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => toggle(opt.value)}
-                    className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors text-left",
-                      checked ? "bg-primary/10 text-primary font-medium" : "hover:bg-secondary text-foreground")}
-                  >
-                    <Check className={cn("w-3.5 h-3.5 shrink-0", checked ? "opacity-100" : "opacity-0")} />
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+            ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SVG Gauge ───────────────────────────────────────────────────────────────
+
+function Gauge({ pct, targetHo, targetFullHo, real }: { pct: number; targetHo: number; targetFullHo: number; real: number }) {
+  const clamp = Math.min(Math.max(pct, 0), 100);
+  const r = 56, cx = 80, cy = 76;
+  const startAngle = -210, endAngle = 30;
+  const totalDeg = endAngle - startAngle;
+  const fillDeg = (clamp / 100) * totalDeg;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const arc = (start: number, end: number, radius: number) => {
+    const s = toRad(start), e = toRad(end);
+    const x1 = cx + radius * Math.cos(s), y1 = cy + radius * Math.sin(s);
+    const x2 = cx + radius * Math.cos(e), y2 = cy + radius * Math.sin(e);
+    const large = end - start > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
+  };
+  const color = clamp >= 100 ? "#10b981" : clamp >= 75 ? "#3b82f6" : clamp >= 50 ? "#f59e0b" : "#CC0000";
+  const hasTarget = targetFullHo > 0;
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="160" height="110" viewBox="0 0 160 110">
+        <path d={arc(startAngle, endAngle, r)} fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round" />
+        {hasTarget && clamp > 0 && (
+          <path d={arc(startAngle, startAngle + fillDeg, r)} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" />
+        )}
+        {hasTarget ? (
+          <>
+            <text x={cx} y={cy - 6} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace, monospace">
+              {clamp.toFixed(1)}%
+            </text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" fill="#6b7280">CAPAIAN</text>
+          </>
+        ) : (
+          <>
+            <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#6b7280">Target</text>
+            <text x={cx} y={cy + 10} textAnchor="middle" fontSize="10" fill="#9ca3af">belum diset</text>
+          </>
+        )}
+        <text x={cx - r + 2} y={cy + 22} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
+        <text x={cx + r - 2} y={cy + 22} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
+      </svg>
+      <div className="w-full space-y-1.5 mt-1 text-sm">
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground text-xs">Real Pipeline</span>
+          <span className="font-bold text-foreground font-mono">{fmtRupiah(real)}</span>
+        </div>
+        {hasTarget && (
+          <>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground text-xs">Target HO</span>
+              <span className="font-mono text-foreground">{fmtRupiah(targetHo)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground text-xs">Target Full HO</span>
+              <span className="font-mono text-foreground">{fmtRupiah(targetFullHo)}</span>
+            </div>
+            <div className="pt-1.5 border-t border-border flex justify-between items-center">
+              <span className={cn("text-xs font-semibold", real >= targetFullHo ? "text-emerald-600" : "text-destructive")}>
+                {real >= targetFullHo ? "Surplus" : "Shortage"}
+              </span>
+              <span className={cn("font-bold font-mono text-sm", real >= targetFullHo ? "text-emerald-600" : "text-destructive")}>
+                {real >= targetFullHo ? "+" : "-"}{fmtRupiah(Math.abs(targetFullHo - real))}
+              </span>
+            </div>
+          </>
+        )}
+        {!hasTarget && (
+          <p className="text-xs text-muted-foreground text-center pt-1">
+            Input target di menu <span className="font-semibold">Import Data → Target HO</span>
+          </p>
         )}
       </div>
     </div>
   );
 }
 
-// ─── Single Select Dropdown ──────────────────────────────────────────────────
-
-interface SingleSelectProps {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
-}
-
-function SingleSelect({ label, value, options, onChange }: SingleSelectProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const display = options.find(o => o.value === value)?.label || value;
-
-  return (
-    <div className="flex flex-col gap-0.5" ref={ref}>
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">{label}</span>
-      <div className="relative">
-        <button
-          onClick={() => setOpen(o => !o)}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 bg-background border rounded-md text-xs whitespace-nowrap min-w-[110px] justify-between transition-colors",
-            open ? "border-primary ring-1 ring-primary/20" : "border-border hover:border-border/80"
-          )}
-        >
-          <span className="truncate max-w-[120px] font-medium">{display}</span>
-          <ChevronsUpDown className="w-3 h-3 text-muted-foreground shrink-0" />
-        </button>
-        {open && (
-          <div className="absolute top-full mt-1 left-0 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden min-w-[160px]">
-            <div className="p-1">
-              {options.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => { onChange(opt.value); setOpen(false); }}
-                  className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors text-left",
-                    opt.value === value ? "bg-primary/10 text-primary font-medium" : "hover:bg-secondary text-foreground")}
-                >
-                  <Check className={cn("w-3.5 h-3.5 shrink-0", opt.value === value ? "opacity-100" : "opacity-0")} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Phase Badge ─────────────────────────────────────────────────────────────
-
-function PhaseBadge({ phase }: { phase: string }) {
-  const c = PHASE_COLORS[phase] || { bg: "bg-muted", text: "text-muted-foreground" };
-  return (
-    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono", c.bg, c.text)}>
-      {phase}
-      <span className="font-normal opacity-70 hidden sm:inline">· {PHASE_LABELS[phase] || ""}</span>
-    </span>
-  );
-}
-
-// ─── Kontrak Badge ───────────────────────────────────────────────────────────
-
-function KontrakBadge({ k }: { k: string | null }) {
-  if (!k) return <span className="text-muted-foreground text-[10px]">–</span>;
-  return (
-    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-secondary border border-border text-muted-foreground font-medium">
-      {k}
-    </span>
-  );
-}
-
-// ─── Overview Cards ───────────────────────────────────────────────────────────
+// ─── LOP per Fase Bar Chart ───────────────────────────────────────────────────
 
 function FaseBarChart({ data }: { data: FunnelData | undefined }) {
   if (!data) return null;
   const phaseMap: Record<string, { count: number; nilai: number }> = {};
   for (const p of PHASES) phaseMap[p] = { count: 0, nilai: 0 };
   for (const s of (data.byStatus || [])) {
-    if (phaseMap[s.status] !== undefined) {
-      phaseMap[s.status].count = s.count;
-      phaseMap[s.status].nilai = s.totalNilai;
-    }
+    if (phaseMap[s.status]) { phaseMap[s.status].count = s.count; phaseMap[s.status].nilai = s.totalNilai; }
   }
   const maxCount = Math.max(...PHASES.map(p => phaseMap[p].count), 1);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {PHASES.map(phase => {
         const d = phaseMap[phase];
         const pct = (d.count / maxCount) * 100;
         const c = PHASE_COLORS[phase];
         return (
-          <div key={phase} className="flex items-center gap-2 group">
-            <span className="text-[10px] font-bold font-mono w-6 text-right text-muted-foreground">{phase}</span>
-            <div className="flex-1 bg-secondary rounded-sm h-5 overflow-hidden relative">
-              <div
-                className="h-full rounded-sm transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: c.bar }}
-              />
+          <div key={phase} className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 w-20 shrink-0">
+              <span className="text-sm font-black font-mono" style={{ color: c.text }}>{phase}</span>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline truncate">{PHASE_LABELS[phase]}</span>
+            </div>
+            <div className="flex-1 bg-secondary rounded h-7 overflow-hidden relative">
+              <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: c.bar }} />
               {d.count > 0 && (
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-foreground/80 font-mono leading-none"
-                  style={{ color: pct > 30 ? "white" : undefined }}>
-                  {d.count}
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-black leading-none"
+                  style={{ color: pct > 25 ? "white" : c.text }}>
+                  {d.count} proyek
                 </span>
               )}
+              {d.count === 0 && (
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">0 proyek</span>
+              )}
             </div>
-            <span className="text-[10px] font-mono text-muted-foreground w-16 text-right shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              {fmtRupiahCompact(d.nilai)}
-            </span>
+            <span className="text-sm font-bold font-mono text-foreground w-24 text-right shrink-0">{fmtCompact(d.nilai)}</span>
           </div>
         );
       })}
@@ -312,82 +304,56 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
   );
 }
 
-function AchievementCard({ data }: { data: FunnelData | undefined }) {
-  if (!data) return null;
-  const hasTarget = data.targetFullHo > 0;
-  const pct = hasTarget ? Math.min((data.realFullHo / data.targetFullHo) * 100, 100) : 0;
-  const pctDisplay = hasTarget ? `${pct.toFixed(1)}%` : "–";
-  const color = pct >= 100 ? "bg-emerald-500" : pct >= 75 ? "bg-blue-500" : pct >= 50 ? "bg-amber-500" : "bg-primary";
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <div className={cn("text-3xl font-bold font-mono", pct >= 100 ? "text-emerald-600" : pct >= 75 ? "text-blue-600" : "text-primary")}>
-          {pctDisplay}
-        </div>
-        <div className="h-2.5 bg-secondary rounded-full mt-2 overflow-hidden">
-          <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-      <div className="space-y-2 text-xs">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Real pipeline</span>
-          <span className="font-semibold font-mono">{fmtRupiah(data.realFullHo)}</span>
-        </div>
-        {hasTarget && (
-          <>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Target</span>
-              <span className="font-semibold font-mono">{fmtRupiah(data.targetFullHo)}</span>
-            </div>
-            <div className="pt-2 border-t border-border">
-              <div className="flex justify-between text-xs">
-                <span className={data.shortage > 0 ? "text-destructive font-medium" : "text-emerald-600 font-medium"}>
-                  {data.shortage > 0 ? "Shortage" : "Surplus"}
-                </span>
-                <span className={cn("font-bold font-mono", data.shortage > 0 ? "text-destructive" : "text-emerald-600")}>
-                  {data.shortage > 0 ? "-" : "+"}{fmtRupiah(Math.abs(data.shortage))}
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-        {!hasTarget && (
-          <div className="text-muted-foreground text-[11px] italic">Target belum dikonfigurasi</div>
-        )}
-      </div>
-    </div>
-  );
-}
+// ─── KPI Cards ───────────────────────────────────────────────────────────────
 
 function KpiGrid({ data }: { data: FunnelData | undefined }) {
   if (!data) return null;
   const kpis = [
-    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), color: "text-foreground" },
-    { label: "Total Nilai", value: fmtRupiahCompact(data.totalNilai), color: "text-blue-600" },
-    { label: "Aktif AM", value: data.amCount.toString(), color: "text-violet-600" },
-    { label: "Pelanggan", value: data.pelangganCount.toLocaleString("id-ID"), color: "text-amber-600" },
+    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: "proyek aktif", color: "text-foreground" },
+    { label: "Total Nilai Pipeline", value: fmtCompact(data.totalNilai), sub: "nilai seluruh LOP", color: "text-blue-600" },
+    { label: "Aktif AM", value: data.amCount.toString(), sub: "account manager", color: "text-violet-600" },
+    { label: "Jumlah Pelanggan", value: data.pelangganCount.toLocaleString("id-ID"), sub: "unique customer", color: "text-amber-600" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-3">
       {kpis.map(k => (
-        <div key={k.label} className="bg-secondary/60 border border-border rounded-lg p-3">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1">{k.label}</div>
-          <div className={cn("text-xl font-bold font-mono", k.color)}>{k.value}</div>
+        <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-3">
+          <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">{k.label}</div>
+          <div className={cn("text-3xl font-black font-mono leading-tight", k.color)}>{k.value}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
         </div>
       ))}
     </div>
   );
 }
 
+// ─── Phase Badge ─────────────────────────────────────────────────────────────
+
+function PhaseBadge({ phase, showLabel = false }: { phase: string; showLabel?: boolean }) {
+  const c = PHASE_COLORS[phase] || { pill: "bg-muted text-muted-foreground" };
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold", c.pill)}>
+      {phase}{showLabel && PHASE_LABELS[phase] ? <span className="font-normal opacity-80 hidden md:inline">· {PHASE_LABELS[phase]}</span> : null}
+    </span>
+  );
+}
+
+// ─── Kontrak Badge ────────────────────────────────────────────────────────────
+
+function KontrakBadge({ k }: { k: string | null }) {
+  if (!k) return <span className="text-muted-foreground text-xs">–</span>;
+  return <span className="inline-block px-2 py-0.5 rounded text-[11px] bg-secondary border border-border text-muted-foreground font-medium">{k}</span>;
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FunnelPage() {
+  const [filterYear, setFilterYear] = useState<string>("2026");
   const [importId, setImportId] = useState<number | null>(null);
   const [filterDivisi, setFilterDivisi] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string[]>([]);
-  const [filterKontrak, setFilterKontrak] = useState<string[]>([]);
-  const [filterAm, setFilterAm] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+  const [filterKontrak, setFilterKontrak] = useState<Set<string>>(new Set());
+  const [filterAm, setFilterAm] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expandedAm, setExpandedAm] = useState<Record<string, boolean>>({});
   const [expandedPhase, setExpandedPhase] = useState<Record<string, boolean>>({});
@@ -399,53 +365,71 @@ export default function FunnelPage() {
     staleTime: 60_000,
   });
 
+  const yearOptions = useMemo(() => {
+    const years = [...new Set(snapshots.map(s => s.period.slice(0, 4)))].sort().reverse();
+    if (years.length === 0) return [{ value: "2026", label: "2026" }];
+    return years.map(y => ({ value: y, label: y }));
+  }, [snapshots]);
+
+  const snapshotOptions = useMemo(() =>
+    snapshots
+      .filter(s => s.period.startsWith(filterYear))
+      .map(s => ({ value: String(s.id), label: `${periodLabel(s.period)} (${s.rowsImported.toLocaleString()} LOP)` })),
+    [snapshots, filterYear]
+  );
+
   useEffect(() => {
-    if (snapshots.length > 0 && importId === null) {
-      setImportId(snapshots[0].id);
-    }
-  }, [snapshots, importId]);
+    if (yearOptions.length > 0) setFilterYear(yearOptions[0].value);
+  }, [yearOptions.length]);
+
+  useEffect(() => {
+    if (snapshotOptions.length > 0) setImportId(Number(snapshotOptions[0].value));
+  }, [snapshotOptions.length > 0 && snapshotOptions[0]?.value]);
 
   const funnelParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (importId) params.set("import_id", String(importId));
-    if (filterDivisi !== "all") params.set("divisi", filterDivisi);
-    return params.toString();
-  }, [importId, filterDivisi]);
+    const p = new URLSearchParams();
+    if (importId) p.set("import_id", String(importId));
+    if (filterDivisi !== "all") p.set("divisi", filterDivisi);
+    p.set("tahun", filterYear);
+    return p.toString();
+  }, [importId, filterDivisi, filterYear]);
 
   const { data, isLoading } = useQuery<FunnelData>({
     queryKey: ["funnel-data", funnelParams],
     queryFn: () => apiFetch(`/api/funnel?${funnelParams}`),
-    enabled: importId !== null,
+    enabled: importId !== null || snapshots.length === 0,
     staleTime: 30_000,
   });
 
   const amOptions = useMemo(() => {
     if (!data) return [];
     const map = new Map<string, string>();
-    for (const l of data.lops) {
-      if (l.nikAm && l.namaAm) map.set(l.nikAm, l.namaAm);
-    }
-    return Array.from(map.entries())
-      .map(([nik, nama]) => ({ value: nik, label: nama }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    for (const l of data.lops) { if (l.nikAm && l.namaAm) map.set(l.nikAm, l.namaAm); }
+    return Array.from(map.keys()).sort((a, b) => (map.get(a) || "").localeCompare(map.get(b) || ""));
+  }, [data]);
+
+  const amLabelFn = useMemo(() => {
+    if (!data) return (v: string) => v;
+    const map = new Map<string, string>();
+    for (const l of data.lops) { if (l.nikAm && l.namaAm) map.set(l.nikAm, l.namaAm); }
+    return (nik: string) => map.get(nik) || nik;
   }, [data]);
 
   const kontrakOptions = useMemo(() => {
     if (!data) return [];
-    const s = new Set(data.lops.map(l => l.kategoriKontrak).filter(Boolean) as string[]);
-    return Array.from(s).sort().map(k => ({ value: k, label: k }));
+    return [...new Set(data.lops.map(l => l.kategoriKontrak).filter(Boolean) as string[])].sort();
   }, [data]);
 
   const filteredLops = useMemo(() => {
     if (!data) return [];
     const q = search.toLowerCase();
     return data.lops.filter(l => {
-      if (filterAm.length > 0 && (!l.nikAm || !filterAm.includes(l.nikAm))) return false;
-      if (filterStatus.length > 0 && (!l.statusF || !filterStatus.includes(l.statusF))) return false;
-      if (filterKontrak.length > 0 && (!l.kategoriKontrak || !filterKontrak.includes(l.kategoriKontrak))) return false;
+      if (filterAm.size > 0 && (!l.nikAm || !filterAm.has(l.nikAm))) return false;
+      if (filterStatus.size > 0 && (!l.statusF || !filterStatus.has(l.statusF))) return false;
+      if (filterKontrak.size > 0 && (!l.kategoriKontrak || !filterKontrak.has(l.kategoriKontrak))) return false;
       if (q) {
-        const haystack = `${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
+        const hay = `${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm}`.toLowerCase();
+        if (!hay.includes(q)) return false;
       }
       return true;
     });
@@ -455,9 +439,7 @@ export default function FunnelPage() {
     const amMap = new Map<string, { namaAm: string; nikAm: string; divisi: string; phases: Map<string, LopRow[]> }>();
     for (const l of filteredLops) {
       const key = l.nikAm || l.namaAm || "Unknown";
-      if (!amMap.has(key)) {
-        amMap.set(key, { namaAm: l.namaAm || key, nikAm: l.nikAm || "", divisi: l.divisi || "", phases: new Map() });
-      }
+      if (!amMap.has(key)) amMap.set(key, { namaAm: l.namaAm || key, nikAm: l.nikAm || "", divisi: l.divisi || "", phases: new Map() });
       const amEntry = amMap.get(key)!;
       const phase = l.statusF || "Unknown";
       if (!amEntry.phases.has(phase)) amEntry.phases.set(phase, []);
@@ -470,286 +452,236 @@ export default function FunnelPage() {
     });
   }, [filteredLops]);
 
-  function toggleAmRow(key: string) {
-    setExpandedAm(prev => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function togglePhaseRow(key: string) {
-    setExpandedPhase(prev => ({ ...prev, [key]: !prev[key] }));
-  }
+  function toggleAmRow(key: string) { setExpandedAm(p => ({ ...p, [key]: !p[key] })); }
+  function togglePhaseRow(key: string) { setExpandedPhase(p => ({ ...p, [key]: !p[key] })); }
 
   function handleToggleAll() {
     const next = !allExpanded;
     setAllExpanded(next);
     if (next) {
-      const amKeys: Record<string, boolean> = {};
-      const phaseKeys: Record<string, boolean> = {};
+      const ak: Record<string, boolean> = {}, pk: Record<string, boolean> = {};
       for (const am of groupedByAm) {
-        amKeys[am.nikAm || am.namaAm] = true;
-        for (const [phase] of am.phases) phaseKeys[`${am.nikAm || am.namaAm}|${phase}`] = true;
+        ak[am.nikAm || am.namaAm] = true;
+        for (const [ph] of am.phases) pk[`${am.nikAm || am.namaAm}|${ph}`] = true;
       }
-      setExpandedAm(amKeys);
-      setExpandedPhase(phaseKeys);
-    } else {
-      setExpandedAm({});
-      setExpandedPhase({});
-    }
+      setExpandedAm(ak); setExpandedPhase(pk);
+    } else { setExpandedAm({}); setExpandedPhase({}); }
   }
 
-  const snapshotOptions = snapshots.map(s => ({
-    value: String(s.id),
-    label: `${periodLabel(s.period)} (${s.rowsImported.toLocaleString()} LOP)`,
-  }));
+  const hasActiveFilter = filterAm.size > 0 || filterStatus.size > 0 || filterKontrak.size > 0 || filterDivisi !== "all";
+  const lopBadge = filteredLops.length !== (data?.totalLop || 0)
+    ? `${filteredLops.length} / ${data?.totalLop || 0}` : filteredLops.length.toLocaleString("id-ID");
 
-  const divisiOptions = [
-    { value: "all", label: "Semua Divisi" },
-    { value: "DPS", label: "DPS" },
-    { value: "DSS", label: "DSS" },
-  ];
-
-  const statusOptions = PHASES.map(p => ({ value: p, label: `${p} – ${PHASE_LABELS[p]}` }));
-
-  const lopCountBadge = filteredLops.length !== (data?.totalLop || 0)
-    ? `${filteredLops.length} / ${data?.totalLop || 0}`
-    : filteredLops.length.toLocaleString("id-ID");
-
-  const activeFilterCount = (filterAm.length > 0 ? 1 : 0) + (filterStatus.length > 0 ? 1 : 0) + (filterKontrak.length > 0 ? 1 : 0) + (filterDivisi !== "all" ? 1 : 0);
+  const pct = data?.targetFullHo ? (data.realFullHo / data.targetFullHo) * 100 : 0;
 
   return (
-    <div className="flex flex-col gap-4 p-4 min-h-full">
+    <div className="space-y-4 p-4">
+
+      {/* Page Title */}
+      <div>
+        <h1 className="text-base font-black text-foreground uppercase tracking-tight leading-tight">
+          Sales Funneling LOP MYTENS LESA VI Witel Suramadu
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Monitoring pipeline proyek Account Manager — Witel Suramadu · DPS & DSS</p>
+      </div>
 
       {/* Filter Bar */}
-      <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-end gap-3 flex-wrap shadow-sm">
-
-        {snapshots.length > 0 && (
-          <SingleSelect
-            label="Snapshot"
-            value={String(importId || snapshots[0]?.id || "")}
-            options={snapshotOptions}
+      <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
+        <div className="flex items-end gap-2 flex-wrap">
+          <SelectDropdown label="Tahun" value={filterYear} onChange={v => { setFilterYear(v); setImportId(null); }}
+            options={yearOptions} className="w-24 shrink-0" />
+          <SelectDropdown label="Snapshot" value={String(importId || "")}
             onChange={v => setImportId(Number(v))}
-          />
-        )}
-
-        <div className="w-px h-8 bg-border self-end mb-0.5" />
-
-        <SingleSelect
-          label="Divisi"
-          value={filterDivisi}
-          options={divisiOptions}
-          onChange={setFilterDivisi}
-        />
-
-        {amOptions.length > 0 && (
-          <MultiSelect
-            label="Nama AM"
-            options={amOptions}
-            selected={filterAm}
-            onChange={setFilterAm}
-            placeholder="Semua AM"
-          />
-        )}
-
-        <MultiSelect
-          label="Status Funnel"
-          options={statusOptions}
-          selected={filterStatus}
-          onChange={setFilterStatus}
-          placeholder="Semua status"
-        />
-
-        {kontrakOptions.length > 0 && (
-          <MultiSelect
-            label="Kategori Kontrak"
-            options={kontrakOptions}
-            selected={filterKontrak}
-            onChange={setFilterKontrak}
-            placeholder="Semua kontrak"
-          />
-        )}
-
-        {activeFilterCount > 0 && (
-          <button
-            onClick={() => { setFilterAm([]); setFilterStatus([]); setFilterKontrak([]); setFilterDivisi("all"); }}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors self-end mb-0"
-          >
-            <X className="w-3 h-3" /> Reset ({activeFilterCount})
-          </button>
-        )}
+            options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Belum ada data" }]}
+            disabled={snapshotOptions.length === 0} className="flex-1 min-w-[160px]" />
+          <div className="w-px h-9 bg-border self-end" />
+          <SelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
+            options={[{ value: "all", label: "Semua Divisi" }, { value: "DPS", label: "DPS" }, { value: "DSS", label: "DSS" }]}
+            className="w-36 shrink-0" />
+          <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
+            placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="flex-1 min-w-[140px]" />
+          <CheckboxDropdown label="Status Funnel" options={PHASES} selected={filterStatus} onChange={setFilterStatus}
+            placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="flex-1 min-w-[140px]" />
+          {kontrakOptions.length > 0 && (
+            <CheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
+              placeholder="Semua kontrak" summaryLabel="kontrak" className="flex-1 min-w-[140px]" />
+          )}
+          {hasActiveFilter && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-transparent uppercase">.</label>
+              <button onClick={() => { setFilterAm(new Set()); setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterDivisi("all"); }}
+                className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
+                <X className="w-3.5 h-3.5" /> Reset
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Overview Cards */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="bg-card border border-border rounded-xl p-4 h-40 animate-pulse" />
-          ))}
+          {[0,1,2].map(i => <div key={i} className="bg-card border border-border rounded-xl h-52 animate-pulse" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* LOP per Fase */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">LOP per Fase</div>
+            <h3 className="text-sm font-black text-foreground uppercase tracking-wide mb-3">LOP per Fase</h3>
             <FaseBarChart data={data} />
           </div>
+
+          {/* Capaian vs Target */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-              Capaian Real vs Target
-            </div>
-            <AchievementCard data={data} />
+            <h3 className="text-sm font-black text-foreground uppercase tracking-wide mb-2">Capaian Real vs Target</h3>
+            <Gauge pct={pct} targetHo={data?.targetHo || 0} targetFullHo={data?.targetFullHo || 0} real={data?.realFullHo || 0} />
           </div>
+
+          {/* Ringkasan */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Ringkasan</div>
+            <h3 className="text-sm font-black text-foreground uppercase tracking-wide mb-3">Ringkasan</h3>
             <KpiGrid data={data} />
           </div>
         </div>
       )}
 
       {/* Detail Table */}
-      <div>
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-foreground">Detail Funnel per AM</span>
-            <span className="bg-foreground text-background text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">{lopCountBadge}</span>
-            <button
-              onClick={handleToggleAll}
-              className="text-[11px] text-primary hover:underline transition-colors font-medium"
-            >
-              {allExpanded ? "Collapse semua" : "Expand semua"}
+      <div className="bg-card border border-border rounded-xl shadow-sm">
+        <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
+          <h3 className="text-sm font-black text-foreground flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Detail Funnel per AM
+            <span className="bg-foreground text-background text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">{lopBadge}</span>
+          </h3>
+          <div className="flex items-center gap-2 flex-1 justify-end flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <input type="text" placeholder="Cari proyek / pelanggan / LOP ID…" value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-60 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60" />
+              {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
+            </div>
+            <button onClick={handleToggleAll}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap">
+              {allExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
+              {allExpanded ? "Collapse Semua" : "Expand Semua AM"}
             </button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              className="pl-8 pr-8 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary w-56 transition-all"
-              placeholder="Cari proyek / pelanggan / LOP ID…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <div className="p-3">
+          <div className="border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-secondary border-b border-border">
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider w-64">AM / Fase / Proyek</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Kat. Kontrak</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider font-mono whitespace-nowrap">LOP ID</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pelanggan</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th className="text-right px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Nilai Proyek</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Est. BC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan={7} className="text-center py-16 text-muted-foreground">Memuat data...</td></tr>
-                ) : groupedByAm.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-16 text-muted-foreground">
-                    {search || activeFilterCount > 0 ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel"}
-                  </td></tr>
-                ) : (
-                  groupedByAm.map(am => {
-                    const amKey = am.nikAm || am.namaAm;
-                    const amExpanded = !!expandedAm[amKey];
-                    const amTotal = Array.from(am.phases.values()).flat().reduce((s, l) => s + (l.nilaiProyek || 0), 0);
-                    const amLopCount = Array.from(am.phases.values()).flat().length;
-                    const orderedPhases = PHASES.filter(p => am.phases.has(p));
-                    const unknownPhases = Array.from(am.phases.keys()).filter(p => !PHASES.includes(p));
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
+                <th className="px-4 py-3 rounded-tl-lg w-8"></th>
+                <th className="px-4 py-3 min-w-[200px]">AM / Fase / Proyek</th>
+                <th className="px-3 py-3 whitespace-nowrap">Kat. Kontrak</th>
+                <th className="px-3 py-3 font-mono whitespace-nowrap">LOP ID</th>
+                <th className="px-3 py-3 min-w-[140px]">Pelanggan</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap rounded-tr-lg">Nilai Proyek</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {isLoading ? (
+                <tr><td colSpan={7} className="text-center py-16 text-muted-foreground text-sm">Memuat data...</td></tr>
+              ) : groupedByAm.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-16 text-muted-foreground text-sm">
+                  {search || hasActiveFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel"}
+                </td></tr>
+              ) : groupedByAm.map(am => {
+                const amKey = am.nikAm || am.namaAm;
+                const amExpanded = !!expandedAm[amKey];
+                const amTotal = Array.from(am.phases.values()).flat().reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+                const amLopCount = Array.from(am.phases.values()).flat().length;
+                const orderedPhases = [...PHASES.filter(p => am.phases.has(p)), ...Array.from(am.phases.keys()).filter(p => !PHASES.includes(p))];
 
-                    return (
-                      <React.Fragment key={amKey}>
-                        {/* AM Row */}
-                        <tr
-                          className="cursor-pointer border-b border-border hover:bg-secondary/70 transition-colors group"
-                          onClick={() => toggleAmRow(amKey)}
-                        >
-                          <td className="px-3 py-2.5 bg-secondary/40">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-muted-foreground transition-transform duration-200" style={{ transform: amExpanded ? "rotate(90deg)" : "rotate(0)" }}>
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </span>
-                              <span className="font-bold text-foreground text-[11px] uppercase tracking-wide">{am.namaAm}</span>
-                              <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-medium", am.divisi === "DPS" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700")}>
-                                {am.divisi}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 bg-secondary/40" colSpan={4}>
-                            <div className="flex items-center gap-2">
-                              {orderedPhases.map(p => (
-                                <span key={p} className={cn("text-[9px] px-1.5 py-0.5 rounded font-bold font-mono", PHASE_COLORS[p].bg, PHASE_COLORS[p].text)}>
-                                  {p}:{am.phases.get(p)!.length}
+                return (
+                  <React.Fragment key={amKey}>
+                    {/* AM Row */}
+                    <tr className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => toggleAmRow(amKey)}>
+                      <td className="px-4 py-3 bg-secondary/20">
+                        <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", amExpanded && "rotate-90")} />
+                      </td>
+                      <td className="px-4 py-3 bg-secondary/20">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-black text-foreground text-sm uppercase">{am.namaAm}</span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi === "DPS" ? "bg-blue-100 text-blue-800" : "bg-violet-100 text-violet-800")}>
+                            {am.divisi}
+                          </span>
+                          <div className="flex gap-1 flex-wrap mt-0.5">
+                            {orderedPhases.map(p => {
+                              const lops = am.phases.get(p)!;
+                              const c = PHASE_COLORS[p];
+                              return (
+                                <span key={p} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", c?.pill || "bg-muted text-muted-foreground")}>
+                                  {p}:{lops.length}
                                 </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 bg-secondary/40 text-right">
-                            <span className="font-bold text-foreground font-mono text-[11px]">{fmtRupiah(amTotal)}</span>
-                          </td>
-                          <td className="px-3 py-2.5 bg-secondary/40">
-                            <span className="text-[10px] text-muted-foreground font-mono">{amLopCount} LOP</span>
-                          </td>
-                        </tr>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 bg-secondary/20" colSpan={4}>
+                        <span className="text-xs text-muted-foreground font-medium">{amLopCount} LOP</span>
+                      </td>
+                      <td className="px-4 py-3 bg-secondary/20 text-right">
+                        <span className="font-black text-foreground font-mono text-sm">{fmtRupiah(amTotal)}</span>
+                      </td>
+                    </tr>
 
-                        {amExpanded && [...orderedPhases, ...unknownPhases].map(phase => {
-                          const lops = am.phases.get(phase) || [];
-                          const phaseKey = `${amKey}|${phase}`;
-                          const phaseExpanded = !!expandedPhase[phaseKey];
-                          const phaseTotal = lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+                    {amExpanded && orderedPhases.map(phase => {
+                      const lops = am.phases.get(phase) || [];
+                      const phaseKey = `${amKey}|${phase}`;
+                      const phaseExpanded = !!expandedPhase[phaseKey];
+                      const phaseTotal = lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
 
-                          return (
-                            <React.Fragment key={phaseKey}>
-                              {/* Phase Row */}
-                              <tr
-                                className="cursor-pointer border-b border-border/50 hover:bg-primary/5 transition-colors"
-                                onClick={() => togglePhaseRow(phaseKey)}
-                              >
-                                <td className="pl-9 pr-3 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground transition-transform duration-200" style={{ transform: phaseExpanded ? "rotate(90deg)" : "rotate(0)" }}>
-                                      <ChevronRight className="w-3 h-3" />
-                                    </span>
-                                    <PhaseBadge phase={phase} />
-                                    <span className="text-[10px] text-muted-foreground font-mono">{lops.length} LOP</span>
-                                  </div>
-                                </td>
-                                <td colSpan={4} className="px-3 py-2 text-[10px] text-muted-foreground" />
-                                <td className="px-3 py-2 text-right">
-                                  <span className="text-[11px] font-semibold text-muted-foreground font-mono">{fmtRupiah(phaseTotal)}</span>
-                                </td>
-                                <td className="px-3 py-2" />
-                              </tr>
+                      return (
+                        <React.Fragment key={phaseKey}>
+                          {/* Phase Row */}
+                          <tr className="hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => togglePhaseRow(phaseKey)}>
+                            <td className="px-4 py-2.5 pl-8">
+                              <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", phaseExpanded && "rotate-90")} />
+                            </td>
+                            <td className="px-4 py-2.5 pl-10">
+                              <div className="flex items-center gap-2">
+                                <PhaseBadge phase={phase} showLabel />
+                                <span className="text-xs text-muted-foreground font-medium">{lops.length} proyek</span>
+                              </div>
+                            </td>
+                            <td colSpan={4} className="px-3 py-2.5" />
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-sm font-bold text-muted-foreground font-mono">{fmtRupiah(phaseTotal)}</span>
+                            </td>
+                          </tr>
 
-                              {phaseExpanded && lops.map((lop, idx) => (
-                                <tr key={`${lop.lopid}-${idx}`} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
-                                  <td className="pl-16 pr-3 py-2">
-                                    <div className="text-[11px] text-primary font-medium leading-tight line-clamp-2 max-w-[200px]" title={lop.judulProyek}>
-                                      {lop.judulProyek}
-                                    </div>
-                                  </td>
-                                  <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
-                                  <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{lop.lopid}</td>
-                                  <td className="px-3 py-2 text-[11px] text-foreground max-w-[160px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                                  <td className="px-3 py-2"><PhaseBadge phase={lop.statusF || "?"} /></td>
-                                  <td className="px-3 py-2 text-right font-mono text-[11px] font-semibold text-foreground whitespace-nowrap">{fmtRupiah(lop.nilaiProyek)}</td>
-                                  <td className="px-3 py-2 text-[10px] text-muted-foreground whitespace-nowrap">{lop.estimateBulan || "–"}</td>
-                                </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                          {phaseExpanded && lops.map((lop, idx) => (
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-2" />
+                              <td className="px-4 py-2 pl-14">
+                                <div className="text-sm text-primary font-medium leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
+                                  {lop.judulProyek}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
+                              <td className="px-3 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{lop.lopid}</td>
+                              <td className="px-3 py-2 text-sm text-foreground max-w-[160px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                              <td className="px-3 py-2"><PhaseBadge phase={lop.statusF || "?"} /></td>
+                              <td className="px-4 py-2 text-right font-mono text-sm font-bold text-foreground whitespace-nowrap">{fmtRupiah(lop.nilaiProyek)}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
           </div>
         </div>
       </div>

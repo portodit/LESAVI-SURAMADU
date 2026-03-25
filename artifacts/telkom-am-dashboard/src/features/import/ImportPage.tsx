@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useImportPerformance, useImportFunnel, useImportActivity, useListImportHistory } from "@workspace/api-client-react";
 import { useToast } from "@/shared/hooks/use-toast";
@@ -8,17 +9,27 @@ import { Button } from "@/shared/ui/button";
 import {
   UploadCloud, CheckCircle2, History, Loader2, Calendar,
   AlertCircle, ArrowRight, X, FileSpreadsheet, Trash2,
-  Eye, AlertTriangle, RefreshCw, BarChart2, Filter, Activity, Layers
+  Eye, AlertTriangle, RefreshCw, BarChart2, Filter, Activity, Layers, Target, Plus, Save
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 const TABS = [
-  { id: "performansi", label: "Performa AM", icon: BarChart2, type: "performance" },
-  { id: "funnel",      label: "Sales Funnel", icon: Filter,    type: "funnel" },
-  { id: "activity",   label: "Sales Activity", icon: Activity, type: "activity" },
+  { id: "performansi", label: "Performa AM",   icon: BarChart2, type: "performance" },
+  { id: "funnel",      label: "Sales Funnel",  icon: Filter,    type: "funnel" },
+  { id: "activity",   label: "Sales Activity", icon: Activity,  type: "activity" },
+  { id: "target-ho",  label: "Target HO",      icon: Target,    type: "target" },
 ];
+
+const MONTHS_FULL = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+
+async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const base = (import.meta.env.BASE_URL || "").replace(/\/$/, "");
+  const r = await fetch(`${base}${path}`, { credentials: "include", ...opts });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any).error || `API ${r.status}`); }
+  return r.json();
+}
 
 function extractDateFromFilename(source: string): { display: string; isoDate: string; period: string } | null {
   const match = source.match(/[_-](\d{8})[._?&\s]/);
@@ -108,10 +119,60 @@ export default function ImportData() {
   const [importProgress, setImportProgress] = useState<{ percent: number; stage: string } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const qc = useQueryClient();
   const { data: history, refetch } = useListImportHistory();
   const perfMut = useImportPerformance();
   const funnelMut = useImportFunnel();
   const actMut = useImportActivity();
+
+  // Target HO state
+  const curYear = new Date().getFullYear();
+  const curMonth = new Date().getMonth() + 1;
+  const [tForm, setTForm] = useState({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" });
+  const [tSaving, setTSaving] = useState(false);
+  const [tDelConfirm, setTDelConfirm] = useState<number | null>(null);
+  const { data: targets = [], refetch: refetchTargets } = useQuery<any[]>({
+    queryKey: ["funnel-targets"],
+    queryFn: () => apiFetch("/api/funnel/targets"),
+    staleTime: 30_000,
+  });
+
+  const handleSaveTarget = async () => {
+    if (!tForm.tahun || !tForm.bulan || !tForm.divisi) {
+      toast({ title: "Lengkapi form", description: "Tahun, bulan, dan divisi wajib diisi", variant: "destructive" }); return;
+    }
+    setTSaving(true);
+    try {
+      await apiFetch("/api/funnel/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tahun: Number(tForm.tahun), bulan: Number(tForm.bulan), divisi: tForm.divisi,
+          targetHo: Number(tForm.targetHo.replace(/\D/g,"")||0),
+          targetFullHo: Number(tForm.targetFullHo.replace(/\D/g,"")||0),
+        }),
+      });
+      toast({ title: "Target Disimpan", description: `Target ${tForm.divisi} ${MONTHS_FULL[Number(tForm.bulan)-1]} ${tForm.tahun} berhasil disimpan` });
+      refetchTargets();
+      qc.invalidateQueries({ queryKey: ["funnel-data"] });
+      setTForm(p => ({ ...p, targetHo: "", targetFullHo: "" }));
+    } catch (e: any) {
+      toast({ title: "Gagal Menyimpan", description: e.message || "Terjadi kesalahan", variant: "destructive" });
+    } finally {
+      setTSaving(false); }
+  };
+
+  const handleDeleteTarget = async (id: number) => {
+    try {
+      await apiFetch(`/api/funnel/targets/${id}`, { method: "DELETE" });
+      toast({ title: "Target Dihapus" });
+      setTDelConfirm(null);
+      refetchTargets();
+      qc.invalidateQueries({ queryKey: ["funnel-data"] });
+    } catch (e: any) {
+      toast({ title: "Gagal Menghapus", description: e.message, variant: "destructive" });
+    }
+  };
 
   const activeTabData = TABS.find(t => t.id === activeTab)!;
   const currentFile = files[activeTab] || null;
@@ -411,6 +472,137 @@ export default function ImportData() {
           )}
         </div>
 
+        {/* Target HO Tab Content */}
+        {activeTab === "target-ho" && (
+          <div className="p-6 space-y-5">
+            <div>
+              <h3 className="text-sm font-black text-foreground uppercase tracking-wide mb-1 flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" /> Input Target HO &amp; Full HO
+              </h3>
+              <p className="text-xs text-muted-foreground">Masukkan target pipeline per divisi untuk digunakan pada kalkulasi capaian di dashboard Sales Funnel.</p>
+            </div>
+
+            {/* Form Input */}
+            <div className="bg-secondary/30 border border-border rounded-xl p-5 space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Tahun</label>
+                  <input type="number" min="2020" max="2099" value={tForm.tahun}
+                    onChange={e => setTForm(p => ({ ...p, tahun: e.target.value }))}
+                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Bulan</label>
+                  <select value={tForm.bulan} onChange={e => setTForm(p => ({ ...p, bulan: e.target.value }))}
+                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    {MONTHS_FULL.map((m, i) => <option key={i+1} value={String(i+1)}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Divisi</label>
+                  <select value={tForm.divisi} onChange={e => setTForm(p => ({ ...p, divisi: e.target.value }))}
+                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    <option value="DPS">DPS</option>
+                    <option value="DSS">DSS</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target HO (Rp)</label>
+                  <input type="text" placeholder="Contoh: 70257000000" value={tForm.targetHo}
+                    onChange={e => setTForm(p => ({ ...p, targetHo: e.target.value }))}
+                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
+                  {tForm.targetHo && Number(tForm.targetHo.replace(/\D/g,"")) > 0 && (
+                    <p className="text-[11px] text-muted-foreground">= Rp {(Number(tForm.targetHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target Full HO (Rp)</label>
+                  <input type="text" placeholder="Contoh: 96575000000" value={tForm.targetFullHo}
+                    onChange={e => setTForm(p => ({ ...p, targetFullHo: e.target.value }))}
+                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
+                  {tForm.targetFullHo && Number(tForm.targetFullHo.replace(/\D/g,"")) > 0 && (
+                    <p className="text-[11px] text-muted-foreground">= Rp {(Number(tForm.targetFullHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={handleSaveTarget} disabled={tSaving} className="gap-2 bg-primary text-white">
+                  {tSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Simpan Target
+                </Button>
+                <Button variant="ghost" onClick={() => setTForm({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" })}
+                  className="text-muted-foreground">
+                  <X className="w-4 h-4 mr-1" /> Reset Form
+                </Button>
+              </div>
+            </div>
+
+            {/* Reference from image */}
+            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-600" />
+              <div>
+                <span className="font-semibold">Contoh nilai target (Feb 2026):</span> DPS — Target HO: Rp 70,26M · Target Full HO: Rp 96,58M &nbsp;|&nbsp; DSS — Target HO: Rp 60,05M · Target Full HO: Rp 77,93M
+              </div>
+            </div>
+
+            {/* Existing targets table */}
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-secondary/30 border-b border-border flex items-center gap-2">
+                <History className="w-4 h-4 text-muted-foreground" />
+                <h4 className="text-sm font-bold text-foreground">Data Target HO Tersimpan</h4>
+                <span className="ml-auto text-xs text-muted-foreground">{targets.length} record</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-red-700 text-white">
+                      <th className="px-4 py-2.5 text-xs font-black uppercase rounded-tl-none">Periode</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase">Divisi</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target HO</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target Full HO</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right rounded-tr-none">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {targets.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                        <Target className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                        Belum ada data target. Gunakan form di atas untuk menambahkan.
+                      </td></tr>
+                    ) : targets.map((t: any) => (
+                      <tr key={t.id} className={cn("transition-colors", tDelConfirm === t.id ? "bg-red-50" : "hover:bg-secondary/20")}>
+                        <td className="px-4 py-3 font-mono text-sm font-semibold">{MONTHS_FULL[(t.bulan||1)-1]} {t.tahun}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded", t.divisi === "DPS" ? "bg-blue-100 text-blue-800" : "bg-violet-100 text-violet-800")}>{t.divisi || "Semua"}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-sm">Rp {((t.targetHo||0)/1e9).toFixed(2)}M</td>
+                        <td className="px-4 py-3 text-right font-mono text-sm font-semibold">Rp {((t.targetFullHo||0)/1e9).toFixed(2)}M</td>
+                        <td className="px-4 py-3 text-right">
+                          {tDelConfirm === t.id ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-xs text-red-600 font-semibold">Hapus?</span>
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteTarget(t.id)}>Ya, Hapus</Button>
+                              <Button size="sm" variant="outline" onClick={() => setTDelConfirm(null)}>Batal</Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={() => setTDelConfirm(t.id)} className="text-muted-foreground hover:text-red-600 hover:bg-red-50">
+                              <Trash2 className="w-3.5 h-3.5 mr-1" /> Hapus
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* File-based tabs content */}
+        {activeTab !== "target-ho" && (
         <div className="p-6 space-y-4">
           {/* File upload with drag & drop */}
           <div className="space-y-2">
@@ -550,9 +742,11 @@ export default function ImportData() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
-      {/* History Table */}
+      {/* History Table — only for file-import tabs */}
+      {activeTab !== "target-ho" && (
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-border flex items-center gap-3">
           <History className="w-4 h-4 text-muted-foreground" />
@@ -619,6 +813,7 @@ export default function ImportData() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }
