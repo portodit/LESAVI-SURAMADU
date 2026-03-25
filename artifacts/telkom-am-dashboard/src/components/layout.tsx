@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Upload, BarChart2, Filter, Activity,
   Users, MessageSquare, Settings, LogOut, ChevronDown,
-  Menu, X, Code2, Copy, Check, ExternalLink
+  Menu, X, Code2, Copy, Check, ExternalLink, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -94,7 +94,7 @@ const NAV_ITEMS = [
 ];
 
 const SIDEBAR_W = 224;
-const SIDEBAR_COLLAPSED = 60;
+const SIDEBAR_COLLAPSED = 56;
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -112,23 +112,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const SidebarInner = ({ isMobile = false }) => (
     <div className="flex flex-col h-full">
-      {/* Logo area — click to toggle collapse (desktop only) */}
+      {/* Logo area */}
       <div className={cn(
-        "h-14 flex items-center gap-2.5 shrink-0 border-b border-border",
-        collapsed && !isMobile ? "px-0 justify-center" : "px-4"
+        "h-[60px] flex items-center shrink-0 border-b border-border",
+        collapsed && !isMobile ? "px-0 justify-center" : "px-4 gap-2.5"
       )}>
         <button
           onClick={() => !isMobile && setCollapsed(prev => !prev)}
           title={!isMobile ? (collapsed ? "Perluas sidebar" : "Ciutkan sidebar") : undefined}
           className={cn(
-            "flex items-center gap-2.5 min-w-0",
-            !isMobile && "cursor-pointer group"
+            "flex items-center min-w-0",
+            !isMobile && "cursor-pointer group",
+            collapsed && !isMobile ? "gap-0" : "gap-2.5"
           )}
         >
           <img
             src={`${import.meta.env.BASE_URL}logo-tr3.png`}
             alt="Logo"
-            className={cn("h-6 object-contain shrink-0 transition-opacity", !isMobile && "group-hover:opacity-70")}
+            className={cn("h-7 object-contain shrink-0 transition-opacity", !isMobile && "group-hover:opacity-70")}
           />
           <AnimatePresence initial={false}>
             {(!collapsed || isMobile) && (
@@ -140,8 +141,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden whitespace-nowrap text-left"
               >
-                <p className="text-xs font-display font-black text-foreground leading-none">RLEGS</p>
-                <p className="text-[9px] font-bold text-muted-foreground tracking-widest leading-none mt-0.5">SURAMADU</p>
+                <p className="text-[13px] font-display font-black text-foreground leading-none tracking-tight">LESA VI SURAMADU</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-widest leading-none mt-0.5">TELKOM REGIONAL 3</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -154,35 +155,59 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Nav */}
-      <nav className={cn("flex-1 py-3 overflow-y-auto space-y-0.5", collapsed && !isMobile ? "px-2" : "px-2.5")}>
+      <nav className={cn("flex-1 py-3 overflow-y-auto", collapsed && !isMobile ? "px-1.5 space-y-0.5" : "px-2.5 space-y-0.5")}>
         {NAV_ITEMS.map((item, idx) => {
           if (item.children) {
             const isChildActive = item.children.some(c => location.startsWith(c.href));
+
+            // ── Collapsed: show only child icons, no parent button (fixes duplicate icon bug)
+            if (collapsed && !isMobile) {
+              return (
+                <div key={idx} className="space-y-0.5 pb-0.5">
+                  {/* Thin divider instead of parent button */}
+                  <div className="mx-2 my-1 h-px bg-border/60" />
+                  {item.children.map(child => {
+                    const isActive = location.startsWith(child.href);
+                    return (
+                      <Link key={child.href} href={child.href}
+                        title={child.label}
+                        className={cn(
+                          "flex justify-center items-center py-2.5 rounded-xl transition-all duration-150",
+                          isActive
+                            ? "bg-primary text-white shadow-sm shadow-primary/30"
+                            : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        )}
+                      >
+                        <child.icon className="w-4 h-4" />
+                      </Link>
+                    );
+                  })}
+                  <div className="mx-2 my-1 h-px bg-border/60" />
+                </div>
+              );
+            }
+
+            // ── Expanded: show parent toggle + animated sub-items
             return (
               <div key={idx}>
                 <button
-                  onClick={() => !collapsed && setVisOpen(!visOpen)}
-                  title={collapsed && !isMobile ? item.label : undefined}
+                  onClick={() => setVisOpen(!visOpen)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
-                    collapsed && !isMobile ? "justify-center" : "justify-between",
+                    "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150",
                     isChildActive
-                      ? "text-primary bg-primary/8"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      ? "text-primary bg-primary/10 font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon className="w-4 h-4 shrink-0" />
-                    {(!collapsed || isMobile) && <span>{item.label}</span>}
+                    <span>{item.label}</span>
                   </div>
-                  {(!collapsed || isMobile) && (
-                    <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/50 transition-transform shrink-0", visOpen && "rotate-180")} />
-                  )}
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0", visOpen && "rotate-180")} />
                 </button>
 
-                {/* Expanded sub-items */}
                 <AnimatePresence>
-                  {(visOpen || isChildActive) && (!collapsed || isMobile) && (
+                  {(visOpen || isChildActive) && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
@@ -190,17 +215,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       transition={{ duration: 0.18 }}
                       className="overflow-hidden"
                     >
-                      <div className="pl-9 pr-1.5 pt-0.5 pb-1 space-y-0.5">
+                      <div className="pl-9 pr-1.5 pt-1 pb-1 space-y-0.5">
                         {item.children.map(child => {
                           const isActive = location.startsWith(child.href);
                           return (
                             <Link key={child.href} href={child.href}
                               onClick={() => setMobileOpen(false)}
                               className={cn(
-                                "block px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150",
+                                "block px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150",
                                 isActive
-                                  ? "bg-primary text-white shadow-sm shadow-primary/20"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                                  ? "bg-primary text-white shadow-sm shadow-primary/25 font-semibold"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/8"
                               )}
                             >
                               {child.label}
@@ -211,26 +236,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-
-                {/* Collapsed icon-only sub-items */}
-                {collapsed && !isMobile && (
-                  <div className="space-y-0.5 mt-0.5">
-                    {item.children.map(child => {
-                      const isActive = location.startsWith(child.href);
-                      return (
-                        <Link key={child.href} href={child.href}
-                          title={child.label}
-                          className={cn(
-                            "flex justify-center px-2 py-2.5 rounded-lg transition-all duration-150",
-                            isActive ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                          )}
-                        >
-                          <child.icon className="w-4 h-4" />
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           }
@@ -241,11 +246,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               onClick={() => setMobileOpen(false)}
               title={collapsed && !isMobile ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150",
                 collapsed && !isMobile ? "justify-center" : "",
                 isActive
-                  ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  ? "bg-primary text-white shadow-md shadow-primary/25 font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
               )}
             >
               <item.icon className="w-4 h-4 shrink-0" />
@@ -255,10 +260,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      {/* User area */}
-      <div className={cn("shrink-0 border-t border-border py-3", collapsed && !isMobile ? "px-2" : "px-2.5")}>
+      {/* User + collapse toggle area */}
+      <div className={cn("shrink-0 border-t border-border py-3", collapsed && !isMobile ? "px-1.5" : "px-2.5")}>
+        {/* Collapse toggle button (desktop only) */}
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(prev => !prev)}
+            title={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-colors mb-1",
+              collapsed ? "justify-center" : "justify-start"
+            )}
+          >
+            {collapsed
+              ? <PanelLeftOpen className="w-4 h-4 shrink-0" />
+              : <><PanelLeftClose className="w-4 h-4 shrink-0" /><span>Ciutkan</span></>
+            }
+          </button>
+        )}
+
         {(!collapsed || isMobile) && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-2 bg-secondary/60">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 bg-secondary/50 border border-border/50">
             <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[11px] text-primary shrink-0">
               AD
             </div>
@@ -272,7 +294,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           onClick={logout}
           title={collapsed && !isMobile ? "Logout" : undefined}
           className={cn(
-            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors",
+            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors",
             collapsed && !isMobile ? "justify-center" : "justify-start"
           )}
         >
