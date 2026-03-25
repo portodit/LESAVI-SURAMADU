@@ -5,6 +5,12 @@
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dashboard for Account Manager (AM) performance monitoring with Telegram Bot integration.
 
+## Key Master Tables (Data Quality)
+- **master_am**: Canonical list of AM Witel Suramadu (57 total; 19 active, 38 historical). Auto-populated on import. NIK 850099 (Reni) always remapped → 870022 (Havea).
+- **master_customer**: 262 unique corporate customers, auto-populated from funnel imports.
+- On funnel import: null `nama_am` resolved via master_am lookup; garbage NIKs (< 4 digits or > 9999999) rejected.
+- API: `GET/POST/PATCH/DELETE /api/master-am` for master AM CRUD.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

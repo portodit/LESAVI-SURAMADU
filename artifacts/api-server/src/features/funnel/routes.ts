@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salesFunnelTable, salesFunnelTargetTable, dataImportsTable } from "@workspace/db";
+import { db, salesFunnelTable, salesFunnelTargetTable, dataImportsTable, masterAmTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 
@@ -65,7 +65,19 @@ router.delete("/funnel/targets/:id", requireAuth, async (req, res): Promise<void
 router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   const { import_id, divisi, status, nama_am, kategori_kontrak, tahun } = req.query;
 
+  // Load master_am for name resolution
+  const masterAms = await db.select().from(masterAmTable);
+  const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
+
   let allLops = await db.select().from(salesFunnelTable);
+
+  // Resolve null AM names from master_am
+  allLops = allLops.map(l => {
+    if ((!l.namaAm || l.namaAm === "") && l.nikAm && masterAmByNik.has(l.nikAm)) {
+      return { ...l, namaAm: masterAmByNik.get(l.nikAm) || l.namaAm };
+    }
+    return l;
+  });
 
   if (import_id) allLops = allLops.filter(l => l.importId === Number(import_id));
   // tahun is only for snapshot selection & target lookup — do NOT filter lops by reportDate
@@ -76,8 +88,11 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
 
   const totalLop = allLops.length;
   const totalNilai = allLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
-  const amSet = new Set(allLops.map(l => l.nikAm).filter(Boolean));
+  // Count only LOPs with identified AMs (has a valid name)
+  const namedLops = allLops.filter(l => l.namaAm && l.namaAm !== "");
+  const amSet = new Set(namedLops.map(l => l.nikAm).filter(Boolean));
   const pelangganSet = new Set(allLops.map(l => l.pelanggan).filter(Boolean));
+  const unidentifiedCount = allLops.length - namedLops.length;
 
   const statusGroups = Object.entries(
     allLops.reduce((acc: any, l) => {
@@ -89,8 +104,9 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     }, {})
   ).map(([, v]) => v);
 
+  // AM groups: only include rows with identified (named) AMs
   const amGroups = Object.entries(
-    allLops.reduce((acc: any, l) => {
+    namedLops.reduce((acc: any, l) => {
       const key = l.nikAm || l.namaAm || "Unknown";
       if (!acc[key]) acc[key] = {
         namaAm: l.namaAm || "", nik: l.nikAm || "", divisi: l.divisi || "",
@@ -159,6 +175,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     shortage,
     amCount: amSet.size,
     pelangganCount: pelangganSet.size,
+    unidentifiedLops: unidentifiedCount,
     byStatus: statusGroups,
     byAm: amGroups,
     lops: allLops.map(l => ({
@@ -197,6 +214,44 @@ router.get("/funnel/:nik", requireAuth, async (req, res): Promise<void> => {
       estimateBulan: l.estimateBulan, namaAm: l.namaAm, reportDate: l.reportDate || "",
     })),
   });
+});
+
+// ── Master AM ────────────────────────────────────────────────────────────────
+router.get("/master-am", requireAuth, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(masterAmTable).orderBy(masterAmTable.aktif, masterAmTable.nama);
+  res.json(rows);
+});
+
+router.post("/master-am", requireAuth, async (req, res): Promise<void> => {
+  const { nik, nama, divisi, jabatan, aktif } = req.body;
+  if (!nik || !nama) { res.status(400).json({ error: "nik dan nama wajib diisi" }); return; }
+  const [row] = await db.insert(masterAmTable).values({
+    nik: String(nik), nama: String(nama).toUpperCase(),
+    divisi: divisi ? String(divisi) : null,
+    jabatan: jabatan ? String(jabatan) : null,
+    aktif: aktif !== false,
+    witel: "SURAMADU",
+    source: "manual",
+  }).onConflictDoNothing().returning();
+  res.json(row || { error: "NIK sudah ada" });
+});
+
+router.patch("/master-am/:nik", requireAuth, async (req, res): Promise<void> => {
+  const { nama, divisi, jabatan, aktif } = req.body;
+  const updates: any = { updatedAt: new Date() };
+  if (nama !== undefined) updates.nama = String(nama).toUpperCase();
+  if (divisi !== undefined) updates.divisi = divisi;
+  if (jabatan !== undefined) updates.jabatan = jabatan;
+  if (aktif !== undefined) updates.aktif = Boolean(aktif);
+  const [row] = await db.update(masterAmTable).set(updates)
+    .where(eq(masterAmTable.nik, req.params.nik)).returning();
+  if (!row) { res.status(404).json({ error: "NIK tidak ditemukan" }); return; }
+  res.json(row);
+});
+
+router.delete("/master-am/:nik", requireAuth, async (req, res): Promise<void> => {
+  await db.delete(masterAmTable).where(eq(masterAmTable.nik, req.params.nik));
+  res.json({ ok: true });
 });
 
 export default router;

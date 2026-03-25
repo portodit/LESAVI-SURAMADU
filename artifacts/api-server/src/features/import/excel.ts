@@ -179,16 +179,22 @@ export function cleanFunnelRows(rows: ParsedRow[]): CleanedFunnelRow[] {
       const reportDate = parseDate(r.report_date);
       const reportYear = reportDate ? parseInt(reportDate.slice(0, 4), 10) : 0;
 
-      // ── STEP: Fix AM name — RENI WULANSARI → HAVEA PERTIWI (mulai 2026)
-      let namaAm = cleanUpper(r.nama_pembuat_lop);
-      if (reportYear >= 2026 && namaAm === "RENI WULANSARI") {
-        namaAm = "HAVEA PERTIWI";
+      // ── STEP: Fix NIK AM — 850099 (RENI WULANSARI) → 870022 (HAVEA PERTIWI) unconditionally
+      // Reni left the team; Havea Pertiwi now owns all her LOPs regardless of report year
+      let nikAm = String(nikRaw);
+      if (nikAm === "850099") {
+        nikAm = "870022";
       }
 
-      // ── STEP: Fix NIK AM — 850099 → 870022 (mulai 2026)
-      let nikAm = String(nikRaw);
-      if (reportYear >= 2026 && nikAm === "850099") {
-        nikAm = "870022";
+      // ── STEP: Reject garbage NIKs (too short or clearly invalid)
+      if (nikAm.length < 4 || Number(nikAm) > 9999999) {
+        return null; // skip rows with invalid NIK format
+      }
+
+      // ── STEP: Fix AM name — RENI WULANSARI → HAVEA PERTIWI (unconditional)
+      let namaAm = cleanUpper(r.nama_pembuat_lop);
+      if (namaAm === "RENI WULANSARI") {
+        namaAm = "HAVEA PERTIWI";
       }
 
       const lopid = clean(r.lopid);

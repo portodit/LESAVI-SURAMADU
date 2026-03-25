@@ -17,6 +17,7 @@ interface LopRow {
 interface FunnelData {
   totalLop: number; totalNilai: number; targetHo: number; targetFullHo: number;
   realFullHo: number; shortage: number; amCount: number; pelangganCount: number;
+  unidentifiedLops?: number;
   byStatus: { status: string; count: number; totalNilai: number }[];
   byAm: { namaAm: string; nik: string; divisi: string; totalLop: number; totalNilai: number; byStatus: any[] }[];
   lops: LopRow[];
@@ -309,9 +310,9 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
 function KpiGrid({ data }: { data: FunnelData | undefined }) {
   if (!data) return null;
   const kpis = [
-    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: "proyek aktif", color: "text-foreground" },
+    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: (data.unidentifiedLops || 0) > 0 ? `${data.unidentifiedLops} tdk teridentifikasi` : "proyek aktif", color: "text-foreground" },
     { label: "Total Nilai Pipeline", value: fmtCompact(data.totalNilai), sub: "nilai seluruh LOP", color: "text-blue-600" },
-    { label: "Aktif AM", value: data.amCount.toString(), sub: "account manager", color: "text-violet-600" },
+    { label: "Aktif AM", value: data.amCount.toString(), sub: "account manager teridentifikasi", color: "text-violet-600" },
     { label: "Jumlah Pelanggan", value: data.pelangganCount.toLocaleString("id-ID"), sub: "unique customer", color: "text-amber-600" },
   ];
   return (
@@ -404,7 +405,8 @@ export default function FunnelPage() {
   const amOptions = useMemo(() => {
     if (!data) return [];
     const map = new Map<string, string>();
-    for (const l of data.lops) { if (l.nikAm && l.namaAm) map.set(l.nikAm, l.namaAm); }
+    // Only show AMs with a valid name (exclude unidentified/historical entries)
+    for (const l of data.lops) { if (l.nikAm && l.namaAm && l.namaAm.trim() !== "") map.set(l.nikAm, l.namaAm); }
     return Array.from(map.keys()).sort((a, b) => (map.get(a) || "").localeCompare(map.get(b) || ""));
   }, [data]);
 

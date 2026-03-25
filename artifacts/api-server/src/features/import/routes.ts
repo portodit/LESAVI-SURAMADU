@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, dataImportsTable, performanceDataTable, salesFunnelTable, salesActivityTable, accountManagersTable, appSettingsTable } from "@workspace/db";
-import { desc, eq, and } from "drizzle-orm";
+import { db, dataImportsTable, performanceDataTable, salesFunnelTable, salesActivityTable, accountManagersTable, appSettingsTable, masterAmTable, masterCustomerTable } from "@workspace/db";
+import { desc, eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 import {
   parseExcelFromUrl, parseExcelFromBase64,
@@ -333,6 +333,38 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
   for (let i = 0; i < cleaned.length; i += BATCH_SIZE) {
     const batch = cleaned.slice(i, i + BATCH_SIZE).map(row => ({ ...row, snapshotDate: snapshotDate || null, importId: imp.id }));
     await db.insert(salesFunnelTable).values(batch);
+  }
+
+  // ── Auto-populate master_am from imported data
+  const uniqueAmMap = new Map<string, { nik: string; nama: string; divisi: string }>();
+  for (const row of cleaned) {
+    if (row.nikAm && row.namaAm && !uniqueAmMap.has(row.nikAm)) {
+      uniqueAmMap.set(row.nikAm, { nik: row.nikAm, nama: row.namaAm, divisi: row.divisi });
+    }
+  }
+  for (const am of uniqueAmMap.values()) {
+    await db.insert(masterAmTable).values({
+      nik: am.nik, nama: am.nama, divisi: am.divisi,
+      witel: "SURAMADU", aktif: false, source: "funnel",
+    }).onConflictDoNothing();
+  }
+
+  // ── Look up null/empty nama_am from master_am and back-fill in DB
+  const masterAms = await db.select().from(masterAmTable);
+  const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
+  const nullNameRows = cleaned.filter(r => !r.namaAm && r.nikAm && masterAmByNik.has(r.nikAm));
+  for (const row of nullNameRows) {
+    await db.update(salesFunnelTable)
+      .set({ namaAm: masterAmByNik.get(row.nikAm) })
+      .where(and(eq(salesFunnelTable.importId, imp.id), eq(salesFunnelTable.nikAm, row.nikAm)));
+  }
+
+  // ── Auto-populate master_customer
+  const uniqueCustomers = [...new Set(cleaned.map(r => r.pelanggan).filter(p => p && p !== "–"))];
+  for (let i = 0; i < uniqueCustomers.length; i += 100) {
+    await db.insert(masterCustomerTable).values(
+      uniqueCustomers.slice(i, i + 100).map(nama => ({ nama, witel: "SURAMADU" }))
+    ).onConflictDoNothing();
   }
 
   const amCount = new Set(cleaned.map(r => r.nikAm)).size;

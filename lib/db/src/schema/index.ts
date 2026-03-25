@@ -7,3 +7,4 @@ export * from "./dataImports";
 export * from "./telegramLogs";
 export * from "./telegramBotUsers";
 export * from "./appSettings";
+export * from "./masterAm";

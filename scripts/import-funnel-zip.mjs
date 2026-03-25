@@ -71,14 +71,19 @@ function cleanFunnelRows(rows) {
     const reportDate = parseDate(r.report_date);
     const reportYear = reportDate ? parseInt(reportDate.slice(0, 4), 10) : 0;
 
-    let namaAm = cleanUpper(r.nama_pembuat_lop);
-    if (reportYear >= 2026 && namaAm === "RENI WULANSARI") {
-      namaAm = "HAVEA PERTIWI";
+    // Fix NIK AM — 850099 (Reni) → 870022 (Havea) unconditionally
+    let nikAm = String(nikRaw);
+    if (nikAm === "850099") {
+      nikAm = "870022";
     }
 
-    let nikAm = String(nikRaw);
-    if (reportYear >= 2026 && nikAm === "850099") {
-      nikAm = "870022";
+    // Reject garbage NIKs (too short or too large)
+    if (nikAm.length < 4 || Number(nikAm) > 9999999) continue;
+
+    // Fix AM name — RENI WULANSARI → HAVEA PERTIWI (unconditional)
+    let namaAm = cleanUpper(r.nama_pembuat_lop);
+    if (namaAm === "RENI WULANSARI") {
+      namaAm = "HAVEA PERTIWI";
     }
 
     cleaned.push({
