@@ -29,8 +29,11 @@ router.post("/telegram/register-code", requireAuth, async (req, res): Promise<vo
   const { amId } = req.body;
   if (!amId) { res.status(400).json({ error: "amId diperlukan" }); return; }
 
-  const code = crypto.randomInt(100000, 999999).toString();
-  const expiry = new Date(Date.now() + 10 * 60 * 1000);
+  const [existing] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.id, amId));
+  if (!existing) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
+
+  const code = `ES-LESA-VI-${existing.nik}`;
+  const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await db.update(accountManagersTable).set({
     telegramCode: code,
@@ -153,8 +156,8 @@ router.post("/telegram/bulk-generate-codes", requireAuth, async (req, res): Prom
 
   const results = [];
   for (const am of unconnected) {
-    const code = crypto.randomInt(100000, 999999).toString();
-    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 jam
+    const code = `ES-LESA-VI-${am.nik}`;
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 jam
     await db.update(accountManagersTable)
       .set({ telegramCode: code, telegramCodeExpiry: expiry })
       .where(eq(accountManagersTable.id, am.id));
@@ -193,15 +196,15 @@ router.post("/telegram/gen-link/:amId", requireAuth, async (req, res): Promise<v
   const amId = parseInt(req.params.amId as string, 10);
   if (!amId) { res.status(400).json({ error: "amId tidak valid" }); return; }
 
-  const code = crypto.randomInt(100000, 999999).toString();
+  const [existing] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.id, amId));
+  if (!existing) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
+
+  const code = `ES-LESA-VI-${existing.nik}`;
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 jam
 
-  const [am] = await db.update(accountManagersTable)
+  await db.update(accountManagersTable)
     .set({ telegramCode: code, telegramCodeExpiry: expiry })
-    .where(eq(accountManagersTable.id, amId))
-    .returning();
-
-  if (!am) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
+    .where(eq(accountManagersTable.id, amId));
 
   const [settings] = await db.select().from(appSettingsTable);
   let botUsername: string | null = null;
@@ -234,7 +237,7 @@ router.post("/telegram/gen-links-bulk", requireAuth, async (req, res): Promise<v
 
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const results = await Promise.all(nonDgsAms.map(async am => {
-    const code = crypto.randomInt(100000, 999999).toString();
+    const code = `ES-LESA-VI-${am.nik}`;
     await db.update(accountManagersTable)
       .set({ telegramCode: code, telegramCodeExpiry: expiry })
       .where(eq(accountManagersTable.id, am.id));

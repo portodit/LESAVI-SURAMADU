@@ -86,27 +86,35 @@ export async function pollOnce() {
         lastSeen: new Date().toISOString(),
       });
 
+      const isVerifCode = (s: string) => /^\d{6}$/.test(s) || /^ES-LESA-VI-\d+$/i.test(s);
+
+      const tryLinkByCode = async (code: string, source: string) => {
+        const now = new Date();
+        const [am] = await db.select().from(accountManagersTable)
+          .where(eq(accountManagersTable.telegramCode, code));
+        if (!am) {
+          await sendToTelegram(token, chatId, `❌ Link/kode tidak valid atau sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
+          return false;
+        }
+        if (!am.telegramCodeExpiry || am.telegramCodeExpiry <= now) {
+          await sendToTelegram(token, chatId, `⏰ Link sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
+          return false;
+        }
+        await db.update(accountManagersTable)
+          .set({ telegramChatId: chatId, telegramCode: null, telegramCodeExpiry: null })
+          .where(eq(accountManagersTable.id, am.id));
+        await upsertBotUser({ ...botUsersMap.get(chatId)!, lastMessage: `✅ Linked via ${source}` });
+        await sendToTelegram(token, chatId,
+          `✅ *Berhasil terhubung!*\n\nHalo, *${am.nama}*! 👋\nDivisi: ${am.divisi}\n\nAkun Telegram kamu sudah terhubung ke Bot RLEGS Suramadu.\nKamu akan menerima notifikasi performa secara otomatis dari admin.`
+        ).catch(() => {});
+        logger.info({ amId: am.id, nama: am.nama, chatId, source }, "AM auto-linked");
+        return true;
+      };
+
       if (text.startsWith("/start")) {
         const deepLinkCode = text.slice(6).trim();
-        if (/^\d{6}$/.test(deepLinkCode)) {
-          // Magic link: /start CODE — treat same as sending code directly
-          const now = new Date();
-          const [am] = await db.select().from(accountManagersTable)
-            .where(eq(accountManagersTable.telegramCode, deepLinkCode));
-          if (!am) {
-            await sendToTelegram(token, chatId, `❌ Link tidak valid atau sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
-          } else if (!am.telegramCodeExpiry || am.telegramCodeExpiry <= now) {
-            await sendToTelegram(token, chatId, `⏰ Link sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
-          } else {
-            await db.update(accountManagersTable)
-              .set({ telegramChatId: chatId, telegramCode: null, telegramCodeExpiry: null })
-              .where(eq(accountManagersTable.id, am.id));
-            await upsertBotUser({ ...botUsersMap.get(chatId)!, lastMessage: "✅ Linked via link" });
-            await sendToTelegram(token, chatId,
-              `✅ *Berhasil terhubung!*\n\nHalo, *${am.nama}*! 👋\nDivisi: ${am.divisi}\n\nAkun Telegram kamu sudah terhubung ke Bot RLEGS Suramadu.\nKamu akan menerima notifikasi performa secara otomatis dari admin.`
-            ).catch(() => {});
-            logger.info({ amId: am.id, nama: am.nama, chatId }, "AM auto-linked via magic link");
-          }
+        if (isVerifCode(deepLinkCode)) {
+          await tryLinkByCode(deepLinkCode, "magic link");
           continue;
         }
         // Regular /start without code
@@ -114,8 +122,8 @@ export async function pollOnce() {
           `👋 Halo, *${firstName}*! Ini adalah Bot RLEGS AM Reminder Suramadu.\n\n` +
           `🆔 *Chat ID kamu:* \`${chatId}\`\n` +
           `_(Bagikan ID ini ke admin jika ingin dihubungkan secara manual)_\n\n` +
-          `Jika kamu memiliki kode verifikasi, kirimkan kode 6 digit tersebut sekarang untuk menghubungkan akun kamu.\n\n` +
-          `Jika belum punya kode, hubungi admin RLEGS.`
+          `Jika kamu memiliki link verifikasi dari admin, cukup klik link tersebut untuk terhubung otomatis.\n\n` +
+          `Jika belum punya link, hubungi admin RLEGS.`
         ).catch(() => {});
         continue;
       }
@@ -127,32 +135,8 @@ export async function pollOnce() {
         continue;
       }
 
-      if (/^\d{6}$/.test(text)) {
-        const now = new Date();
-        const [am] = await db.select().from(accountManagersTable)
-          .where(eq(accountManagersTable.telegramCode, text));
-
-        if (!am) {
-          await sendToTelegram(token, chatId,
-            `❌ Kode tidak ditemukan atau sudah tidak valid.\n\nMinta admin untuk generate kode baru.`
-          ).catch(() => {});
-        } else if (!am.telegramCodeExpiry || am.telegramCodeExpiry <= now) {
-          await sendToTelegram(token, chatId,
-            `⏰ Kode sudah kadaluarsa.\n\nMinta admin untuk generate kode baru.`
-          ).catch(() => {});
-        } else {
-          await db.update(accountManagersTable)
-            .set({ telegramChatId: chatId, telegramCode: null, telegramCodeExpiry: null })
-            .where(eq(accountManagersTable.id, am.id));
-
-          await upsertBotUser({ ...botUsersMap.get(chatId)!, lastMessage: "✅ Linked" });
-
-          await sendToTelegram(token, chatId,
-            `✅ *Berhasil terhubung!*\n\nHalo, *${am.nama}*! 👋\nDivisi: ${am.divisi}\n\nAkun Telegram kamu sudah terhubung ke Bot RLEGS Suramadu.\nKamu akan menerima notifikasi performa secara otomatis dari admin.`
-          ).catch(() => {});
-
-          logger.info({ amId: am.id, nama: am.nama, chatId }, "AM auto-linked via verification code");
-        }
+      if (isVerifCode(text)) {
+        await tryLinkByCode(text, "manual code");
       }
     }
   } catch (err) {

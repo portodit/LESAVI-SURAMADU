@@ -531,6 +531,7 @@ function KoneksiAmSection() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkLinksData, setBulkLinksData] = useState<{ results: BulkLink[]; expiresAt: string } | null>(null);
   const [genBulkLoading, setGenBulkLoading] = useState(false);
+  const [showSubscribers, setShowSubscribers] = useState(false);
 
   const { data: ams, refetch: refetchAms } = useQuery<any[]>({
     queryKey: ["ams"],
@@ -631,129 +632,144 @@ function KoneksiAmSection() {
 
   return (
     <div className="space-y-5">
-      {/* Top: Sync button + subscriber list */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-display font-bold text-sm text-foreground">Pengguna Bot Telegram</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Pengguna yang chat ke bot setelah sistem ini aktif (tersimpan di database)</p>
-          </div>
+      {/* Top: Pengguna Bot Telegram — collapsible */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {/* Header row — always visible */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+          <button
+            onClick={() => setShowSubscribers(v => !v)}
+            className="flex items-center gap-2 text-left group"
+          >
+            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div>
+              <span className="font-display font-bold text-sm text-foreground">Pengguna Bot Telegram</span>
+              {updates && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">{subscribers.length}</span> pengguna
+                  {unlinkedSubscribers.length > 0 && (
+                    <span className="ml-1.5 text-amber-600 font-semibold">· {unlinkedSubscribers.length} belum dipetakan</span>
+                  )}
+                </span>
+              )}
+              {!updates && <span className="ml-2 text-xs text-muted-foreground">Klik Refresh untuk memuat</span>}
+            </div>
+            <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0", showSubscribers && "rotate-90")} />
+          </button>
           <button
             onClick={syncAll}
             disabled={pollLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 disabled:opacity-50 transition-colors"
           >
-            <RefreshCw className={cn("w-3.5 h-3.5", pollLoading && "animate-spin")} />
-            {pollLoading ? "Memuat..." : "Refresh Daftar"}
+            <RefreshCw className={cn("w-3 h-3", pollLoading && "animate-spin")} />
+            {pollLoading ? "Memuat..." : "Refresh"}
           </button>
         </div>
 
-        {/* Info: magic link */}
-        <div className="mb-3 p-3 bg-primary/5 border border-primary/20 rounded-lg text-xs text-foreground">
-          <p className="font-semibold mb-0.5 text-primary">🔗 Cara termudah: Generate Link</p>
-          <p className="text-muted-foreground leading-relaxed">
-            Klik <strong>"Generate Link"</strong> di tabel bawah → salin link → bagikan ke AM.
-            AM cukup klik link tersebut, otomatis terhubung ke bot tanpa perlu ketik kode verifikasi.
-            Link berlaku <strong>24 jam</strong>.
-          </p>
-        </div>
-
-        {/* Warning box */}
-        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-          <p className="font-semibold mb-0.5">⚠️ Mengapa daftar masih kosong?</p>
-          <p className="text-amber-700 leading-relaxed">
-            Telegram <strong>tidak menyimpan riwayat pesan lama</strong> — pesan /start yang dikirim sebelum sistem ini aktif sudah hilang.
-            Minta AM untuk kirim <code className="bg-amber-100 px-1 rounded">/start</code> ke bot, atau gunakan link di bawah.
-          </p>
-        </div>
-
-        {pollError && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mb-4 text-xs text-destructive">
-            {(pollError as any).error || "Gagal memuat data pengguna bot."}
-          </div>
-        )}
-
-        {updates && (
-          <div className="mb-4 p-3 bg-secondary/40 rounded-lg text-xs text-muted-foreground">
-            Ditemukan <span className="font-bold text-foreground">{subscribers.length}</span> pengguna bot
-            {unlinkedSubscribers.length > 0 && (
-              <span className="ml-2 text-amber-600 font-semibold">· {unlinkedSubscribers.length} belum dipetakan ke AM</span>
-            )}
-          </div>
-        )}
-
-        {!updates && !pollLoading && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Klik "Refresh Daftar" untuk melihat siapa yang sudah chat ke bot</p>
-          </div>
-        )}
-
-        {subscribers.length > 0 && (
-          <div className="space-y-2">
-            {subscribers.map(s => (
-              <div key={s.chatId} className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border text-sm",
-                s.linked ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"
-              )}>
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
-                  {(s.firstName || "?")[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">
-                    {s.firstName} {s.lastName}
-                    {s.username && <span className="ml-1.5 text-xs text-muted-foreground font-normal">@{s.username}</span>}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground font-mono">Chat ID: <span className="font-bold select-all">{s.chatId}</span></p>
-                  {s.lastMessage && <p className="text-[11px] text-muted-foreground truncate">Pesan: "{s.lastMessage}"</p>}
-                  {s.lastSeen
-                    ? <p className="text-[10px] text-muted-foreground/60">Terakhir: {format(new Date(s.lastSeen), "dd MMM HH:mm", { locale: idLocale })}</p>
-                    : <p className="text-[10px] text-blue-500/70">Terhubung via DB</p>
-                  }
-                </div>
-                {s.linked ? (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right">
-                      <p className="text-[11px] font-bold text-green-700">{s.linkedNama}</p>
-                      <p className="text-[10px] text-green-600">NIK: {s.linkedNik}</p>
-                    </div>
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  </div>
-                ) : (
-                  <div className="shrink-0">
-                    {linkTarget === s.chatId ? (
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={selectedAmId}
-                          onChange={e => setSelectedAmId(e.target.value)}
-                          className="text-xs px-2 py-1 border border-border rounded bg-background"
-                        >
-                          <option value="">Pilih AM...</option>
-                          {nonDgsAms.filter((a: any) => !a.telegramConnected).map((a: any) => (
-                            <option key={a.id} value={a.id}>{a.nama}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => selectedAmId && linkMut.mutate({ amId: Number(selectedAmId), chatId: s.chatId })}
-                          disabled={!selectedAmId || linkMut.isPending}
-                          className="text-xs px-2 py-1 bg-primary text-white rounded font-semibold disabled:opacity-50"
-                        >
-                          Link
-                        </button>
-                        <button onClick={() => setLinkTarget(null)} className="text-xs text-muted-foreground">Batal</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setLinkTarget(s.chatId)}
-                        className="flex items-center gap-1 text-xs text-amber-600 font-semibold hover:text-amber-700"
-                      >
-                        <Link2 className="w-3.5 h-3.5" /> Petakan ke AM
-                      </button>
-                    )}
-                  </div>
-                )}
+        {/* Expandable content */}
+        {showSubscribers && (
+          <div className="px-5 pb-4 pt-3 space-y-2">
+            {pollError && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-xs text-destructive">
+                {(pollError as any).error || "Gagal memuat data pengguna bot."}
               </div>
-            ))}
+            )}
+            {!updates && !pollLoading && (
+              <p className="text-center text-xs text-muted-foreground py-4">Klik "Refresh" untuk melihat siapa yang sudah chat ke bot</p>
+            )}
+            {subscribers.length === 0 && updates && (
+              <p className="text-center text-xs text-muted-foreground py-4">Belum ada pengguna yang berinteraksi dengan bot</p>
+            )}
+            {subscribers.length > 0 && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-secondary/50">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground w-8">#</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Pengguna</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Chat ID</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Terakhir aktif</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Status</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {subscribers.map((s, idx) => (
+                      <tr key={s.chatId} className={cn("hover:bg-secondary/20", s.linked ? "bg-green-50/50" : "bg-amber-50/30")}>
+                        <td className="px-3 py-2.5 text-muted-foreground/50 font-mono">{idx + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
+                              {(s.firstName || "?")[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground leading-tight">{s.firstName} {s.lastName}</p>
+                              {s.username && <p className="text-[10px] text-muted-foreground">@{s.username}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="font-mono text-foreground select-all">{s.chatId}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground">
+                          {s.lastSeen
+                            ? <span>{format(new Date(s.lastSeen), "dd MMM HH:mm", { locale: idLocale })}</span>
+                            : <span className="text-blue-500/70 italic">via DB</span>
+                          }
+                          {s.lastMessage && (
+                            <p className="text-[10px] text-muted-foreground/60 truncate max-w-[120px]">"{s.lastMessage}"</p>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {s.linked ? (
+                            <div>
+                              <span className="inline-flex items-center gap-0.5 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Terhubung
+                              </span>
+                              <p className="text-[10px] text-green-700 font-semibold mt-0.5 truncate max-w-[100px]">{s.linkedNama}</p>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                              <XCircle className="w-2.5 h-2.5" /> Belum
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {!s.linked && (
+                            linkTarget === s.chatId ? (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <select
+                                  value={selectedAmId}
+                                  onChange={e => setSelectedAmId(e.target.value)}
+                                  className="text-[11px] px-1.5 py-1 border border-border rounded bg-background"
+                                >
+                                  <option value="">Pilih AM...</option>
+                                  {nonDgsAms.filter((a: any) => !a.telegramConnected).map((a: any) => (
+                                    <option key={a.id} value={a.id}>{a.nama}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => selectedAmId && linkMut.mutate({ amId: Number(selectedAmId), chatId: s.chatId })}
+                                  disabled={!selectedAmId || linkMut.isPending}
+                                  className="text-[11px] px-1.5 py-1 bg-primary text-white rounded font-semibold disabled:opacity-50"
+                                >Oke</button>
+                                <button onClick={() => setLinkTarget(null)} className="text-[11px] text-muted-foreground">✕</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setLinkTarget(s.chatId)}
+                                className="flex items-center gap-0.5 text-[11px] text-amber-600 font-semibold hover:text-amber-700"
+                              >
+                                <Link2 className="w-3 h-3" /> Petakan
+                              </button>
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -811,6 +827,17 @@ function KoneksiAmSection() {
             <BulkDownloadButton onRefresh={refetchAms} />
           </div>
         </div>
+        {/* Info strip */}
+        <div className="px-5 py-3 bg-primary/5 border-b border-primary/10 flex items-start gap-2">
+          <Link2 className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-primary">Cara termudah:</span> Klik{" "}
+            <span className="font-semibold text-foreground">"Generate Semua Link"</span> → popup muncul → salin & bagikan ke AM.
+            AM cukup klik link, otomatis terhubung. Format kode:{" "}
+            <code className="text-[11px] bg-secondary px-1 py-0.5 rounded font-mono">ES-LESA-VI-NIK</code> · berlaku 24 jam.
+          </p>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary/50 text-muted-foreground font-medium">
