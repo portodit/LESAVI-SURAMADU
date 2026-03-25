@@ -1,0 +1,173 @@
+import { Router, type IRouter } from "express";
+import { db, telegramLogsTable, accountManagersTable, appSettingsTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { requireAuth } from "../lib/auth";
+import { sendReminderToAllAMs, sendToTelegram } from "../lib/telegram";
+import { getBotUsers } from "../lib/telegramPoller";
+import crypto from "crypto";
+
+const router: IRouter = Router();
+
+router.post("/telegram/send", requireAuth, async (req, res): Promise<void> => {
+  const { targetNiks, period, includePerformance, includeFunnel, includeActivity, customMessage } = req.body;
+  if (!period) { res.status(400).json({ error: "Period diperlukan" }); return; }
+
+  const result = await sendReminderToAllAMs(
+    period,
+    { includePerformance: !!includePerformance, includeFunnel: !!includeFunnel, includeActivity: !!includeActivity },
+    targetNiks || undefined
+  );
+  res.json(result);
+});
+
+router.get("/telegram/logs", requireAuth, async (req, res): Promise<void> => {
+  const logs = await db.select().from(telegramLogsTable).orderBy(desc(telegramLogsTable.createdAt)).limit(100);
+  res.json(logs.map(l => ({ ...l, createdAt: l.createdAt.toISOString() })));
+});
+
+router.post("/telegram/register-code", requireAuth, async (req, res): Promise<void> => {
+  const { amId } = req.body;
+  if (!amId) { res.status(400).json({ error: "amId diperlukan" }); return; }
+
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+  await db.update(accountManagersTable).set({
+    telegramCode: code,
+    telegramCodeExpiry: expiry,
+  }).where(eq(accountManagersTable.id, amId));
+
+  res.json({ code, expiresAt: expiry.toISOString() });
+});
+
+// GET /api/telegram/updates — Return combined list of:
+// 1. AMs already linked in DB (telegramChatId != null) — always visible after restart
+// 2. Any new unlinked users who sent messages since the server last started (in-memory)
+router.get("/telegram/updates", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const botUsers = getBotUsers(); // in-memory: users seen since last restart
+    const ams = await db.select().from(accountManagersTable);
+
+    // Build map of chatId → AM info for AMs already linked
+    const linkedAms = ams.filter(a => a.telegramChatId);
+    const amByChatId = new Map(
+      linkedAms.map(a => [a.telegramChatId!, { nik: a.nik, nama: a.nama, id: a.id }])
+    );
+
+    // Start with in-memory users (most recently active first)
+    const subscriberMap = new Map<string, any>();
+    for (const u of botUsers) {
+      subscriberMap.set(u.chatId, {
+        chatId: u.chatId,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        username: u.username,
+        lastMessage: u.lastMessage,
+        lastSeen: u.lastSeen,
+        linked: amByChatId.has(u.chatId),
+        linkedNik: amByChatId.get(u.chatId)?.nik ?? null,
+        linkedNama: amByChatId.get(u.chatId)?.nama ?? null,
+        linkedAmId: amByChatId.get(u.chatId)?.id ?? null,
+      });
+    }
+
+    // Also include AMs already linked in DB, even if they haven't sent a message since restart
+    for (const am of linkedAms) {
+      if (!subscriberMap.has(am.telegramChatId!)) {
+        subscriberMap.set(am.telegramChatId!, {
+          chatId: am.telegramChatId!,
+          firstName: am.nama, // use AM name as fallback
+          lastName: "",
+          username: "",
+          lastMessage: "(sudah terhubung sebelumnya)",
+          lastSeen: null,
+          linked: true,
+          linkedNik: am.nik,
+          linkedNama: am.nama,
+          linkedAmId: am.id,
+        });
+      }
+    }
+
+    const subscribers = [...subscriberMap.values()];
+    res.json({ subscribers, totalUpdates: subscribers.length });
+  } catch {
+    res.status(500).json({ error: "Gagal membaca data pengguna bot" });
+  }
+});
+
+// POST /api/telegram/link-am — Manually link a chatId to an AM
+router.post("/telegram/link-am", requireAuth, async (req, res): Promise<void> => {
+  const { amId, chatId } = req.body;
+  if (!amId || !chatId) { res.status(400).json({ error: "amId dan chatId wajib diisi" }); return; }
+
+  const [am] = await db.update(accountManagersTable)
+    .set({ telegramChatId: String(chatId), telegramCode: null, telegramCodeExpiry: null })
+    .where(eq(accountManagersTable.id, Number(amId)))
+    .returning();
+
+  if (!am) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
+
+  const [settings] = await db.select().from(appSettingsTable);
+  if (settings?.telegramBotToken) {
+    try {
+      await sendToTelegram(settings.telegramBotToken, String(chatId),
+        `✅ *Berhasil terhubung!*\n\nHalo, *${am.nama}*! 👋\nAkun kamu sudah dihubungkan ke Bot RLEGS Suramadu oleh admin.`
+      );
+    } catch { /* ignore */ }
+  }
+
+  res.json({ ...am, telegramConnected: true, createdAt: am.createdAt.toISOString() });
+});
+
+// POST /api/telegram/bulk-generate-codes — Generate codes for all unconnected AMs
+router.post("/telegram/bulk-generate-codes", requireAuth, async (req, res): Promise<void> => {
+  const ams = await db.select().from(accountManagersTable).orderBy(accountManagersTable.nama);
+  const unconnected = ams.filter(a => !a.telegramChatId);
+
+  const results = [];
+  for (const am of unconnected) {
+    const code = crypto.randomInt(100000, 999999).toString();
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 jam
+    await db.update(accountManagersTable)
+      .set({ telegramCode: code, telegramCodeExpiry: expiry })
+      .where(eq(accountManagersTable.id, am.id));
+    results.push({ nama: am.nama, nik: am.nik, divisi: am.divisi, code, expiresAt: expiry.toISOString() });
+  }
+
+  res.json({ results, total: results.length });
+});
+
+// DELETE /api/telegram/unlink-am/:id — Remove telegram link from AM
+router.delete("/telegram/unlink-am/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  const [am] = await db.update(accountManagersTable)
+    .set({ telegramChatId: null })
+    .where(eq(accountManagersTable.id, id))
+    .returning();
+  if (!am) { res.status(404).json({ error: "AM tidak ditemukan" }); return; }
+  res.json({ ok: true });
+});
+
+// GET /api/telegram/bot-status — Check if bot token is valid
+router.get("/telegram/bot-status", requireAuth, async (req, res): Promise<void> => {
+  const [settings] = await db.select().from(appSettingsTable);
+  if (!settings?.telegramBotToken) {
+    res.json({ connected: false, botName: null, botUsername: null });
+    return;
+  }
+
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${settings.telegramBotToken}/getMe`);
+    const data = await resp.json() as { ok: boolean; result?: { first_name: string; username: string }; description?: string };
+    if (data.ok && data.result) {
+      res.json({ connected: true, botName: data.result.first_name, botUsername: data.result.username });
+    } else {
+      res.json({ connected: false, botName: null, botUsername: null, error: data.description });
+    }
+  } catch {
+    res.json({ connected: false, botName: null, botUsername: null });
+  }
+});
+
+export default router;

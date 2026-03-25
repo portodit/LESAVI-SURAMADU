@@ -1,0 +1,19 @@
+packages:
+  "recharts": "For beautiful data visualizations (funnel gauge, activity bar charts)"
+  "framer-motion": "For page transitions and smooth UI micro-interactions"
+  "date-fns": "For formatting dates cleanly"
+  "clsx": "For conditional tailwind class merging"
+  "tailwind-merge": "For conditional tailwind class merging"
+  "lucide-react": "For beautiful consistent iconography"
+
+images:
+  - path: "artifacts/telkom-am-dashboard/public/images/auth-bg.png"
+    description: "Abstract dark red gradient mesh with subtle geometric patterns, highly professional corporate feel"
+    aspect_ratio: "16:9"
+  - path: "artifacts/telkom-am-dashboard/public/images/public-header.png"
+    description: "Abstract minimal red and white tech pattern background for header banner"
+    aspect_ratio: "21:9"
+
+notes:
+  - Using generated hooks from @workspace/api-client-react
+  - Assuming standard shadcn UI components exist in src/components/ui/
