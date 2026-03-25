@@ -283,7 +283,7 @@ export default function EmbedPerforma() {
   const availablePeriodes = useMemo(() => {
     return [...new Set(
       allPerfs
-        .filter((p: any) => (p.targetRevenue != null && p.targetRevenue > 0) || (p.realRevenue != null && p.realRevenue > 0))
+        .filter((p: any) => p.realRevenue != null && p.realRevenue > 0)
         .map((p: any) => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`)
     )].sort();
   }, [allPerfs]);

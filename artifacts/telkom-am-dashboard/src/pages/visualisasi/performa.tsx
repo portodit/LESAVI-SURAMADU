@@ -314,7 +314,7 @@ export default function PerformaVis() {
     if (!allPerfs?.length) return [];
     let rows = allPerfs as any[];
     if (filterSnapshotId) rows = rows.filter(p => p.importId === filterSnapshotId);
-    rows = rows.filter(p => (p.targetRevenue != null && p.targetRevenue > 0) || (p.realRevenue != null && p.realRevenue > 0));
+    rows = rows.filter(p => p.realRevenue != null && p.realRevenue > 0);
     return [...new Set(rows.map(p => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))]
       .sort();
   }, [allPerfs, filterSnapshotId]);
