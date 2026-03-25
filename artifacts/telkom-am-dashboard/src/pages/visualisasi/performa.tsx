@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import {
   Trophy, Database, AlertCircle, TrendingUp, Medal, ChevronDown,
-  ChevronRight, Camera, ChevronUp, Star, Expand, Minimize2, Check, X, Copy
+  ChevronRight, Camera, ChevronUp, Expand, Minimize2, Check, X
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -228,7 +228,6 @@ function periodeLabel(p: string): string {
 export default function PerformaVis() {
   // Filter state
   const [filterSnapshotId, setFilterSnapshotId] = useState<number | null>(null);
-  const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set()); // "YYYY-MM"
   const [filterDivisi, setFilterDivisi] = useState("All");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
@@ -577,16 +576,6 @@ export default function PerformaVis() {
             </select>
           </div>
 
-          {/* Embed button */}
-          <div className="flex flex-col gap-1 ml-auto">
-            <label className="text-[10px] font-semibold text-transparent uppercase tracking-wide">Embed</label>
-            <button
-              onClick={() => setShowEmbedModal(true)}
-              className="h-8 px-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap"
-            >
-              <Star className="w-3 h-3" /> Embed Code
-            </button>
-          </div>
         </div>
       </div>
 
@@ -840,67 +829,6 @@ export default function PerformaVis() {
         </>
       )}
 
-      {/* ─── Embed Code Modal ─────────────────────────────── */}
-      {showEmbedModal && (
-        <EmbedModal onClose={() => setShowEmbedModal(false)} />
-      )}
-    </div>
-  );
-}
-
-// ─── Embed Modal ───────────────────────────────────────────────────────────────
-function EmbedModal({ onClose }: { onClose: () => void }) {
-  const [copied, setCopied] = React.useState(false);
-  const baseUrl = typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.host}`
-    : "";
-  const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-  const embedUrl = `${baseUrl}${basePath}/embed/performa`;
-  const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  allowfullscreen\n  style="border:none; border-radius:12px;"\n></iframe>`;
-
-  function handleCopy() {
-    navigator.clipboard.writeText(iframeCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-bold text-foreground">Embed ke Canva / Website</h2>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-          Salin kode HTML di bawah ini dan tempel ke <strong>Canva</strong> melalui fitur <em>Embed → Custom Embed Code</em>, atau di website manapun.
-          Halaman embed <strong>tidak memerlukan login</strong>.
-        </p>
-        <div className="bg-secondary/60 rounded-xl p-3 font-mono text-[11px] leading-relaxed text-foreground whitespace-pre-wrap break-all mb-3 max-h-40 overflow-y-auto border border-border">
-          {iframeCode}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="flex-1 h-9 rounded-lg bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
-          >
-            {copied ? <><Check className="w-3.5 h-3.5" /> Disalin!</> : <><Copy className="w-3.5 h-3.5" /> Salin Kode</>}
-          </button>
-          <a
-            href={embedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-9 px-4 rounded-lg bg-secondary border border-border text-xs font-semibold flex items-center gap-1.5 hover:bg-secondary/80 transition-colors text-foreground"
-          >
-            Buka Preview
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
