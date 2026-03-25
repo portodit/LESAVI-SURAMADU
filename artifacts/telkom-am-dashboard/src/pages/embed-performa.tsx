@@ -44,15 +44,16 @@ function getTypedRevenue(row: any, tipe: string): { target: number; real: number
 }
 
 // ─── TrophyCard ────────────────────────────────────────────────────────────────
-function TrophyCard({ title, subtitle, am, value, valueLabel, colorScheme }: {
-  title: string; subtitle: string; am: any; value: string; valueLabel: string; colorScheme: "gold" | "blue";
+function TrophyCard({ title, subtitle, am, value, realValue, targetValue, colorScheme }: {
+  title: string; subtitle: string; am: any; value: string;
+  realValue?: string; targetValue?: string; colorScheme: "gold" | "blue";
 }) {
   const scheme = colorScheme === "gold"
     ? { icon: "🥇", bg: "from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/30", border: "border-amber-300 dark:border-amber-700", accent: "text-amber-700 dark:text-amber-400", valueClr: "text-amber-600 dark:text-amber-400" }
     : { icon: "🏅", bg: "from-blue-50 via-indigo-50 to-sky-50 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-sky-950/30", border: "border-blue-300 dark:border-blue-700", accent: "text-blue-700 dark:text-blue-400", valueClr: "text-blue-600 dark:text-blue-400" };
   if (!am) return (
     <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-4 min-h-[100px] flex flex-col justify-center`}>
-      <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", scheme.accent)}>{title}</p>
+      <p className={cn("text-xs font-black uppercase tracking-widest mb-1", scheme.accent)}>{title}</p>
       <p className="text-muted-foreground/50 text-sm">Belum ada data</p>
     </div>
   );
@@ -60,14 +61,23 @@ function TrophyCard({ title, subtitle, am, value, valueLabel, colorScheme }: {
     <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-4 min-w-0`}>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className={cn("text-[10px] font-bold uppercase tracking-widest", scheme.accent)}>{title}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+          <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", scheme.accent)}>{title}</p>
+          <p className="text-[10px] text-foreground font-medium mt-0.5">{subtitle}</p>
         </div>
         <span className="text-2xl leading-none">{scheme.icon}</span>
       </div>
       <p className="font-display font-extrabold text-sm text-foreground truncate mb-2" title={am.namaAm}>{am.namaAm}</p>
-      <p className={cn("text-3xl font-display font-black tabular-nums leading-none", scheme.valueClr)}>{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-1.5">{valueLabel}</p>
+      <p className={cn("text-3xl font-display font-black tabular-nums leading-none mb-2", scheme.valueClr)}>{value}</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="border border-current/20 rounded-md px-2 py-1.5 bg-background/40">
+          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Real</p>
+          <p className="text-[11px] font-bold text-foreground truncate">{realValue ?? "—"}</p>
+        </div>
+        <div className="border border-current/20 rounded-md px-2 py-1.5 bg-background/40">
+          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Target</p>
+          <p className="text-[11px] font-bold text-foreground truncate">{targetValue ?? "—"}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -89,9 +99,9 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 // ─── CheckboxDropdown ──────────────────────────────────────────────────────────
-function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, headerLabel, summaryLabel }: {
+function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, headerLabel, summaryLabel, className }: {
   label: string; options: string[]; selected: Set<string>; onChange: (next: Set<string>) => void;
-  placeholder?: string; labelFn?: (v: string) => string; headerLabel?: string; summaryLabel?: string;
+  placeholder?: string; labelFn?: (v: string) => string; headerLabel?: string; summaryLabel?: string; className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -107,11 +117,11 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
       ? `Semua ${summaryLabel || label}`
       : selected.size === 1 ? lFn([...selected][0]) : `${selected.size} ${summaryLabel || label} dipilih`;
   return (
-    <div className="flex flex-col gap-1 relative" ref={ref}>
-      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
+    <div className={cn("flex flex-col gap-0.5 relative", className)} ref={ref}>
+      <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
       <button
         onClick={() => setOpen(v => !v)}
-        className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs flex items-center gap-1.5 focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[110px] whitespace-nowrap"
+        className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] flex items-center gap-1 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full whitespace-nowrap"
       >
         <span className="flex-1 text-left truncate">{displayLabel}</span>
         <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
@@ -339,94 +349,87 @@ export default function EmbedPerforma() {
         </div>
       )}
 
-      {/* ─── Top Navbar ─────────────────────────────────── */}
+      {/* ─── Top Navbar (single unified row) ───────────── */}
       <div className="bg-card border-b border-border sticky top-0 z-30">
-        {/* Brand Row */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50">
+        <div className="flex items-end gap-2 px-3 py-2">
+          {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0 self-center mb-0.5"
           >
             <Menu className="w-4 h-4" />
           </button>
-          <img
-            src={`${import.meta.env.BASE_URL}logo-tr3.png`}
-            alt="Logo TR3"
-            className="h-6 object-contain shrink-0"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
-            <p className="text-sm font-bold text-foreground leading-tight">AM Performance Report</p>
+          {/* Logo + Brand */}
+          <div className="flex items-center gap-2 shrink-0 self-center">
+            <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-7 object-contain" />
+            <div className="leading-tight">
+              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
+              <p className="text-xs font-bold text-foreground">AM Performance Report</p>
+            </div>
           </div>
-          {/* Slide indicator + arrow nav */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => setCurrentSlide(s => Math.max(s - 1, 0))}
-              disabled={currentSlide === 0}
-              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30"
-            >
+          {/* Divider */}
+          <div className="w-px h-7 bg-border/60 shrink-0 self-center mx-0.5" />
+          {/* Filters (only on Performa slide) */}
+          {currentSlide === 0 ? (
+            <>
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-0.5">
+                  <Camera className="w-2.5 h-2.5" /> Snapshot
+                </label>
+                <select
+                  value={snapshotId ?? ""}
+                  disabled={!imports.length}
+                  onChange={e => { setSnapshotId(Number(e.target.value)); setFilterPeriodes(new Set()); }}
+                  className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] focus:outline-none disabled:opacity-40 w-full"
+                >
+                  {imports.length === 0 && <option value="">Belum ada data</option>}
+                  {imports.map(imp => <option key={imp.id} value={imp.id}>{shortSnap(imp.createdAt)}</option>)}
+                </select>
+              </div>
+              <CheckboxDropdown label="Periode" options={availablePeriodes} selected={filterPeriodes} onChange={setFilterPeriodes} labelFn={periodeLabel} headerLabel="" summaryLabel="Periode" className="flex-1 min-w-0" />
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Divisi</label>
+                <select value={filterDivisi} onChange={e => { setFilterDivisi(e.target.value); setFilterNamaAms(new Set()); }}
+                  disabled={!divisiOptions.length} className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] focus:outline-none disabled:opacity-40 w-full">
+                  <option value="All">Semua Divisi</option>
+                  {divisiOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="flex-1 min-w-0" />
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Tipe Rank</label>
+                <select value={filterTipeRank} onChange={e => setFilterTipeRank(e.target.value)} className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] focus:outline-none w-full">
+                  {TIPE_RANK.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Revenue</label>
+                <select value={filterTipeRevenue} onChange={e => setFilterTipeRevenue(e.target.value)} className="h-6 px-1.5 bg-secondary/50 border border-border rounded-md text-[10px] focus:outline-none w-full">
+                  {TIPE_REVENUE.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1" />
+          )}
+          {/* Slide indicator + arrows */}
+          <div className="flex items-center gap-1 shrink-0 self-center">
+            <button onClick={() => setCurrentSlide(s => Math.max(s - 1, 0))} disabled={currentSlide === 0}
+              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-1">
               {SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentSlide(i)}
-                  className={cn("rounded-full transition-all", i === currentSlide ? "w-4 h-2 bg-primary" : "w-2 h-2 bg-border hover:bg-muted-foreground")}
-                />
+                <button key={i} onClick={() => setCurrentSlide(i)}
+                  className={cn("rounded-full transition-all", i === currentSlide ? "w-4 h-2 bg-primary" : "w-2 h-2 bg-border hover:bg-muted-foreground")} />
               ))}
             </div>
-            <button
-              onClick={() => setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1))}
-              disabled={currentSlide === SLIDES.length - 1}
-              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30"
-            >
+            <button onClick={() => setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1))} disabled={currentSlide === SLIDES.length - 1}
+              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
-
-        {/* Filter Bar (only on Performa slide) */}
-        {currentSlide === 0 && (
-          <div className="px-4 py-2 flex items-end gap-2 min-w-0">
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <Camera className="w-3 h-3" /> Snapshot
-              </label>
-              <select
-                value={snapshotId ?? ""}
-                disabled={!imports.length}
-                onChange={e => { setSnapshotId(Number(e.target.value)); setFilterPeriodes(new Set()); }}
-                className="h-7 px-2 bg-secondary/50 border border-border rounded-lg text-xs focus:outline-none disabled:opacity-40 w-full"
-              >
-                {imports.length === 0 && <option value="">Belum ada data</option>}
-                {imports.map(imp => <option key={imp.id} value={imp.id}>{shortSnap(imp.createdAt)}</option>)}
-              </select>
-            </div>
-            <CheckboxDropdown label="Periode Bulan" options={availablePeriodes} selected={filterPeriodes} onChange={setFilterPeriodes} labelFn={periodeLabel} headerLabel="" summaryLabel="Periode" />
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Divisi</label>
-              <select value={filterDivisi} onChange={e => { setFilterDivisi(e.target.value); setFilterNamaAms(new Set()); }}
-                disabled={!divisiOptions.length} className="h-7 px-2 bg-secondary/50 border border-border rounded-lg text-xs focus:outline-none disabled:opacity-40 w-full">
-                <option value="All">Semua Divisi</option>
-                {divisiOptions.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" />
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tipe Rank</label>
-              <select value={filterTipeRank} onChange={e => setFilterTipeRank(e.target.value)} className="h-7 px-2 bg-secondary/50 border border-border rounded-lg text-xs focus:outline-none w-full">
-                {TIPE_RANK.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tipe Revenue</label>
-              <select value={filterTipeRevenue} onChange={e => setFilterTipeRevenue(e.target.value)} className="h-7 px-2 bg-secondary/50 border border-border rounded-lg text-xs focus:outline-none w-full">
-                {TIPE_REVENUE.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ─── Slide: Sales Funnel (placeholder) ───────────── */}
@@ -472,16 +475,18 @@ export default function EmbedPerforma() {
             {/* Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <TrophyCard colorScheme="gold"
-                title={`#1 Best CM · ${cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
-                subtitle={topCm ? `Divisi ${topCm.divisi}` : ""}
+                title="TOP AM BY CURRENT MONTH"
+                subtitle={topCm ? `Divisi ${topCm.divisi} · ${cmPeriode ? periodeLabel(cmPeriode) : "—"}` : ""}
                 am={topCm} value={topCm ? formatPercent(topCm.cmAch) : "–"}
-                valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}  ·  Target: ${formatRupiah(topCm.cmTarget)}` : "Belum ada data"}
+                realValue={topCm ? formatRupiah(topCm.cmReal) : undefined}
+                targetValue={topCm ? formatRupiah(topCm.cmTarget) : undefined}
               />
               <TrophyCard colorScheme="blue"
-                title={`#1 Best YTD · ${filterPeriodes.size > 1 ? `${filterPeriodes.size} Periode` : cmPeriode ? periodeLabel(cmPeriode) : "—"}`}
-                subtitle={topYtd ? `Divisi ${topYtd.divisi}` : ""}
+                title="TOP AM BY YEAR TO DATE"
+                subtitle={topYtd ? `Divisi ${topYtd.divisi} · ${filterPeriodes.size > 1 ? `${filterPeriodes.size} Periode` : cmPeriode ? periodeLabel(cmPeriode) : "—"}` : ""}
                 am={topYtd} value={topYtd ? formatPercent(topYtd.ytdAch) : "–"}
-                valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}  ·  Target: ${formatRupiah(topYtd.ytdTarget)}` : "Belum ada data"}
+                realValue={topYtd ? formatRupiah(topYtd.ytdReal) : undefined}
+                targetValue={topYtd ? formatRupiah(topYtd.ytdTarget) : undefined}
               />
               {/* Distribusi */}
               <div className="bg-card border border-border rounded-xl p-4">
@@ -550,7 +555,7 @@ export default function EmbedPerforma() {
                               {hasCustomers ? (isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />) : null}
                             </td>
                             <td className="px-4 py-2 font-medium text-foreground">
-                              <span className="truncate max-w-[140px] block" title={row.namaAm}>{row.namaAm}</span>
+                              <span className="block" title={row.namaAm}>{row.namaAm}</span>
                               <span className="text-[10px] text-muted-foreground">{row.divisi}</span>
                             </td>
                             <td className="px-3 py-2 text-center font-bold text-muted-foreground">{row.displayRank}</td>
