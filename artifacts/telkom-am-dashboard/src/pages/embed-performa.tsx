@@ -393,7 +393,7 @@ export default function EmbedPerforma() {
 
       {/* ─── Top Navbar (single unified row) ───────────── */}
       <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="flex items-end gap-2 px-3 py-2">
+        <div className="flex items-end gap-2 px-3 py-3">
           {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -403,10 +403,10 @@ export default function EmbedPerforma() {
           </button>
           {/* Logo + Brand */}
           <div className="flex items-center gap-2 shrink-0 self-center">
-            <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-7 object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-8 object-contain" />
             <div className="leading-tight">
-              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
-              <p className="text-xs font-bold text-foreground">AM Performance Report</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
+              <p className="text-sm font-bold text-foreground">AM Performance Report</p>
             </div>
           </div>
           {/* Divider */}
@@ -569,15 +569,15 @@ export default function EmbedPerforma() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="bg-secondary/50">
+                    <tr className="bg-red-700 text-white">
                       <th className="px-3 py-3 w-5"></th>
-                      <th className="px-4 py-3 text-left text-xs font-black text-foreground uppercase tracking-wide">Nama AM</th>
-                      <th className="px-3 py-3 text-center text-xs font-black text-foreground uppercase tracking-wide">Rank</th>
-                      <th className="px-4 py-3 text-right text-xs font-black text-foreground uppercase tracking-wide">Target CM</th>
-                      <th className="px-4 py-3 text-right text-xs font-black text-foreground uppercase tracking-wide">Real CM</th>
-                      <th className="px-3 py-3 text-right text-xs font-black text-foreground uppercase tracking-wide">CM %</th>
-                      <th className="px-3 py-3 text-right text-xs font-black text-foreground uppercase tracking-wide">YTD %</th>
-                      <th className="px-3 py-3 text-center text-xs font-black text-foreground uppercase tracking-wide">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide">Nama AM</th>
+                      <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-wide">Rank</th>
+                      <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target CM</th>
+                      <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real CM</th>
+                      <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach MTD" && "underline underline-offset-2")}>CM %</th>
+                      <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "YTD" && "underline underline-offset-2")}>YTD %</th>
+                      <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-wide">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -616,12 +616,12 @@ export default function EmbedPerforma() {
                                 <div className="mx-4 mb-2 mt-0.5 border border-border/60 rounded-lg overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead>
-                                      <tr className="bg-secondary/70">
-                                        <th className="px-3 py-2 text-left text-xs font-black text-foreground uppercase tracking-wide">Pelanggan / NIP</th>
-                                        <th className="px-3 py-2 text-right text-xs font-black text-foreground uppercase tracking-wide">Proporsi</th>
-                                        <th className="px-3 py-2 text-right text-xs font-black text-foreground uppercase tracking-wide">Target</th>
-                                        <th className="px-3 py-2 text-right text-xs font-black text-foreground uppercase tracking-wide">Real</th>
-                                        <th className="px-3 py-2 text-right text-xs font-black text-foreground uppercase tracking-wide">Ach %</th>
+                                      <tr className="bg-rose-50 dark:bg-rose-950/30">
+                                        <th className="px-3 py-2 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">

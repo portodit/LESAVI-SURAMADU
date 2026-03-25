@@ -706,14 +706,14 @@ export default function PerformaVis() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-secondary/40 text-muted-foreground font-semibold uppercase tracking-wide text-[10px]">
+                    <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
                       <th className="px-4 py-2.5 w-6"></th>
                       <th className="px-4 py-2.5">Nama AM</th>
                       <th className="px-3 py-2.5 text-center">Rank</th>
-                      <th className="px-4 py-2.5 text-right">Target CM</th>
-                      <th className="px-4 py-2.5 text-right">Real CM</th>
-                      <th className="px-3 py-2.5 text-right">CM %</th>
-                      <th className="px-3 py-2.5 text-right">YTD %</th>
+                      <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target CM</th>
+                      <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real CM</th>
+                      <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach MTD" && "underline underline-offset-2")}>CM %</th>
+                      <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach YTD" && "underline underline-offset-2")}>YTD %</th>
                       <th className="px-3 py-2.5 text-center">Status</th>
                     </tr>
                   </thead>
@@ -761,12 +761,12 @@ export default function PerformaVis() {
                                 <div className="mx-4 mb-2 mt-0.5 border border-border/60 rounded-lg overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead>
-                                      <tr className="bg-secondary/60">
-                                        <th className="px-3 py-1.5 text-left text-xs font-black text-foreground uppercase tracking-wide">Pelanggan / NIP</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-foreground uppercase tracking-wide">Proporsi</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-foreground uppercase tracking-wide">Target</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-foreground uppercase tracking-wide">Real</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-foreground uppercase tracking-wide">Ach %</th>
+                                      <tr className="bg-rose-50 dark:bg-rose-950/30">
+                                        <th className="px-3 py-1.5 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
+                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
+                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
+                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
+                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
