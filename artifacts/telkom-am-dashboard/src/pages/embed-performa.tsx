@@ -391,72 +391,74 @@ export default function EmbedPerforma() {
         </div>
       )}
 
-      {/* ─── Top Navbar (single unified row) ───────────── */}
+      {/* ─── Top Navbar ───────────── */}
       <div className="bg-card border-b border-border sticky top-0 z-30">
-        <div className="flex items-end gap-2 px-3 py-3">
+        {/* Main row — always visible */}
+        <div className="flex items-center gap-2 px-3 py-2">
           {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0 self-center mb-0.5"
+            className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
           >
             <Menu className="w-4 h-4" />
           </button>
           {/* Logo + Brand */}
-          <div className="flex items-center gap-2 shrink-0 self-center">
+          <div className="flex items-center gap-2 shrink-0">
             <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-8 object-contain" />
             <div className="leading-tight">
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
               <p className="text-sm font-bold text-foreground">AM Performance Report</p>
             </div>
           </div>
-          {/* Divider */}
-          <div className="w-px h-7 bg-border/60 shrink-0 self-center mx-0.5" />
-          {/* Filters (only on Performa slide) */}
-          {currentSlide === 0 ? (
+          {/* Desktop-only divider + filters */}
+          {currentSlide === 0 && (
             <>
-              <SelectDropdown
-                label="📷 Snapshot"
-                value={String(snapshotId ?? "")}
-                onChange={v => { setSnapshotId(Number(v)); setFilterPeriodes(new Set()); }}
-                options={imports.length === 0 ? [{ value: "", label: "Belum ada data" }] : imports.map(imp => ({ value: String(imp.id), label: shortSnap(imp.createdAt) }))}
-                disabled={!imports.length}
-                className="flex-1 min-w-0"
-              />
-              <CheckboxDropdown label="Periode" options={availablePeriodes} selected={filterPeriodes} onChange={setFilterPeriodes} labelFn={periodeLabel} headerLabel="" summaryLabel="Periode" className="flex-1 min-w-0" />
-              <SelectDropdown
-                label="Divisi"
-                value={filterDivisi}
-                onChange={v => { setFilterDivisi(v); setFilterNamaAms(new Set()); }}
-                options={[{ value: "All", label: "Semua Divisi" }, ...divisiOptions.map(d => ({ value: d, label: d }))]}
-                disabled={!divisiOptions.length}
-                className="flex-1 min-w-0"
-              />
-              <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="flex-1 min-w-0" />
-              <SelectDropdown
-                label="Tipe Rank"
-                value={filterTipeRank}
-                onChange={setFilterTipeRank}
-                options={TIPE_RANK.map(t => ({ value: t, label: t }))}
-                className="flex-1 min-w-0"
-              />
-              <SelectDropdown
-                label="Revenue"
-                value={filterTipeRevenue}
-                onChange={setFilterTipeRevenue}
-                options={TIPE_REVENUE.map(t => ({ value: t, label: t }))}
-                className="flex-1 min-w-0"
-              />
+              <div className="hidden sm:block w-px h-7 bg-border/60 shrink-0 mx-0.5" />
+              <div className="hidden sm:flex items-end gap-2 flex-1 min-w-0">
+                <SelectDropdown
+                  label="📷 Snapshot"
+                  value={String(snapshotId ?? "")}
+                  onChange={v => { setSnapshotId(Number(v)); setFilterPeriodes(new Set()); }}
+                  options={imports.length === 0 ? [{ value: "", label: "Belum ada data" }] : imports.map(imp => ({ value: String(imp.id), label: shortSnap(imp.createdAt) }))}
+                  disabled={!imports.length}
+                  className="flex-1 min-w-0"
+                />
+                <CheckboxDropdown label="Periode" options={availablePeriodes} selected={filterPeriodes} onChange={setFilterPeriodes} labelFn={periodeLabel} headerLabel="" summaryLabel="Periode" className="flex-1 min-w-0" />
+                <SelectDropdown
+                  label="Divisi"
+                  value={filterDivisi}
+                  onChange={v => { setFilterDivisi(v); setFilterNamaAms(new Set()); }}
+                  options={[{ value: "All", label: "Semua Divisi" }, ...divisiOptions.map(d => ({ value: d, label: d }))]}
+                  disabled={!divisiOptions.length}
+                  className="flex-1 min-w-0"
+                />
+                <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="flex-1 min-w-0" />
+                <SelectDropdown
+                  label="Tipe Rank"
+                  value={filterTipeRank}
+                  onChange={setFilterTipeRank}
+                  options={TIPE_RANK.map(t => ({ value: t, label: t }))}
+                  className="flex-1 min-w-0"
+                />
+                <SelectDropdown
+                  label="Revenue"
+                  value={filterTipeRevenue}
+                  onChange={setFilterTipeRevenue}
+                  options={TIPE_REVENUE.map(t => ({ value: t, label: t }))}
+                  className="flex-1 min-w-0"
+                />
+              </div>
             </>
-          ) : (
-            <div className="flex-1" />
           )}
-          {/* Slide indicator + arrows */}
-          <div className="flex items-center gap-1 shrink-0 self-center">
+          {/* Spacer */}
+          <div className="flex-1 sm:hidden" />
+          {/* Slide arrows — always visible; dots hidden on mobile */}
+          <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => setCurrentSlide(s => Math.max(s - 1, 0))} disabled={currentSlide === 0}
               className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-1">
               {SLIDES.map((_, i) => (
                 <button key={i} onClick={() => setCurrentSlide(i)}
                   className={cn("rounded-full transition-all", i === currentSlide ? "w-4 h-2 bg-primary" : "w-2 h-2 bg-border hover:bg-muted-foreground")} />
@@ -468,6 +470,43 @@ export default function EmbedPerforma() {
             </button>
           </div>
         </div>
+        {/* Mobile-only filter row — scrollable, only on slide 0 */}
+        {currentSlide === 0 && (
+          <div className="sm:hidden flex items-end gap-2 overflow-x-auto px-3 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <SelectDropdown
+              label="📷 Snapshot"
+              value={String(snapshotId ?? "")}
+              onChange={v => { setSnapshotId(Number(v)); setFilterPeriodes(new Set()); }}
+              options={imports.length === 0 ? [{ value: "", label: "Belum ada data" }] : imports.map(imp => ({ value: String(imp.id), label: shortSnap(imp.createdAt) }))}
+              disabled={!imports.length}
+              className="shrink-0 w-28"
+            />
+            <CheckboxDropdown label="Periode" options={availablePeriodes} selected={filterPeriodes} onChange={setFilterPeriodes} labelFn={periodeLabel} headerLabel="" summaryLabel="Periode" className="shrink-0 w-24" />
+            <SelectDropdown
+              label="Divisi"
+              value={filterDivisi}
+              onChange={v => { setFilterDivisi(v); setFilterNamaAms(new Set()); }}
+              options={[{ value: "All", label: "Semua Divisi" }, ...divisiOptions.map(d => ({ value: d, label: d }))]}
+              disabled={!divisiOptions.length}
+              className="shrink-0 w-24"
+            />
+            <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="shrink-0 w-24" />
+            <SelectDropdown
+              label="Tipe Rank"
+              value={filterTipeRank}
+              onChange={setFilterTipeRank}
+              options={TIPE_RANK.map(t => ({ value: t, label: t }))}
+              className="shrink-0 w-24"
+            />
+            <SelectDropdown
+              label="Revenue"
+              value={filterTipeRevenue}
+              onChange={setFilterTipeRevenue}
+              options={TIPE_REVENUE.map(t => ({ value: t, label: t }))}
+              className="shrink-0 w-24"
+            />
+          </div>
+        )}
       </div>
 
       {/* ─── Slide: Sales Funnel (placeholder) ───────────── */}
