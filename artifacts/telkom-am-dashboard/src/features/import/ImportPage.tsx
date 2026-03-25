@@ -1,8 +1,9 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
 import { useImportPerformance, useImportFunnel, useImportActivity, useListImportHistory } from "@workspace/api-client-react";
 import { useToast } from "@/shared/hooks/use-toast";
+import { useImportGuard } from "@/shared/hooks/use-import-guard";
 import { Button } from "@/shared/ui/button";
 import {
   UploadCloud, CheckCircle2, History, Loader2, Calendar,
@@ -98,6 +99,7 @@ export default function ImportData() {
   const [sheetPicker, setSheetPicker] = useState<SheetPicker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { setIsImporting } = useImportGuard();
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -105,6 +107,17 @@ export default function ImportData() {
   const [isOverwriting, setIsOverwriting] = useState(false);
   const [importProgress, setImportProgress] = useState<{ percent: number; stage: string } | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Block browser back/reload while importing
+  useEffect(() => {
+    if (!isPending) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Import sedang berjalan, yakin ingin meninggalkan halaman?";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isPending]);
 
   const { data: history, refetch } = useListImportHistory();
   const perfMut = useImportPerformance();
@@ -182,15 +195,16 @@ export default function ImportData() {
 
   // ── Progress simulation ────────────────────────────────────────────────────
   const PROGRESS_STAGES = [
-    { to: 18, step: 0.7,  label: "Membaca & encode file..." },
-    { to: 58, step: 0.35, label: "Proses cleaning data..." },
-    { to: 87, step: 0.12, label: "Menyimpan ke database..." },
+    { to: 20,  step: 0.8,   label: "Membaca & encode file..." },
+    { to: 60,  step: 0.4,   label: "Proses cleaning data..." },
+    { to: 95,  step: 0.04,  label: "Menyimpan ke database..." },
   ];
 
   function startProgressSim() {
     let p = 0;
     let si = 0;
     setImportProgress({ percent: 0, stage: PROGRESS_STAGES[0].label });
+    setIsImporting(true);
     progressIntervalRef.current = setInterval(() => {
       p += PROGRESS_STAGES[si].step;
       if (p >= PROGRESS_STAGES[si].to && si < PROGRESS_STAGES.length - 1) si++;
@@ -204,6 +218,7 @@ export default function ImportData() {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
+    setIsImporting(false);
     if (success) {
       setImportProgress({ percent: 100, stage: "Selesai ✓" });
       setTimeout(() => setImportProgress(null), 2000);
@@ -368,15 +383,18 @@ export default function ImportData() {
 
       {/* Main card */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        {/* Tab bar */}
+        {/* Tab bar — disabled while importing */}
         <div className="flex border-b border-border bg-secondary/20">
           {TABS.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setConflictInfo(null); }}
+              disabled={isPending && activeTab !== tab.id}
+              onClick={() => { if (!isPending) { setActiveTab(tab.id); setConflictInfo(null); } }}
+              title={isPending && activeTab !== tab.id ? "Tunggu import selesai sebelum ganti tab" : undefined}
               className={cn(
                 "flex items-center gap-2 px-5 py-4 text-sm font-semibold transition-all relative",
-                activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                isPending && activeTab !== tab.id && "opacity-40 cursor-not-allowed pointer-events-none"
               )}
             >
               <tab.icon className="w-4 h-4" />
@@ -386,6 +404,11 @@ export default function ImportData() {
               )}
             </button>
           ))}
+          {isPending && (
+            <div className="ml-auto flex items-center px-4 text-[11px] text-amber-600 dark:text-amber-400 font-medium gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" /> Import berjalan...
+            </div>
+          )}
         </div>
 
         <div className="p-6 space-y-4">

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/shared/ui/toaster";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { AuthProvider, useAuth } from "@/shared/hooks/use-auth";
+import { ImportGuardProvider } from "@/shared/hooks/use-import-guard";
 import { DashboardLayout } from "@/shared/layout";
 import { Loader2 } from "lucide-react";
 
@@ -105,9 +106,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AuthProvider>
-            <AppRouter />
-          </AuthProvider>
+          <ImportGuardProvider>
+            <AuthProvider>
+              <AppRouter />
+            </AuthProvider>
+          </ImportGuardProvider>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

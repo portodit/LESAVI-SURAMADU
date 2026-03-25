@@ -1,6 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/shared/hooks/use-auth";
+import { useImportGuard } from "@/shared/hooks/use-import-guard";
 import { cn } from "@/shared/lib/utils";
 import {
   LayoutDashboard, Upload, BarChart2, Filter, Activity,
@@ -97,12 +98,20 @@ const SIDEBAR_W = 224;
 const SIDEBAR_COLLAPSED = 56;
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout } = useAuth();
+  const { isImporting, setIsImporting } = useImportGuard();
   const [visOpen, setVisOpen] = React.useState(true);
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [showEmbed, setShowEmbed] = React.useState(false);
+  const [guardTarget, setGuardTarget] = React.useState<string | null>(null);
+
+  function guardNav(href: string, extra?: () => void) {
+    if (isImporting) { setGuardTarget(href); return; }
+    extra?.();
+    navigate(href);
+  }
 
   const isPerformaPage = location === "/visualisasi/performa" || location.startsWith("/visualisasi/performa");
 
@@ -170,17 +179,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {item.children.map(child => {
                     const isActive = location.startsWith(child.href);
                     return (
-                      <Link key={child.href} href={child.href}
+                      <a key={child.href} href={child.href}
                         title={child.label}
+                        onClick={e => { e.preventDefault(); guardNav(child.href); }}
                         className={cn(
-                          "flex justify-center items-center py-2.5 rounded-xl transition-all duration-150",
+                          "flex justify-center items-center py-2.5 rounded-xl transition-all duration-150 cursor-pointer",
                           isActive
                             ? "bg-primary text-white shadow-sm shadow-primary/30"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                         )}
                       >
                         <child.icon className="w-4 h-4" />
-                      </Link>
+                      </a>
                     );
                   })}
                   <div className="mx-2 my-1 h-px bg-border/60" />
@@ -220,17 +230,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {item.children.map(child => {
                           const isActive = location.startsWith(child.href);
                           return (
-                            <Link key={child.href} href={child.href}
-                              onClick={() => setMobileOpen(false)}
+                            <a key={child.href} href={child.href}
+                              onClick={e => { e.preventDefault(); guardNav(child.href, () => setMobileOpen(false)); }}
                               className={cn(
-                                "block px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150",
+                                "block px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 cursor-pointer",
                                 isActive
                                   ? "bg-primary text-white shadow-sm shadow-primary/25 font-medium"
                                   : "text-muted-foreground hover:text-primary hover:bg-primary/8"
                               )}
                             >
                               {child.label}
-                            </Link>
+                            </a>
                           );
                         })}
                       </div>
@@ -243,11 +253,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           const isActive = location === (item as any).href;
           return (
-            <Link key={(item as any).href} href={(item as any).href}
-              onClick={() => setMobileOpen(false)}
+            <a key={(item as any).href} href={(item as any).href}
+              onClick={e => { e.preventDefault(); guardNav((item as any).href, () => setMobileOpen(false)); }}
               title={collapsed && !isMobile ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer",
                 collapsed && !isMobile ? "justify-center" : "",
                 isActive
                   ? "bg-primary text-white shadow-md shadow-primary/25 font-medium"
@@ -256,7 +266,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             >
               <item.icon className="w-4 h-4 shrink-0" />
               {(!collapsed || isMobile) && <span>{item.label}</span>}
-            </Link>
+            </a>
           );
         })}
       </nav>
@@ -388,6 +398,42 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Embed Code Modal (triggered from topbar) */}
       {showEmbed && <EmbedModal onClose={() => setShowEmbed(false)} />}
+
+      {/* Import Guard Dialog */}
+      {guardTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <span className="text-lg">⚠️</span>
+              </div>
+              <div>
+                <p className="font-display font-bold text-foreground text-[15px] leading-snug">Import sedang berjalan</p>
+                <p className="text-sm text-muted-foreground mt-1">Proses import masih aktif di background. Pindah halaman sekarang tidak membatalkan proses di server, tapi kamu akan kehilangan status progresnya.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setGuardTarget(null)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+              >
+                Tetap di halaman
+              </button>
+              <button
+                onClick={() => {
+                  const dest = guardTarget;
+                  setGuardTarget(null);
+                  setIsImporting(false);
+                  navigate(dest);
+                }}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-colors"
+              >
+                Pindah halaman
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
