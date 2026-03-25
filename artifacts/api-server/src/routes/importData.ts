@@ -76,8 +76,10 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
     for (const r of rows) {
       const nik = String(r.NIK || r.nik || "").trim();
       const namaAm = String(r.NAMA_AM || r.nama_am || "").trim();
+      const divisiRaw = String(r.DIVISI_AM || r.divisi || "").trim();
       const periodeStr = String(r.PERIODE || "").trim(); // "202601"
       if (!nik || !namaAm || !periodeStr || periodeStr.length < 6) continue;
+      if (divisiRaw.toUpperCase() === "DGS") continue; // skip DGS rows
 
       const key = `${nik}__${periodeStr}`;
 
@@ -101,7 +103,7 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
       if (!amMap.has(key)) {
         amMap.set(key, {
           nik, namaAm,
-          divisi: String(r.DIVISI_AM || r.divisi || "").trim(),
+          divisi: divisiRaw,
           witel: String(r.WITEL_AM || r.witel || "SURAMADU").trim(),
           periodeStr, target: 0, real: 0, customers: [],
         });

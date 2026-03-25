@@ -86,40 +86,53 @@ function sumKomponen(customers: any[], tipeRevenue: string): { target: number; r
 }
 
 // ─── Trophy Card ──────────────────────────────────────────────────────────────
-function TrophyCard({ rank, title, subtitle, am, value, valueLabel, valueColor, badge }: {
-  rank: 1 | 2 | 3; title: string; subtitle: string; am: any; value: string; valueLabel: string; valueColor: string; badge?: string;
+function TrophyCard({ title, subtitle, am, value, valueLabel, badge, colorScheme }: {
+  title: string; subtitle: string; am: any; value: string; valueLabel: string; badge?: string;
+  colorScheme: 'gold' | 'blue';
 }) {
-  const medals = { 1: { icon: "🥇", bg: "from-yellow-50 to-amber-50", border: "border-yellow-300", accent: "text-yellow-700" }, 2: { icon: "🥈", bg: "from-slate-50 to-gray-100", border: "border-slate-300", accent: "text-slate-600" }, 3: { icon: "🥉", bg: "from-orange-50 to-amber-50", border: "border-orange-200", accent: "text-orange-600" } };
-  const m = medals[rank];
-  if (!am) return <div className={`rounded-xl bg-gradient-to-br ${m.bg} border ${m.border} p-4 flex-1`}><p className="text-xs text-muted-foreground">{title}</p><p className="text-muted-foreground/50 text-sm mt-3">–</p></div>;
+  const scheme = colorScheme === 'gold'
+    ? { icon: "🥇", bg: "from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/30", border: "border-amber-300 dark:border-amber-700", accent: "text-amber-700 dark:text-amber-400", valueClr: "text-amber-600 dark:text-amber-400" }
+    : { icon: "🏅", bg: "from-blue-50 via-indigo-50 to-sky-50 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-sky-950/30", border: "border-blue-300 dark:border-blue-700", accent: "text-blue-700 dark:text-blue-400", valueClr: "text-blue-600 dark:text-blue-400" };
+  if (!am) return (
+    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 flex-1 min-h-[120px] flex flex-col justify-center`}>
+      <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", scheme.accent)}>{title}</p>
+      <p className="text-muted-foreground/50 text-sm">Belum ada data</p>
+    </div>
+  );
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${m.bg} border ${m.border} p-4 flex-1 min-w-0`}>
-      <div className="flex items-start justify-between mb-2">
+    <div className={`rounded-xl bg-gradient-to-br ${scheme.bg} border ${scheme.border} p-5 flex-1 min-w-0`}>
+      <div className="flex items-start justify-between mb-3">
         <div>
-          <p className={cn("text-[10px] font-bold uppercase tracking-widest", m.accent)}>{title}</p>
-          <p className="text-[10px] text-muted-foreground">{subtitle}</p>
+          <p className={cn("text-[10px] font-bold uppercase tracking-widest", scheme.accent)}>{title}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        <span className="text-2xl leading-none">{m.icon}</span>
+        <span className="text-3xl leading-none">{scheme.icon}</span>
       </div>
-      <p className="font-display font-extrabold text-sm text-foreground truncate" title={am.namaAm}>{am.namaAm}</p>
-      <p className="text-xs text-muted-foreground mb-2">{am.divisi}</p>
-      <p className={cn("text-2xl font-display font-black tabular-nums", valueColor)}>{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">{valueLabel}</p>
-      {badge && <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-wide bg-white/70 px-2 py-0.5 rounded-full border border-current/20">{badge}</span>}
+      <p className="font-display font-extrabold text-base text-foreground truncate mb-0.5" title={am.namaAm}>{am.namaAm}</p>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">{am.divisi}</span>
+        {badge && <span className={cn("text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border bg-white/60 dark:bg-white/10", scheme.accent)}>{badge}</span>}
+      </div>
+      <p className={cn("text-4xl font-display font-black tabular-nums leading-none", scheme.valueClr)}>{value}</p>
+      <p className="text-xs text-muted-foreground mt-2">{valueLabel}</p>
     </div>
   );
 }
 
 // ─── CheckboxDropdown ──────────────────────────────────────────────────────────
-function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
+function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, headerLabel, summaryLabel }: {
   label: string;
   options: string[];
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
   placeholder?: string;
+  labelFn?: (value: string) => string;
+  headerLabel?: string;
+  summaryLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const getLabel = (v: string) => labelFn ? labelFn(v) : v;
 
   useEffectRef(() => {
     const handler = (e: MouseEvent) => {
@@ -138,13 +151,14 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
   const selectAll = () => onChange(new Set(options));
   const clearAll = () => onChange(new Set());
 
+  const unit = summaryLabel ?? "item";
   const displayText = selected.size === 0
     ? (placeholder ?? "Semua")
     : selected.size === options.length
-      ? "Semua AM"
+      ? `Semua ${unit}`
       : selected.size === 1
-        ? [...selected][0]
-        : `${selected.size} AM dipilih`;
+        ? getLabel([...selected][0])
+        : `${selected.size} ${unit} dipilih`;
 
   return (
     <div className="flex flex-col gap-1 relative" ref={ref}>
@@ -165,7 +179,7 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[200px] max-w-[260px] overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pilih AM</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{headerLabel ?? `Pilih ${unit}`}</span>
             <div className="flex gap-1.5">
               <button onClick={selectAll} className="text-[10px] text-primary font-semibold hover:underline">Semua</button>
               <span className="text-muted-foreground text-[10px]">·</span>
@@ -189,7 +203,7 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
                   >
                     {checked && <Check className="w-2.5 h-2.5 text-white" />}
                   </div>
-                  <span className="truncate" onClick={() => toggleItem(opt)}>{opt}</span>
+                  <span className="truncate" onClick={() => toggleItem(opt)}>{getLabel(opt)}</span>
                 </label>
               );
             })}
@@ -197,9 +211,9 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
           {selected.size > 0 && (
             <div className="px-3 py-2 border-t border-border bg-secondary/30">
               <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
-                {[...selected].map(s => (
+                {[...selected].sort().map(s => (
                   <span key={s} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                    <span className="truncate max-w-[80px]">{s}</span>
+                    <span className="truncate max-w-[90px]">{getLabel(s)}</span>
                     <button onClick={() => toggleItem(s)} className="hover:text-primary/60"><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
@@ -212,11 +226,16 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder }: {
   );
 }
 
+// Helper: format "2026-01" → "Jan 2026"
+function periodeLabel(p: string): string {
+  const [year, month] = p.split("-");
+  return `${MONTHS_LABEL[parseInt(month, 10) - 1]} ${year}`;
+}
+
 export default function PerformaVis() {
   // Filter state
   const [filterSnapshotId, setFilterSnapshotId] = useState<number | null>(null);
-  const [filterYear, setFilterYear] = useState<string>("");
-  const [filterMonths, setFilterMonths] = useState<Set<number>>(new Set());
+  const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set()); // "YYYY-MM"
   const [filterDivisi, setFilterDivisi] = useState("All");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach MTD");
@@ -233,51 +252,43 @@ export default function PerformaVis() {
     [importHistory]
   );
 
-  // Available years from all data
-  const availableYears = useMemo(() => {
+  // Available periods "YYYY-MM" sorted newest first
+  const availablePeriodes = useMemo(() => {
     if (!allPerfs?.length) return [];
-    return [...new Set((allPerfs as any[]).map(p => String(p.tahun)))].sort().reverse();
-  }, [allPerfs]);
-
-  // Auto-select year when data loads
-  React.useEffect(() => {
-    if (availableYears.length > 0 && (!filterYear || !availableYears.includes(filterYear))) {
-      setFilterYear(availableYears[0]);
-    }
-  }, [availableYears]);
-
-  // Available months WITH data for selected year (and optionally snapshot)
-  const availableMonths = useMemo((): number[] => {
-    if (!allPerfs?.length || !filterYear) return [];
-    let rows = (allPerfs as any[]).filter(p => String(p.tahun) === filterYear);
+    let rows = allPerfs as any[];
     if (filterSnapshotId) rows = rows.filter(p => p.importId === filterSnapshotId);
-    const set = new Set(rows.map(p => p.bulan as number));
-    return [...set].sort((a, b) => a - b);
-  }, [allPerfs, filterYear, filterSnapshotId]);
+    return [...new Set(rows.map(p => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`))]
+      .sort().reverse();
+  }, [allPerfs, filterSnapshotId]);
 
-  // Auto-select months when year/snapshot changes
+  // Auto-select most recent period when data loads / snapshot changes
   React.useEffect(() => {
-    if (!availableMonths.length) { setFilterMonths(new Set()); return; }
-    // Select only months that still exist
-    setFilterMonths(prev => {
-      const next = new Set([...prev].filter(m => availableMonths.includes(m)));
-      if (next.size === 0) return new Set([Math.max(...availableMonths)]);
-      return next;
+    if (availablePeriodes.length === 0) { setFilterPeriodes(new Set()); return; }
+    setFilterPeriodes(prev => {
+      const valid = new Set(availablePeriodes);
+      const filtered = new Set([...prev].filter(p => valid.has(p)));
+      if (filtered.size > 0) return filtered;
+      return new Set([availablePeriodes[0]]); // auto-select latest
     });
-  }, [availableMonths]);
+  }, [availablePeriodes]);
 
-  // CM month = last (max) selected month
-  const cmMonth = useMemo(() => filterMonths.size > 0 ? Math.max(...filterMonths) : null, [filterMonths]);
+  // CM periode = latest selected period (max lexicographic)
+  const cmPeriode = useMemo(() =>
+    filterPeriodes.size > 0 ? [...filterPeriodes].sort().reverse()[0] : null,
+    [filterPeriodes]
+  );
+  const cmYear = useMemo(() => cmPeriode ? cmPeriode.slice(0, 4) : null, [cmPeriode]);
+  const cmMonth = useMemo(() => cmPeriode ? parseInt(cmPeriode.slice(5, 7), 10) : null, [cmPeriode]);
 
   // For each AM, build CM row and YTD aggregation
   const amTableData = useMemo(() => {
-    if (!allPerfs?.length || !filterYear || !cmMonth) return [];
+    if (!allPerfs?.length || !cmPeriode || !cmMonth) return [];
 
-    const allRows = (allPerfs as any[]).filter(p =>
-      String(p.tahun) === filterYear &&
-      filterMonths.has(p.bulan) &&
-      (filterSnapshotId === null || p.importId === filterSnapshotId)
-    );
+    const allRows = (allPerfs as any[]).filter(p => {
+      const periode = `${p.tahun}-${String(p.bulan).padStart(2, "0")}`;
+      return filterPeriodes.has(periode) &&
+        (filterSnapshotId === null || p.importId === filterSnapshotId);
+    });
 
     // Latest importId per (nik, month) to avoid double-counting multiple uploads
     const latestImportPerNikMonth = new Map<string, number>();
@@ -365,7 +376,7 @@ export default function PerformaVis() {
     });
 
     return result.map((r, i) => ({ ...r, displayRank: i + 1 }));
-  }, [allPerfs, filterYear, filterMonths, cmMonth, filterSnapshotId, filterDivisi, filterNamaAms, filterTipeRank, filterTipeRevenue]);
+  }, [allPerfs, filterPeriodes, cmPeriode, cmMonth, filterSnapshotId, filterDivisi, filterNamaAms, filterTipeRank, filterTipeRevenue]);
 
   // Totals
   const totals = useMemo(() => {
@@ -395,13 +406,13 @@ export default function PerformaVis() {
     ];
   }, [amTableData]);
 
-  // Trend chart (for selected year)
+  // Trend chart (for CM year)
   const trendData = useMemo(() => {
-    if (!allPerfs?.length || !filterYear) return [];
+    if (!allPerfs?.length || !cmYear) return [];
     return MONTHS_LABEL.map((month, idx) => {
       const mNum = idx + 1;
       let rows = (allPerfs as any[]).filter(p =>
-        String(p.tahun) === filterYear && p.bulan === mNum &&
+        String(p.tahun) === cmYear && p.bulan === mNum &&
         (filterSnapshotId === null || p.importId === filterSnapshotId) &&
         (filterDivisi === "All" || p.divisi === filterDivisi)
       );
@@ -410,29 +421,31 @@ export default function PerformaVis() {
       const ach = target > 0 ? (real / target) * 100 : 0;
       return { month, target, real, ach: parseFloat(ach.toFixed(1)), hasData: rows.length > 0 };
     });
-  }, [allPerfs, filterYear, filterSnapshotId, filterDivisi]);
+  }, [allPerfs, cmYear, filterSnapshotId, filterDivisi]);
 
-  // Divisi options from data
+  // Divisi options from data (based on CM period)
   const divisiOptions = useMemo(() => {
-    if (!allPerfs?.length || !filterYear || !cmMonth) return [];
+    if (!allPerfs?.length || !cmPeriode) return [];
+    const [y, m] = cmPeriode.split("-").map(Number);
     return [...new Set(
       (allPerfs as any[])
-        .filter(p => String(p.tahun) === filterYear && p.bulan === cmMonth)
+        .filter(p => p.tahun === y && p.bulan === m)
         .map(p => p.divisi).filter(Boolean)
     )].sort() as string[];
-  }, [allPerfs, filterYear, cmMonth]);
+  }, [allPerfs, cmPeriode]);
 
   // AM names based on current filters
   const amNames = useMemo(() => {
-    if (!allPerfs?.length || !filterYear || !cmMonth) return [];
+    if (!allPerfs?.length || !cmPeriode) return [];
+    const [y, m] = cmPeriode.split("-").map(Number);
     return [...new Set(
       (allPerfs as any[])
         .filter(p =>
-          String(p.tahun) === filterYear && p.bulan === cmMonth &&
+          p.tahun === y && p.bulan === m &&
           (filterDivisi === "All" || p.divisi === filterDivisi)
         ).map(p => p.namaAm)
     )].sort() as string[];
-  }, [allPerfs, filterYear, cmMonth, filterDivisi]);
+  }, [allPerfs, cmPeriode, filterDivisi]);
 
   React.useEffect(() => { if (filterDivisi !== "All" && !divisiOptions.includes(filterDivisi)) setFilterDivisi("All"); }, [divisiOptions]);
   React.useEffect(() => {
@@ -461,19 +474,6 @@ export default function PerformaVis() {
     }
   };
 
-  const toggleMonth = (m: number) => {
-    setFilterMonths(prev => {
-      const next = new Set(prev);
-      if (next.has(m)) {
-        if (next.size === 1) return prev; // keep at least 1
-        next.delete(m);
-      } else {
-        next.add(m);
-      }
-      return next;
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -493,8 +493,8 @@ export default function PerformaVis() {
       {/* ─── Filter Bar ──────────────────────────────────── */}
       <div className="bg-card border border-border rounded-xl p-4 space-y-3">
 
-        {/* Row 1: Snapshot + Tahun + Periode Bulan */}
-        <div className="flex items-end gap-3">
+        {/* Row 1: Snapshot + Periode Bulan */}
+        <div className="flex items-end gap-3 flex-wrap">
           {/* 1. Versi Snapshot */}
           <div className="flex flex-col gap-1 min-w-[200px] max-w-[240px]">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
@@ -502,7 +502,7 @@ export default function PerformaVis() {
             </label>
             <select
               value={filterSnapshotId ?? ""}
-              onChange={e => { setFilterSnapshotId(e.target.value ? Number(e.target.value) : null); setFilterMonths(new Set()); }}
+              onChange={e => { setFilterSnapshotId(e.target.value ? Number(e.target.value) : null); setFilterPeriodes(new Set()); }}
               className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="">— Semua Snapshot —</option>
@@ -514,52 +514,22 @@ export default function PerformaVis() {
             </select>
           </div>
 
-          {/* 2. Tahun */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tahun</label>
-            <select
-              value={filterYear}
-              onChange={e => { setFilterYear(e.target.value); setFilterMonths(new Set()); }}
-              disabled={!availableYears.length}
-              className="h-8 px-2.5 bg-secondary/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-40"
-            >
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-
-          {/* 3. Bulan checkboxes — all 12 in one nowrap row */}
-          <div className="flex flex-col gap-1 flex-1 min-w-0">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Periode Bulan</label>
-            <div className="flex flex-nowrap gap-1">
-              {MONTHS_LABEL.map((label, idx) => {
-                const m = idx + 1;
-                const mHasData = availableMonths.includes(m);
-                const checked = filterMonths.has(m);
-                return (
-                  <button
-                    key={m}
-                    onClick={() => mHasData && toggleMonth(m)}
-                    disabled={!mHasData}
-                    className={cn(
-                      "h-8 px-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap flex-1 min-w-0",
-                      mHasData
-                        ? checked
-                          ? "bg-primary text-white border-primary shadow-sm"
-                          : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/50"
-                        : "opacity-25 cursor-not-allowed bg-secondary/30 border-border text-muted-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* 2. Periode Bulan — checkbox dropdown (YYYY-MM) */}
+          <CheckboxDropdown
+            label="Periode Bulan"
+            options={availablePeriodes}
+            selected={filterPeriodes}
+            onChange={setFilterPeriodes}
+            placeholder="Pilih Periode"
+            labelFn={periodeLabel}
+            headerLabel="Pilih Periode"
+            summaryLabel="Periode"
+          />
         </div>
 
         {/* Row 2: Divisi + Nama AM + Tipe Rank + Tipe Revenue + Info */}
         <div className="flex items-end gap-3 flex-wrap">
-          {/* 4. Divisi */}
+          {/* 3. Divisi */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Divisi</label>
             <select
@@ -573,16 +543,18 @@ export default function PerformaVis() {
             </select>
           </div>
 
-          {/* 5. Nama AM — multi-select checkbox dropdown */}
+          {/* 4. Nama AM — multi-select checkbox dropdown */}
           <CheckboxDropdown
             label="Nama AM"
             options={amNames}
             selected={filterNamaAms}
             onChange={setFilterNamaAms}
             placeholder="Semua AM"
+            headerLabel="Pilih AM"
+            summaryLabel="AM"
           />
 
-          {/* 6. Tipe Rank */}
+          {/* 5. Tipe Rank */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tipe Rank</label>
             <select
@@ -594,7 +566,7 @@ export default function PerformaVis() {
             </select>
           </div>
 
-          {/* 7. Tipe Revenue */}
+          {/* 6. Tipe Revenue */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tipe Revenue</label>
             <select
@@ -608,10 +580,14 @@ export default function PerformaVis() {
 
           {/* Info */}
           <div className="ml-auto text-sm text-muted-foreground hidden lg:flex items-center gap-2">
-            {cmMonth && filterYear && (
+            {cmPeriode && (
               <span className="font-semibold text-foreground">
-                CM: {MONTHS_LABEL[cmMonth - 1]} {filterYear}
-                {filterMonths.size > 1 && <span className="font-normal text-muted-foreground ml-1">| YTD: {[...filterMonths].sort().map(m => MONTHS_LABEL[m-1]).join("+")} {filterYear}</span>}
+                CM: {periodeLabel(cmPeriode)}
+                {filterPeriodes.size > 1 && (
+                  <span className="font-normal text-muted-foreground ml-1">
+                    | YTD: {[...filterPeriodes].sort().map(periodeLabel).join(" + ")}
+                  </span>
+                )}
               </span>
             )}
             {!noDataAtAll && hasData && <span className="text-xs text-muted-foreground">· {amTableData.length} AM</span>}
@@ -625,53 +601,85 @@ export default function PerformaVis() {
         <div className="bg-card border border-border rounded-xl"><EmptyState /></div>
       ) : (
         <>
-          {/* ─── Trophy Section — Top #1 CM & Top #1 YTD ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* ─── Trophy Section — Top #1 CM · Top #1 YTD · Distribusi ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Top #1 CM */}
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  Best CM — {MONTHS_LABEL[cmMonth! - 1]} {filterYear}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Best CM — {cmPeriode ? periodeLabel(cmPeriode) : "—"}
                 </h3>
               </div>
               <TrophyCard
-                rank={1}
+                colorScheme="gold"
                 title="#1 Achievement CM"
-                subtitle={topCm ? topCm.divisi : ""}
+                subtitle={topCm ? `Divisi ${topCm.divisi}` : ""}
                 am={topCm}
                 value={topCm ? formatPercent(topCm.cmAch) : "–"}
-                valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}` : "Belum ada data"}
-                valueColor={topCm && topCm.cmAch >= 1 ? "text-green-600" : "text-orange-500"}
+                valueLabel={topCm ? `Real: ${formatRupiah(topCm.cmReal)}  ·  Target: ${formatRupiah(topCm.cmTarget)}` : "Belum ada data"}
                 badge={topCm?.statusWarna?.toUpperCase()}
               />
             </div>
 
             {/* Top #1 YTD */}
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Medal className="w-4 h-4 text-blue-500" />
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  Best YTD — {filterMonths.size > 1 ? [...filterMonths].sort().map(m => MONTHS_LABEL[m-1]).join("+") : MONTHS_LABEL[cmMonth!-1]} {filterYear}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Medal className="w-3.5 h-3.5 text-blue-500" />
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Best YTD — {filterPeriodes.size > 1
+                    ? `${[...filterPeriodes].sort().length} Periode`
+                    : cmPeriode ? periodeLabel(cmPeriode) : "—"}
                 </h3>
               </div>
               <TrophyCard
-                rank={1}
+                colorScheme="blue"
                 title="#1 Achievement YTD"
-                subtitle={topYtd ? topYtd.divisi : ""}
+                subtitle={topYtd ? `Divisi ${topYtd.divisi}` : ""}
                 am={topYtd}
                 value={topYtd ? formatPercent(topYtd.ytdAch) : "–"}
-                valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}` : "Belum ada data"}
-                valueColor={topYtd && topYtd.ytdAch >= 1 ? "text-green-600" : "text-blue-600"}
+                valueLabel={topYtd ? `YTD Real: ${formatRupiah(topYtd.ytdReal)}  ·  Target: ${formatRupiah(topYtd.ytdTarget)}` : "Belum ada data"}
                 badge={topYtd?.statusWarna?.toUpperCase()}
               />
             </div>
+
+            {/* Distribusi Donut */}
+            <div className="bg-card border border-border rounded-xl p-4 flex flex-col">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Distribusi Pencapaian Target</h3>
+              <div className="relative flex-1">
+                <ResponsiveContainer width="100%" height={130}>
+                  <PieChart>
+                    <Pie data={distribusi} cx="50%" cy="50%" innerRadius={34} outerRadius={52} dataKey="value" labelLine={false} label={renderCustomLabel}>
+                      {distribusi.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", fontSize: "12px" }} formatter={(v, n) => [`${v} AM`, n]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <p className="text-xl font-display font-black text-foreground">{amTableData.length}</p>
+                    <p className="text-[10px] text-muted-foreground">AM</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1.5 mt-2 border-t border-border pt-2">
+                {distribusi.map(d => (
+                  <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                    </div>
+                    <span className="font-bold tabular-nums">{d.value} AM</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* ─── Table + Right Panel ─────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          {/* ─── Table (full width) ──────────────────────── */}
+          <div>
             {/* Table */}
-            <div className="lg:col-span-3 bg-card border border-border rounded-xl overflow-hidden">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between">
                 <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-primary" />
@@ -704,7 +712,7 @@ export default function PerformaVis() {
                       const isExpanded = expandedRows.has(row.nik);
                       const customers = row.customers || [];
                       const hasCustomers = customers.length > 0;
-                      const totalReal = customers.reduce((s: number, c: any) => s + c.real, 0);
+                      const totalReal = customers.reduce((s: number, c: any) => s + (c.realTotal ?? 0), 0);
                       return (
                         <React.Fragment key={row.nik}>
                           <tr
@@ -747,24 +755,32 @@ export default function PerformaVis() {
                                   <table className="w-full text-xs">
                                     <thead>
                                       <tr className="bg-secondary/60 text-muted-foreground">
-                                        <th className="px-3 py-1.5 text-left font-medium">Pelanggan</th>
-                                        <th className="px-3 py-1.5 text-left font-medium">Tipe</th>
+                                        <th className="px-3 py-1.5 text-left font-medium">Pelanggan / NIP</th>
                                         <th className="px-3 py-1.5 text-right font-medium">Target</th>
                                         <th className="px-3 py-1.5 text-right font-medium">Real</th>
+                                        <th className="px-3 py-1.5 text-right font-medium">Ach %</th>
                                         <th className="px-3 py-1.5 text-right font-medium">Proporsi</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
                                       {customers.map((c: any, ci: number) => {
-                                        const prop = totalReal > 0 ? (c.real / totalReal * 100) : 0;
+                                        const cReal = c.realTotal ?? 0;
+                                        const cTarget = c.targetTotal ?? 0;
+                                        const prop = totalReal > 0 ? (cReal / totalReal * 100) : 0;
+                                        const cAch = cTarget > 0 ? cReal / cTarget * 100 : 0;
                                         return (
                                           <tr key={ci} className="hover:bg-secondary/30">
-                                            <td className="px-3 py-1.5 font-medium text-foreground truncate max-w-[160px]" title={c.pelanggan}>{c.pelanggan}</td>
-                                            <td className="px-3 py-1.5 text-muted-foreground">
-                                              <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px] font-medium">{c.tipeRevenue}</span>
+                                            <td className="px-3 py-1.5 font-medium text-foreground" title={c.pelanggan}>
+                                              <div className="truncate max-w-[180px]">{c.pelanggan || "—"}</div>
+                                              {c.nip && <div className="text-[10px] text-muted-foreground">{c.nip}</div>}
                                             </td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{formatRupiah(c.target)}</td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium">{formatRupiah(c.real)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{formatRupiah(cTarget)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium">{formatRupiah(cReal)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums text-xs">
+                                              <span className={cn("font-semibold", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
+                                                {cAch.toFixed(1)}%
+                                              </span>
+                                            </td>
                                             <td className="px-3 py-1.5 text-right tabular-nums">
                                               <div className="flex items-center justify-end gap-1.5">
                                                 <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -805,85 +821,28 @@ export default function PerformaVis() {
               </div>
             </div>
 
-            {/* Right Panel */}
-            <div className="lg:col-span-2 flex flex-col gap-3">
-              {/* Distribusi Donut */}
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Distribusi Pencapaian Target (CM)</h3>
-                <div className="relative">
-                  <ResponsiveContainer width="100%" height={140}>
-                    <PieChart>
-                      <Pie data={distribusi} cx="50%" cy="50%" innerRadius={38} outerRadius={60} dataKey="value" labelLine={false} label={renderCustomLabel}>
-                        {distribusi.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", fontSize: "12px" }} formatter={(v, n) => [`${v} AM`, n]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center mt-[-8px]">
-                      <p className="text-lg font-display font-black text-foreground">{amTableData.length}</p>
-                      <p className="text-[10px] text-muted-foreground">AM</p>
-                    </div>
-                  </div>
+            {/* Summary Revenue — inline row below table */}
+            <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { label: "CM Real", value: formatRupiah(totals.cmReal), color: "text-foreground", bold: true },
+                { label: "CM Target", value: formatRupiah(totals.cmTarget), color: "text-muted-foreground", bold: false },
+                { label: `CM Ach (${totals.cmAch.toFixed(1)}%)`, value: totals.cmAch >= 100 ? "✓ Tercapai" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target",
+                  color: totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600", bold: true },
+                { label: `YTD Ach (${totals.ytdAch.toFixed(1)}%)`, value: formatRupiah(totals.ytdReal),
+                  color: totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-muted-foreground", bold: true },
+              ].map(item => (
+                <div key={item.label} className="bg-card border border-border rounded-xl px-4 py-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{item.label}</p>
+                  <p className={cn("text-sm tabular-nums", item.bold ? "font-bold" : "font-normal", item.color)}>{item.value}</p>
                 </div>
-                <div className="space-y-1.5 mt-1">
-                  {distribusi.map(d => (
-                    <div key={d.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-                        <span className="text-muted-foreground">{d.name}</span>
-                      </div>
-                      <span className="font-bold tabular-nums">{d.value} AM</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Summary CM vs YTD */}
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Summary Revenue</h3>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">CM Real</span>
-                      <span className="font-bold text-foreground tabular-nums">{formatRupiah(totals.cmReal)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">CM Target</span>
-                      <span className="tabular-nums text-muted-foreground">{formatRupiah(totals.cmTarget)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold">CM Ach</span>
-                      <span className={cn("font-bold tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
-                        {totals.cmAch.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="border-t border-border pt-3">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">YTD Real</span>
-                      <span className="font-bold text-foreground tabular-nums">{formatRupiah(totals.ytdReal)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">YTD Target</span>
-                      <span className="tabular-nums text-muted-foreground">{formatRupiah(totals.ytdTarget)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold">YTD Ach</span>
-                      <span className={cn("font-bold tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-muted-foreground")}>
-                        {totals.ytdAch.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
           {/* ─── Trend Chart ─────────────────────────────── */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="text-sm font-display font-semibold text-foreground mb-4">
-              Tren Performa Revenue Bulanan {filterYear}
+              Tren Performa Revenue Bulanan {cmYear ?? ""}
               {filterDivisi !== "All" && <span className="ml-2 text-xs text-muted-foreground font-normal">· {filterDivisi}</span>}
             </h3>
             <ResponsiveContainer width="100%" height={240}>
