@@ -59,17 +59,15 @@ const MONTH_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
 function buildCoreBody(): string {
   return (
     `Bot ini siap bantu kamu pantau 3 hal penting:\n\n` +
-    `📋 *Sales Funneling*\n` +
+    `1. 📋 *Sales Funneling*\n` +
     `Update & pergerakan LOP yang kamu handle, termasuk yang perlu segera ditindaklanjuti.\n\n` +
-    `📅 *Sales Activity*\n` +
+    `2. 📅 *Sales Activity*\n` +
     `Pantauan KPI activity kamu — hanya aktivitas *Dengan Pelanggan* yang dihitung KPI ya kak.\n\n` +
-    `📊 *Performansi Revenue*\n` +
+    `3. 📊 *Performansi Revenue*\n` +
     `Rekap capaian Revenue, Sustain, Scaling, dan NGTMA setiap periode.\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `⚠️ *PENTING — Mohon Perhatikan!*\n\n` +
+    `*⚠️ PENTING — Mohon Perhatikan!*\n\n` +
     `*Jangan di-mute apalagi hapus bot ini ya kak.* Bot hadir buat bantu kamu on track, pantau progress, dan ngejar target setiap periode. Tanpa notifikasi ini, kamu bisa ketinggalan info penting! 🎯\n\n` +
-    `💪 Yuk segera menangkan LOP yang ada dan terus gali prospek proyek baru — rezeki nggak akan datang sendiri, semangat kak!\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `💪 Yuk segera menangkan LOP yang ada dan terus gali prospek proyek baru — rezeki nggak akan datang sendiri, semangat kak!\n\n` +
     `Pilih menu di bawah untuk akses data:`
   );
 }
@@ -81,7 +79,7 @@ async function buildWelcomeLinked(namaLengkap: string): Promise<string> {
   return (
     `✅ *Akun berhasil terhubung!* 🎉\n\n` +
     `Hai kak *${namaLengkap}*! 👋 ${greeting}\n\n` +
-    `Selamat datang di *BOT LESA VI* — Witel Suramadu TREG 3! 🏢\n\n` +
+    `Selamat datang di *BOT LESA VI — Witel Suramadu TREG 3!* 🏢\n\n` +
     `${basaBasi}\n\n` +
     buildCoreBody()
   );
@@ -93,7 +91,7 @@ async function buildWelcomeReturning(namaLengkap: string): Promise<string> {
   const basaBasi = await generateBasaBasi(namaLengkap);
   return (
     `Hai kak *${namaLengkap}*! 👋 ${greeting}\n\n` +
-    `Selamat datang kembali di *BOT LESA VI* — Witel Suramadu TREG 3! 🏢\n\n` +
+    `Selamat datang kembali di *BOT LESA VI — Witel Suramadu TREG 3!* 🏢\n\n` +
     `${basaBasi}\n\n` +
     buildCoreBody()
   );

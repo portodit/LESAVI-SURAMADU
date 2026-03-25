@@ -44,6 +44,7 @@ export async function generateBasaBasi(namaLengkap: string): Promise<string> {
     `Bisa berupa pantun singkat, kata-kata motivasi relevan dengan hari ini, atau sapaan unik.`,
     `Sesuaikan dengan suasana hari (hari kerja/weekend, pagi/siang/malam).`,
     `Bahasa Indonesia santai dan akrab, pakai "kak" untuk menyapa.`,
+    `Jangan mulai dengan kata "Halo", "Hai", "Hi", atau sapaan serupa — langsung ke inti basa-basi.`,
     `Jangan gunakan markdown atau simbol berlebihan. Maksimal 30 kata.`,
   ].join("\n");
 
