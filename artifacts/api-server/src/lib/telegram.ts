@@ -1,7 +1,7 @@
 import { db, appSettingsTable, accountManagersTable, performanceDataTable, salesFunnelTable, salesActivityTable, telegramLogsTable, dataImportsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "./logger";
-import { generateBasaBasi, generatePerfFeedback } from "./geminiChat";
+import { generatePerfFeedback } from "./geminiChat";
 
 const MONTH_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -134,16 +134,20 @@ async function buildPerformanceMessage(
   const achNgtmaYtd   = sumYtdAch("realNgtma", "targetNgtma");
 
   const greeting = greetingByTime();
-  const fallbackFeedback = rankFeedback(firstName, rankCm, achCm);
 
-  // Run AI calls sequentially to avoid rate limiting on the proxy
-  const basaBasi = await generateBasaBasi(firstName);
-  const feedback = await generatePerfFeedback(firstName, achCm, rankCm, totalAMs, MONTH_NAMES[month], year, fallbackFeedback);
+  // Detect zero-revenue condition: all real values are 0
+  const totalReal = (p?.realReguler ?? 0) + (p?.realSustain ?? 0) + (p?.realScaling ?? 0) + (p?.realNgtma ?? 0);
+  const noRealData = !p || totalReal === 0;
+
+  // Only call AI for feedback when there's actual data (saves time on empty records)
+  const fallbackFeedback = rankFeedback(firstName, rankCm, achCm);
+  const feedback = noRealData
+    ? null
+    : await generatePerfFeedback(firstName, achCm, rankCm, totalAMs, MONTH_NAMES[month], year, fallbackFeedback);
 
   let msg = `📊 *LAPORAN PERFORMANSI ACCOUNT MANAGER*\n`;
   msg += `LESA VI — Witel Suramadu\n\n`;
   msg += `Halo kak *${firstName}*! 👋 ${greeting}\n\n`;
-  msg += `${basaBasi}\n\n`;
   msg += `Berikut rekap performansi kamu\n`;
   msg += `untuk periode *${MONTH_NAMES[month]} ${year}*:\n\n`;
 
@@ -178,7 +182,11 @@ async function buildPerformanceMessage(
   msg += `└ *Ach YTD*        : ${fmtPct(achNgtmaYtd)} ${achLabel(achNgtmaYtd)}\n\n`;
 
   msg += `💬 *Feedback Performansi:*\n\n`;
-  msg += `${feedback}\n\n`;
+  if (noRealData) {
+    msg += `_Mohon maaf kak, sepertinya data revenue kamu untuk periode ini belum tercatat di sistem. Mohon menunggu info update terkait performa bulan ini ya — kami akan segera menginformasikan jika data sudah tersedia. 🙏_\n\n`;
+  } else {
+    msg += `${feedback}\n\n`;
+  }
   msg += `📎 Untuk melihat performa lengkap kamu dan benchmarking dengan AM lain, silahkan akses link berikut:\n`;
   msg += `${getEmbedUrl()}`;
 
