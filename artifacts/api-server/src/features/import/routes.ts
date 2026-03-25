@@ -13,15 +13,14 @@ const router: IRouter = Router();
 
 // ── Helper: resolve rows from URL or base64 file ─────────────────────────────
 async function resolveRows(body: any): Promise<{ rows: any[]; sourceUrl: string | null; snapshotDate: string | null }> {
-  const { url, fileData, snapshotDate } = body;
+  const { url, fileData, snapshotDate, sheetName } = body;
 
   if (fileData) {
-    // Manual file upload (base64)
-    const rows = parseExcelFromBase64(fileData);
+    const rows = parseExcelFromBase64(fileData, sheetName || undefined);
     return { rows, sourceUrl: null, snapshotDate: snapshotDate || null };
   }
   if (url) {
-    const rows = await parseExcelFromUrl(url);
+    const rows = await parseExcelFromUrl(url, sheetName || undefined);
     const detectedDate = snapshotDate || extractSnapshotDateFromUrl(url);
     return { rows, sourceUrl: url, snapshotDate: detectedDate };
   }

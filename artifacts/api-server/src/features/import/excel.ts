@@ -4,25 +4,27 @@ export interface ParsedRow {
   [key: string]: string | number | null;
 }
 
-export async function parseExcelFromUrl(url: string): Promise<ParsedRow[]> {
+export async function parseExcelFromUrl(url: string, sheetName?: string): Promise<ParsedRow[]> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Gagal mengunduh file Excel: ${response.status} ${response.statusText}`);
   }
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  return parseExcelBuffer(buffer);
+  return parseExcelBuffer(buffer, sheetName);
 }
 
-export function parseExcelFromBase64(base64: string): ParsedRow[] {
+export function parseExcelFromBase64(base64: string, sheetName?: string): ParsedRow[] {
   const buffer = Buffer.from(base64, "base64");
-  return parseExcelBuffer(buffer);
+  return parseExcelBuffer(buffer, sheetName);
 }
 
-export function parseExcelBuffer(buffer: Buffer): ParsedRow[] {
+export function parseExcelBuffer(buffer: Buffer, sheetName?: string): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: false });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+  const resolvedSheet = sheetName && workbook.SheetNames.includes(sheetName)
+    ? sheetName
+    : workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[resolvedSheet];
 
   // Smart parsing: detect title row (row 0 has only 1 non-null cell, rest null)
   const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, raw: false }) as any[][];
