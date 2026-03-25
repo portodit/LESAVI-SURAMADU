@@ -41,23 +41,23 @@ export default function Login() {
 
         {/* Logo */}
         <div className="mb-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <img
               src={`${import.meta.env.BASE_URL}logo-tr3.png`}
               alt="Logo TR3"
-              className="h-9 object-contain"
+              className="h-14 object-contain"
             />
-            <div className="leading-none">
-              <p className="text-[10px] font-black tracking-[0.2em] text-[#cc0000] uppercase">LESA VI · WITEL SURAMADU</p>
-              <p className="text-base font-display font-bold text-gray-900 tracking-tight">AM Performance Dashboard</p>
+            <div className="leading-tight">
+              <p className="text-xs font-black tracking-[0.18em] text-[#cc0000] uppercase">LESA VI · WITEL SURAMADU</p>
+              <p className="text-lg font-display font-black text-gray-900 tracking-tight leading-snug">AM Performance Dashboard</p>
             </div>
           </div>
         </div>
 
         {/* Heading */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-gray-900 mb-1.5">Masuk</h1>
-          <p className="text-sm text-gray-500">Selamat datang kembali. Masukkan kredensial Anda.</p>
+          <h1 className="text-3xl font-display font-bold text-gray-900 mb-1.5">Masuk ke Dashboard</h1>
+          <p className="text-sm text-gray-500">Selamat datang kembali. Masukkan kredensial Anda untuk melanjutkan.</p>
         </div>
 
         {/* Form */}
@@ -141,9 +141,9 @@ export default function Login() {
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
 
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
+        {/* Red overlay */}
+        <div className="absolute inset-0 bg-[#cc0000]/70 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
 
         {/* Top badge */}
         <div className="absolute top-8 left-8 right-8 flex items-center justify-between">
