@@ -204,8 +204,7 @@ async function importFunnelSheet(
 
     // GSheets nationwide funnel: witel=SURAMADU + is_report=Y filter applied in cleanFunnelRows.
     // Then restrict to active master AMs only (aktif=true) to match Power BI's AM scope.
-    // Override reportDate with the snapshot date from the sheet name so the year filter works
-    // correctly (GSheets report_date = LOP creation date, not the reporting period).
+    // Keep original report_date from GSheets — Power BI tahun slicer filters by report_date year.
     const cleaned = cleanFunnelRows(rows, { skipDivisiFilter: true, strictIsReport: true });
     if (cleaned.length === 0) {
       return { sheetName: sheet.title, date, period, type: "funnel", status: "error", message: `Tidak ada baris valid setelah cleaning dari ${rows.length} baris mentah` };

@@ -168,13 +168,15 @@ export interface CleanedFunnelRow {
   createdDate: string;
 }
 
-export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: boolean; strictIsReport?: boolean }): CleanedFunnelRow[] {
+export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: boolean; strictIsReport?: boolean; skipIsReportFilter?: boolean; skipWitelFilter?: boolean }): CleanedFunnelRow[] {
   const passed: CleanedFunnelRow[] = [];
 
   for (const r of rows) {
     // ── STEP 1: Filter witel = SURAMADU
+    // skipWitelFilter: include all LOPs for the AM regardless of customer witel
+    // (AMs may manage projects in other witel areas — e.g. NI MADE handles PLN NPS in Maluku)
     const witel = cleanUpper(r.witel);
-    if (!witel.includes("SURAMADU")) continue;
+    if (!opts?.skipWitelFilter && !witel.includes("SURAMADU")) continue;
 
     // ── STEP 2: Filter divisi = DPS or DSS
     // NOTE: In GSheets nationwide funnel, divisi = business segment (RSMES etc), NOT AM divisi.
@@ -193,17 +195,19 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
     // ── STEP 4: Reject garbage NIKs (too short or clearly invalid)
     if (nikAm.length < 4 || Number(nikAm) > 9999999) continue;
 
-    // ── STEP 5: Filter is_report = 'Y' (hidden Power BI filter — only valid/approved LOPs)
-    // Column may be named is_report, IS_REPORT, or similar
+    // ── STEP 5: Filter is_report = 'Y'
+    // skipIsReportFilter: skip filter entirely (Power BI behaviour — show all LOPs regardless of is_report)
     // strictIsReport: reject rows where is_report is null/empty (treat as not-Y)
-    const isReportRaw = r.is_report ?? r.IS_REPORT ?? r.isReport ?? null;
-    if (opts?.strictIsReport) {
-      const isReportStr = isReportRaw !== null && isReportRaw !== undefined && isReportRaw !== ""
-        ? String(isReportRaw).trim().toUpperCase() : "";
-      if (isReportStr !== "Y" && isReportStr !== "1" && isReportStr !== "YES" && isReportStr !== "TRUE") continue;
-    } else if (isReportRaw !== null && isReportRaw !== undefined && isReportRaw !== "") {
-      const isReportStr = String(isReportRaw).trim().toUpperCase();
-      if (isReportStr !== "Y" && isReportStr !== "1" && isReportStr !== "YES" && isReportStr !== "TRUE") continue;
+    if (!opts?.skipIsReportFilter) {
+      const isReportRaw = r.is_report ?? r.IS_REPORT ?? r.isReport ?? null;
+      if (opts?.strictIsReport) {
+        const isReportStr = isReportRaw !== null && isReportRaw !== undefined && isReportRaw !== ""
+          ? String(isReportRaw).trim().toUpperCase() : "";
+        if (isReportStr !== "Y" && isReportStr !== "1" && isReportStr !== "YES" && isReportStr !== "TRUE") continue;
+      } else if (isReportRaw !== null && isReportRaw !== undefined && isReportRaw !== "") {
+        const isReportStr = String(isReportRaw).trim().toUpperCase();
+        if (isReportStr !== "Y" && isReportStr !== "1" && isReportStr !== "YES" && isReportStr !== "TRUE") continue;
+      }
     }
 
     // ── STEP 6: Fix AM name — RENI WULANSARI → HAVEA PERTIWI (unconditional)
