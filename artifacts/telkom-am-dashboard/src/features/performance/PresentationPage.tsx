@@ -652,7 +652,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const [filterYear,setFilterYear] = useState("2026");
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
   const [importId,setImportId] = useState<number|null>(null);
-  const [filterDivisi,setFilterDivisi] = useState("all");
+  const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
   const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set());
   const [filterAm,setFilterAm] = useState<Set<string>>(new Set());
@@ -696,10 +696,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
-    if(filterDivisi!=="all") p.set("divisi",filterDivisi);
     p.set("tahun",filterYear);
     return p.toString();
-  },[importId,filterDivisi,filterYear]);
+  },[importId,filterYear]);
 
   const {data,isLoading} = useQuery<any>({
     queryKey:["funnel-data-pres",funnelParams],
@@ -755,9 +754,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[filteredLops]);
 
   useEffect(()=>{
-    const t=filterDivisi==="all"?"HO / FULL HO":filterDivisi==="DPS"?"HO":"FULL HO";
-    onTitleChange?.(t);
-  },[filterDivisi,onTitleChange]);
+    onTitleChange?.(filterMode==="ho"?"HO":"FULL HO");
+  },[filterMode,onTitleChange]);
 
   const lastAutoExpandIdFS = useRef<number|null>(undefined as any);
   useEffect(()=>{
@@ -804,8 +802,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   const effectiveTargetHo=targetHoOverride?parseFloat(targetHoOverride)*1e9:(data?.targetHo||0);
   const effectiveTargetFullHo=targetFullHoOverride?parseFloat(targetFullHoOverride)*1e9:(data?.targetFullHo||0);
-  const pct=effectiveTargetFullHo?((data?.realFullHo||0)/effectiveTargetFullHo)*100:0;
-  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterDivisi!=="all";
+  const activeTarget=filterMode==="ho"?effectiveTargetHo:effectiveTargetFullHo;
+  const pct=activeTarget?((data?.realFullHo||0)/activeTarget)*100:0;
+  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0;
   const lopBadge=filteredLops.length!==(data?.totalLop||0)?`${filteredLops.length} / ${data?.totalLop||0}`:filteredLops.length.toLocaleString("id-ID");
 
   const navbarFilterBar = (
@@ -819,9 +818,21 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
         className="w-44 shrink-0"/>
       <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
-      <FSSelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
-        options={[{value:"all",label:"Semua Divisi"},{value:"DPS",label:"DPS"},{value:"DSS",label:"DSS"}]}
-        className="w-32 shrink-0"/>
+      {/* HO / Full HO toggle */}
+      <div className="flex flex-col gap-1 shrink-0">
+        <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target</label>
+        <div className="flex h-9 border border-border rounded-lg overflow-hidden">
+          <button onClick={()=>setFilterMode("ho")}
+            className={cn("px-3 text-xs font-black transition-colors",filterMode==="ho"?"bg-foreground text-background":"bg-secondary/50 text-muted-foreground hover:bg-secondary")}>
+            HO
+          </button>
+          <div className="w-px bg-border"/>
+          <button onClick={()=>setFilterMode("fullho")}
+            className={cn("px-3 text-xs font-black transition-colors whitespace-nowrap",filterMode==="fullho"?"bg-foreground text-background":"bg-secondary/50 text-muted-foreground hover:bg-secondary")}>
+            Full HO
+          </button>
+        </div>
+      </div>
       {kontrakOptions.length>0&&(
         <FSCheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
           placeholder="Semua kontrak" summaryLabel="kontrak" className="w-36 shrink-0"/>
@@ -831,7 +842,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {hasActiveFilter&&(
         <div className="flex flex-col gap-1 shrink-0">
           <label className="text-xs font-bold text-transparent uppercase">.</label>
-          <button onClick={()=>{setFilterStatus(new Set());setFilterKontrak(new Set());setFilterDivisi("all");}}
+          <button onClick={()=>{setFilterStatus(new Set());setFilterKontrak(new Set());}}
             className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
             <X className="w-3.5 h-3.5"/> Reset
           </button>
@@ -860,8 +871,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <FSFaseBarChart data={data}/>
             </div>
             <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-              <h3 className="text-sm font-display font-semibold text-foreground mb-2">Capaian Real vs Target Full HO</h3>
-              <FSGauge pct={pct} targetHo={effectiveTargetHo} targetFullHo={effectiveTargetFullHo} real={data?.realFullHo||0} mode="fullho"/>
+              <h3 className="text-sm font-display font-semibold text-foreground mb-2">Capaian Real vs Target {filterMode==="ho"?"HO":"Full HO"}</h3>
+              <FSGauge pct={pct} targetHo={effectiveTargetHo} targetFullHo={effectiveTargetFullHo} real={data?.realFullHo||0} mode={filterMode}/>
             </div>
           </div>
           {/* Row 2: Ringkasan */}
@@ -970,7 +981,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                                 <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                                 <span className="text-sm font-black font-mono" style={{color:c?.text}}>{phase}</span>
                                 <span className="text-sm font-bold text-slate-700">{FS_PHASE_LABELS[phase]}</span>
-                                <span className="text-xs font-bold text-pink-600 bg-pink-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
+                                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                               </div>
                             </td>
                             <td colSpan={3} className="px-3 py-2.5"/>
