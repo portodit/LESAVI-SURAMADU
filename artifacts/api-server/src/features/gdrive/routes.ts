@@ -244,7 +244,10 @@ function safeStr(val: any): string | null {
 }
 
 async function importFunnelRows(rows: any[], sourceUrl: string, period: string | null, snapshotDateFull: string, fileName: string) {
-  const cleaned = cleanFunnelRows(rows);
+  const cleaned = cleanFunnelRows(rows, {
+    pembuatOnly: true,       // Power BI: gunakan HANYA nik_pembuat_lop, skip nik_handling
+    skipIsReportFilter: true, // Power BI: tidak ada filter is_report
+  });
   const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, divisi: accountManagersTable.divisi }).from(accountManagersTable);
 
   function findAm(nikRaw: string, namaRaw: string) {

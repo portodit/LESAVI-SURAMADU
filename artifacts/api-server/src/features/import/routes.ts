@@ -289,7 +289,10 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
   }
 
   // ── Apply cleaning pipeline (sesuai Power Query di Power BI)
-  const cleaned = cleanFunnelRows(rows);
+  const cleaned = cleanFunnelRows(rows, {
+    pembuatOnly: true,        // Power BI: gunakan HANYA nik_pembuat_lop, skip nik_handling
+    skipIsReportFilter: true, // Power BI: tidak ada filter is_report
+  });
 
   // ── STEP 8: Filter only LOPs belonging to active account_managers (the authorized AMs)
   const activeAms = await db.select({ nik: accountManagersTable.nik }).from(accountManagersTable).where(eq(accountManagersTable.aktif, true));
