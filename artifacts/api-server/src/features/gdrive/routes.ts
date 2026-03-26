@@ -31,20 +31,34 @@ async function listDriveFiles(folderId: string, apiKey: string) {
   return (data.files || []) as Array<{ id: string; name: string; mimeType: string; modifiedTime: string; size?: string }>;
 }
 
-async function downloadDriveFile(fileId: string, apiKey: string): Promise<Buffer> {
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Gagal download file dari Drive: ${res.status} ${res.statusText}`);
-  const ab = await res.arrayBuffer();
-  return Buffer.from(ab);
-}
+const GOOGLE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-function isExcelFile(name: string, mimeType: string): boolean {
+function isSupportedFile(name: string, mimeType: string): boolean {
   return (
     name.endsWith(".xlsx") || name.endsWith(".xls") ||
-    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    mimeType === "application/vnd.ms-excel"
+    mimeType === XLSX_MIME ||
+    mimeType === "application/vnd.ms-excel" ||
+    mimeType === GOOGLE_SHEET_MIME
   );
+}
+
+async function downloadDriveFile(fileId: string, mimeType: string, apiKey: string): Promise<Buffer> {
+  let url: string;
+  if (mimeType === GOOGLE_SHEET_MIME) {
+    // Google Sheets native — export sebagai XLSX
+    url = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(XLSX_MIME)}&key=${apiKey}`;
+  } else {
+    // File biasa (Excel) — download langsung
+    url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+  }
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gagal download file dari Drive: ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+  }
+  const ab = await res.arrayBuffer();
+  return Buffer.from(ab);
 }
 
 // ── GET /api/gdrive/list?type=performance ────────────────────────────────────
@@ -65,7 +79,7 @@ router.get("/gdrive/list", requireAuth, async (req, res): Promise<void> => {
 
   try {
     const files = await listDriveFiles(folderId, apiKey);
-    const excelFiles = files.filter(f => isExcelFile(f.name, f.mimeType));
+    const excelFiles = files.filter(f => isSupportedFile(f.name, f.mimeType));
     res.json({ files: excelFiles, folderId, folderUrl });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -91,14 +105,14 @@ router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
 
   try {
     const files = await listDriveFiles(folderId, apiKey);
-    const excelFiles = files.filter(f => isExcelFile(f.name, f.mimeType));
-    if (excelFiles.length === 0) { res.status(404).json({ error: "Tidak ada file Excel di folder ini" }); return; }
+    const excelFiles = files.filter(f => isSupportedFile(f.name, f.mimeType));
+    if (excelFiles.length === 0) { res.status(404).json({ error: "Tidak ada file Excel/Google Sheets di folder ini" }); return; }
 
     const targetFile = explicitFileId
       ? excelFiles.find(f => f.id === explicitFileId) || excelFiles[0]
       : excelFiles[0];
 
-    const buffer = await downloadDriveFile(targetFile.id, apiKey);
+    const buffer = await downloadDriveFile(targetFile.id, targetFile.mimeType, apiKey);
     const rows = parseExcelBuffer(buffer);
     if (rows.length === 0) { res.status(400).json({ error: "File Excel kosong atau tidak dapat dibaca" }); return; }
 
