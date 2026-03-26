@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { ChevronDown, ChevronLeft, ChevronRight, Camera, X, BarChart2, Filter, Activity, Check, Maximize2, Minimize2, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Camera, X, BarChart2, Filter, Activity, Check, Maximize2, Minimize2, Expand, Search } from "lucide-react";
 
 const SLIDES = [
   { label: "Visualisasi Performa", icon: BarChart2 },
@@ -294,22 +294,33 @@ function FSSelectDropdown({ label, value, onChange, options, disabled, className
   options:{value:string;label:string}[]; disabled?:boolean; className?:string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top:0, left:0, minW:0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   useEffect(()=>{
-    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    const h=(e:MouseEvent)=>{
+      if(triggerRef.current&&!triggerRef.current.contains(e.target as Node)&&
+         dropRef.current&&!dropRef.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
   },[]);
+  const toggle=()=>{
+    if(disabled) return;
+    if(triggerRef.current){const r=triggerRef.current.getBoundingClientRect();setPos({top:r.bottom+4,left:r.left,minW:r.width});}
+    setOpen(o=>!o);
+  };
   const current = options.find(o=>o.value===value);
   return (
-    <div className={cn("flex flex-col gap-1 relative",className)} ref={ref}>
+    <div className={cn("flex flex-col gap-1",className)} ref={triggerRef}>
       {label&&<label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">{label}</label>}
-      <button type="button" onClick={()=>!disabled&&setOpen(o=>!o)} disabled={disabled}
+      <button type="button" onClick={toggle} disabled={disabled}
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors text-left",open&&"border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{current?.label??value}</span>
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",open&&"rotate-180")}/>
       </button>
-      {open&&(
-        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[160px] max-h-64 overflow-y-auto py-1">
+      {open&&createPortal(
+        <div ref={dropRef} style={{position:"fixed",top:pos.top,left:pos.left,minWidth:pos.minW,zIndex:9999}}
+          className="bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto py-1">
           {options.map(opt=>(
             <button key={opt.value} onClick={()=>{onChange(opt.value);setOpen(false);}}
               className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2",
@@ -319,7 +330,8 @@ function FSSelectDropdown({ label, value, onChange, options, disabled, className
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -330,22 +342,31 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
   placeholder?:string; labelFn?:(v:string)=>string; summaryLabel?:string; className?:string;
 }) {
   const [open,setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos,setPos] = useState({top:0,left:0});
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const getLabel=(v:string)=>labelFn?labelFn(v):v;
   useEffect(()=>{
-    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    const h=(e:MouseEvent)=>{
+      if(triggerRef.current&&!triggerRef.current.contains(e.target as Node)&&
+         dropRef.current&&!dropRef.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
   },[]);
-  const toggle=(item:string)=>{const n=new Set(selected);if(n.has(item))n.delete(item);else n.add(item);onChange(n);};
+  const toggleItem=(item:string)=>{const n=new Set(selected);if(n.has(item))n.delete(item);else n.add(item);onChange(n);};
+  const toggleOpen=()=>{
+    if(triggerRef.current){const r=triggerRef.current.getBoundingClientRect();setPos({top:r.bottom+4,left:r.left});}
+    setOpen(o=>!o);
+  };
   const unit=summaryLabel??"item";
   const displayText=selected.size===0?(placeholder??"Semua")
     :selected.size===options.length?`Semua ${unit}`
     :selected.size===1?getLabel([...selected][0])
     :`${selected.size} ${unit} dipilih`;
   return (
-    <div className={cn("flex flex-col gap-1 relative",className)} ref={ref}>
+    <div className={cn("flex flex-col gap-1",className)} ref={triggerRef}>
       <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">{label}</label>
-      <button type="button" onClick={()=>setOpen(o=>!o)} disabled={options.length===0}
+      <button type="button" onClick={toggleOpen} disabled={options.length===0}
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors text-left",open&&"border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
         {selected.size>0&&selected.size<options.length&&(
@@ -353,8 +374,9 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
         )}
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",open&&"rotate-180")}/>
       </button>
-      {open&&(
-        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl min-w-[200px] max-w-[260px] overflow-hidden">
+      {open&&createPortal(
+        <div ref={dropRef} style={{position:"fixed",top:pos.top,left:pos.left,zIndex:9999}}
+          className="bg-card border border-border rounded-xl shadow-xl min-w-[200px] max-w-[260px] overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
             <div className="flex gap-1.5">
@@ -365,7 +387,7 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
             {options.map(opt=>(
-              <button key={opt} onClick={()=>toggle(opt)}
+              <button key={opt} onClick={()=>toggleItem(opt)}
                 className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary flex items-center gap-2 transition-colors",
                   selected.has(opt)?"font-semibold text-primary bg-primary/5":"text-foreground")}>
                 <span className={cn("w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center",selected.has(opt)?"bg-primary border-primary":"border-border")}>
@@ -375,7 +397,8 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -631,6 +654,7 @@ function FunnelSlide() {
   const [search,setSearch] = useState("");
   const [expandedAm,setExpandedAm] = useState<Record<string,boolean>>({});
   const [expandedPhase,setExpandedPhase] = useState<Record<string,boolean>>({});
+  const [allExpanded,setAllExpanded] = useState(false);
   const [targetHoOverride,setTargetHoOverride] = useState("");
   const [targetFullHoOverride,setTargetFullHoOverride] = useState("");
 
@@ -724,17 +748,35 @@ function FunnelSlide() {
     });
   },[filteredLops]);
 
-  function toggleAmRow(key:string){
-    const nowExpanding=!expandedAm[key];
-    setExpandedAm(p=>({...p,[key]:nowExpanding}));
-    if(nowExpanding){
-      const amEntry=groupedByAm.find(a=>(a.nikAm||a.namaAm)===key);
-      if(amEntry){
-        const pk:Record<string,boolean>={};
-        for(const[ph] of amEntry.phases) pk[`${key}|${ph}`]=true;
-        setExpandedPhase(p=>({...p,...pk}));
-      }
+  // Auto-expand all rows when data first loads or snapshot changes
+  const lastAutoExpandIdFS = useRef<number|null>(undefined as any);
+  useEffect(()=>{
+    if(groupedByAm.length===0) return;
+    if(importId===lastAutoExpandIdFS.current) return;
+    lastAutoExpandIdFS.current=importId;
+    const ak:Record<string,boolean>={},pk:Record<string,boolean>={};
+    for(const am of groupedByAm){
+      ak[am.nikAm||am.namaAm]=true;
+      for(const[ph] of am.phases) pk[`${am.nikAm||am.namaAm}|${ph}`]=true;
     }
+    setExpandedAm(ak); setExpandedPhase(pk); setAllExpanded(true);
+  },[groupedByAm,importId]);
+
+  function handleToggleAll(){
+    const next=!allExpanded;
+    setAllExpanded(next);
+    if(next){
+      const ak:Record<string,boolean>={},pk:Record<string,boolean>={};
+      for(const am of groupedByAm){
+        ak[am.nikAm||am.namaAm]=true;
+        for(const[ph] of am.phases) pk[`${am.nikAm||am.namaAm}|${ph}`]=true;
+      }
+      setExpandedAm(ak); setExpandedPhase(pk);
+    } else { setExpandedAm({}); setExpandedPhase({}); }
+  }
+
+  function toggleAmRow(key:string){
+    setExpandedAm(p=>({...p,[key]:!p[key]}));
   }
   function togglePhaseRow(key:string){setExpandedPhase(p=>({...p,[key]:!p[key]}));}
 
@@ -869,7 +911,12 @@ function FunnelSlide() {
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 rounded-tl-lg w-8"></th>
+                <th className="px-4 py-3 rounded-tl-lg w-8">
+                  <button onClick={handleToggleAll} title={allExpanded?"Collapse semua":"Expand semua"}
+                    className="text-white/70 hover:text-white transition-colors">
+                    {allExpanded?<Minimize2 className="w-3.5 h-3.5"/>:<Expand className="w-3.5 h-3.5"/>}
+                  </button>
+                </th>
                 <th className="px-4 py-3 min-w-[200px]">AM / Fase / Proyek</th>
                 <th className="px-3 py-3 whitespace-nowrap">Kat. Kontrak</th>
                 <th className="px-3 py-3 font-mono whitespace-nowrap">LOP ID</th>
