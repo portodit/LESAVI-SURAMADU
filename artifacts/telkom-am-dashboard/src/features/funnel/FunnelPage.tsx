@@ -973,7 +973,7 @@ export default function FunnelPage() {
                               : <>
                                   <td colSpan={3} className="px-3 py-2.5" />
                                   <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                                    <span className="text-sm font-black text-red-800 tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
+                                    <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
                                   </td>
                                 </>
                             }
@@ -997,10 +997,10 @@ export default function FunnelPage() {
                               ))}
                               {/* Phase total row — shown below all LOPs */}
                               <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                                <td colSpan={4} className="px-4 py-1.5 pl-16">
-                                  <span className="text-xs font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
+                                <td colSpan={4} className="px-4 py-2 pl-16">
+                                  <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
                                 </td>
-                                <td className="px-4 py-1.5 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-sm">
+                                <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">
                                   {formatRupiahFull(phaseTotal)}
                                 </td>
                               </tr>
@@ -1014,7 +1014,7 @@ export default function FunnelPage() {
                     {amExpanded && (
                       <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: `2px solid ${ring}` } : {}}>
                         <td colSpan={4} className="px-4 py-2.5 pl-10">
-                          <span className="text-sm font-black text-slate-900 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span>
+                          <span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span>
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">
                           {formatRupiahFull(amTotal)}
