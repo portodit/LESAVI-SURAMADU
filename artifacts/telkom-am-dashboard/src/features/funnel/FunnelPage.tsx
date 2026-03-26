@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/shared/lib/utils";
 import { ChevronRight, ChevronDown, Search, X, TrendingUp, Expand, Minimize2 } from "lucide-react";
 
@@ -362,7 +364,12 @@ export default function FunnelPage() {
   const snapshotOptions = useMemo(() =>
     [...snapshots]
       .sort((a, b) => b.id - a.id)
-      .map(s => ({ value: String(s.id), label: `${periodLabel(s.period)} (${s.rowsImported.toLocaleString()} LOP)` })),
+      .map(s => ({
+        value: String(s.id),
+        label: s.createdAt
+          ? format(new Date(s.createdAt), "d MMM yyyy", { locale: idLocale })
+          : periodLabel(s.period),
+      })),
     [snapshots]
   );
 
@@ -545,8 +552,8 @@ export default function FunnelPage() {
   }
 
   const snapshotDefaultPeriod = selectedSnapshot?.period.slice(0, 4) ?? "2026";
-  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterPeriod !== snapshotDefaultPeriod;
-  const hasDetailFilter = filterAm.size > 0 || filterKontrak.size > 0;
+  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterPeriod !== snapshotDefaultPeriod || filterKontrak.size > 0;
+  const hasDetailFilter = filterAm.size > 0;
   const lopBadge = filteredLops.length !== periodStats.totalLop
     ? `${filteredLops.length} / ${periodStats.totalLop}` : filteredLops.length.toLocaleString("id-ID");
 
@@ -578,6 +585,8 @@ export default function FunnelPage() {
           <SelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
             options={[{ value: "all", label: "Semua Divisi" }, { value: "DPS", label: "DPS" }, { value: "DSS", label: "DSS" }]}
             className="w-32 shrink-0" />
+          <CheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
+            placeholder="Semua kontrak" summaryLabel="kontrak" className="w-40 shrink-0" />
           <CheckboxDropdown label="Status Funnel" options={PHASES} selected={filterStatus} onChange={setFilterStatus}
             placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="w-36 shrink-0" />
           <SelectDropdown label="Target" value={filterTarget} onChange={v => setFilterTarget(v as "ho" | "fullho")}
@@ -588,7 +597,7 @@ export default function FunnelPage() {
               <label className="text-[10px] font-bold text-transparent uppercase">.</label>
               <button onClick={() => {
                 setFilterStatus(new Set()); setFilterDivisi("all");
-                setFilterPeriod(snapshotDefaultPeriod);
+                setFilterPeriod(snapshotDefaultPeriod); setFilterKontrak(new Set());
               }}
                 className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
                 <X className="w-3.5 h-3.5" /> Reset
@@ -634,7 +643,15 @@ export default function FunnelPage() {
             Detail Funnel per AM
             <span className="bg-foreground text-background text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">{lopBadge}</span>
           </h3>
-          <div className="flex items-center gap-2 flex-1 justify-end flex-wrap">
+          <div className="flex items-end gap-2 flex-1 justify-end flex-wrap">
+            <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
+              placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
+            {hasDetailFilter && (
+              <button onClick={() => setFilterAm(new Set())}
+                className="h-9 flex items-center gap-1 px-2.5 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <input type="text" placeholder="Cari proyek / pelanggan / LOP ID…" value={search}
@@ -648,22 +665,6 @@ export default function FunnelPage() {
               {allExpanded ? "Collapse Semua" : "Expand Semua AM"}
             </button>
           </div>
-        </div>
-        {/* Detail-section filters: Nama AM + Kategori Kontrak */}
-        <div className="px-4 py-2 border-b border-border bg-secondary/10 flex items-end gap-2 flex-wrap">
-          <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
-            placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
-          <CheckboxDropdown label="Kategori Kontrak" options={kontrakOptions.length > 0 ? kontrakOptions : []} selected={filterKontrak} onChange={setFilterKontrak}
-            placeholder="Semua kontrak" summaryLabel="kontrak" className="w-40 shrink-0" />
-          {hasDetailFilter && (
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-transparent uppercase">.</label>
-              <button onClick={() => { setFilterAm(new Set()); setFilterKontrak(new Set()); }}
-                className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
-                <X className="w-3.5 h-3.5" /> Reset
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="p-3">
