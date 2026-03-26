@@ -570,9 +570,19 @@ function PhaseBadge({ phase, showLabel = false }: { phase: string; showLabel?: b
 
 // ─── Kontrak Badge ────────────────────────────────────────────────────────────
 
+function kategoriColor(k: string | null): string {
+  if (!k) return "bg-slate-100 text-slate-500 border-slate-200";
+  const v = k.toLowerCase();
+  if (v.includes("new gtma")) return "bg-blue-100 text-blue-800 border-blue-200";
+  if (v.includes("gtma")) return "bg-cyan-100 text-cyan-800 border-cyan-200";
+  if (v.includes("own channel")) return "bg-violet-100 text-violet-800 border-violet-200";
+  if (v.includes("new")) return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  if (v.includes("uncategorized") || v.includes("uncat")) return "bg-slate-100 text-slate-600 border-slate-200";
+  return "bg-amber-100 text-amber-800 border-amber-200";
+}
 function KontrakBadge({ k }: { k: string | null }) {
   if (!k) return <span className="text-muted-foreground text-xs">–</span>;
-  return <span className="inline-block px-2 py-0.5 rounded text-[11px] bg-secondary border border-border text-muted-foreground font-medium">{k}</span>;
+  return <span className={`inline-block px-2 py-0.5 rounded text-[11px] border font-bold ${kategoriColor(k)}`}>{k}</span>;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -720,10 +730,11 @@ export default function FunnelPage() {
     for (const l of filteredLops) {
       const key = l.nikAm || l.namaAm || "Unknown";
       if (!amMap.has(key)) amMap.set(key, { namaAm: l.namaAm || key, nikAm: l.nikAm || "", divisi: l.divisi || "", phases: new Map() });
-      const amEntry = amMap.get(key)!;
+      const e = amMap.get(key)!;
+      if (!e.divisi && l.divisi) e.divisi = l.divisi;
       const phase = l.statusF || "Unknown";
-      if (!amEntry.phases.has(phase)) amEntry.phases.set(phase, []);
-      amEntry.phases.get(phase)!.push(l);
+      if (!e.phases.has(phase)) e.phases.set(phase, []);
+      e.phases.get(phase)!.push(l);
     }
     return Array.from(amMap.values()).sort((a, b) => {
       const totA = Array.from(a.phases.values()).flat().reduce((s, l) => s + (l.nilaiProyek || 0), 0);
@@ -732,28 +743,38 @@ export default function FunnelPage() {
     });
   }, [filteredLops]);
 
-  // ── Split-mode per-divisi stats ──────────────────────────────────────────────
-  const dpsGrouped = useMemo(() => groupedByAm.filter(am => am.divisi === "DPS"), [groupedByAm]);
-  const dssGrouped = useMemo(() => groupedByAm.filter(am => am.divisi === "DSS"), [groupedByAm]);
+  // Resolve divisi dari LOPs dalam phases jika AM-level divisi kosong
+  function resolveAmDivisi(am: { divisi: string; phases: Map<string, LopRow[]> }): string {
+    if (am.divisi) return am.divisi;
+    const counts: Record<string, number> = {};
+    for (const lops of am.phases.values())
+      for (const l of lops) if (l.divisi) counts[l.divisi] = (counts[l.divisi] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  }
 
-  function computeDivisiStats(divisiKey: string) {
-    const lops = filteredLops.filter(l => l.divisi === divisiKey);
+  // ── Split-mode per-divisi stats ──────────────────────────────────────────────
+  const dpsGrouped = useMemo(() => groupedByAm.filter(am => resolveAmDivisi(am) === "DPS"), [groupedByAm]);
+  const dssGrouped = useMemo(() => groupedByAm.filter(am => resolveAmDivisi(am) === "DSS"), [groupedByAm]);
+
+  function computeDivisiStatsFromGroup(grp: typeof dpsGrouped) {
+    const allLops: LopRow[] = [];
+    for (const am of grp) for (const lops of am.phases.values()) allLops.push(...lops);
     const byStatusMap: Record<string, { status: string; count: number; totalNilai: number }> = {};
-    for (const l of lops) {
+    for (const l of allLops) {
       const s = l.statusF || "Unknown";
       if (!byStatusMap[s]) byStatusMap[s] = { status: s, count: 0, totalNilai: 0 };
       byStatusMap[s].count++;
       byStatusMap[s].totalNilai += l.nilaiProyek || 0;
     }
     return {
-      totalLop: lops.length,
-      totalNilai: lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0),
-      pelangganCount: new Set(lops.map(l => l.pelanggan).filter(Boolean)).size,
+      totalLop: allLops.length,
+      totalNilai: allLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0),
+      pelangganCount: new Set(allLops.map(l => l.pelanggan).filter(Boolean)).size,
       byStatus: Object.values(byStatusMap),
     };
   }
-  const dpsStats = useMemo(() => computeDivisiStats("DPS"), [filteredLops]);
-  const dssStats = useMemo(() => computeDivisiStats("DSS"), [filteredLops]);
+  const dpsStats = useMemo(() => computeDivisiStatsFromGroup(dpsGrouped), [dpsGrouped]);
+  const dssStats = useMemo(() => computeDivisiStatsFromGroup(dssGrouped), [dssGrouped]);
 
   const lastAutoExpandId = useRef<number | null>(undefined as any);
   useEffect(() => {
@@ -818,7 +839,7 @@ export default function FunnelPage() {
               <div className="flex items-center gap-2">
                 <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", amExpanded && "rotate-90")} />
                 <span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0", am.divisi === "DPS" ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700")}>{am.divisi}</span>
+                {(()=>{const d=resolveAmDivisi(am);return d?<span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",d==="DPS"?"bg-blue-100 text-blue-700":d==="DSS"?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-600")}>{d}</span>:null;})()}
                 <button type="button" onClick={e => { e.stopPropagation(); handleAmExpandIcon(amKey, orderedPhases); }}
                   className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
                   title={amExpanded ? "Collapse semua proyek" : "Expand semua proyek"}>
@@ -1049,7 +1070,7 @@ export default function FunnelPage() {
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 rounded-tl-lg min-w-[260px]">AM / Fase / Proyek</th>
+                <th className="px-4 py-3 rounded-tl-lg min-w-[320px]">AM / Fase / Proyek</th>
                 <th className="px-3 py-3 whitespace-nowrap w-28">KATEGORI</th>
                 <th className="px-3 py-3 font-mono whitespace-nowrap w-28">LOP ID</th>
                 <th className="px-3 py-3 min-w-[220px]">Pelanggan</th>
@@ -1067,13 +1088,13 @@ export default function FunnelPage() {
 
       {/* ── SPLIT MODE: DPS | DSS per-divisi panels ─────────────────────────── */}
       {viewMode === "split" && (
+        <div className="flex flex-col gap-4">
+        {/* Row 1: Stats + Chart */}
         <div className="grid grid-cols-2 gap-4">
           {(["DPS", "DSS"] as const).map(div => {
             const st = div === "DPS" ? dpsStats : dssStats;
-            const grp = div === "DPS" ? dpsGrouped : dssGrouped;
             const isDps = div === "DPS";
             const accent = isDps ? "#3b82f6" : "#10b981";
-            const headerBg = isDps ? "bg-blue-700" : "bg-emerald-700";
             const textAccent = isDps ? "text-blue-700" : "text-emerald-700";
             const bgAccent = isDps ? "bg-blue-50/60" : "bg-emerald-50/60";
             const borderTop = isDps ? "border-t-[3px] border-blue-500" : "border-t-[3px] border-emerald-500";
@@ -1083,13 +1104,15 @@ export default function FunnelPage() {
                 <div className={`px-4 py-3 border-b border-border ${bgAccent} flex items-center justify-between gap-3 flex-wrap`}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-3 h-3 rounded-full shadow-sm" style={{ background: accent }} />
-                    <span className={`text-base font-black uppercase tracking-wide ${textAccent}`}>{div}</span>
-                    <span className="text-xs text-muted-foreground font-medium">{isDps ? "Enterprise Service" : "Solution & System"}</span>
+                    <div>
+                      <div className={`text-2xl font-black uppercase tracking-widest text-foreground leading-none`}>{div}</div>
+                      <div className="text-sm font-black text-foreground/80 leading-tight mt-0.5">{isDps ? "Private Service" : "State Service"}</div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-5">
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Total LOP</div>
-                      <div className={`text-2xl font-black tabular-nums leading-tight ${textAccent}`}>{st.totalLop}</div>
+                      <div className={`text-3xl font-black tabular-nums leading-tight ${textAccent}`}>{st.totalLop}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Total Nilai</div>
@@ -1101,15 +1124,28 @@ export default function FunnelPage() {
                     </div>
                   </div>
                 </div>
-
                 {/* Phase Bar Chart */}
-                <div className="px-4 py-3 border-b border-border">
+                <div className="px-4 py-3">
                   <FaseBarChart data={data ? { ...data, byStatus: st.byStatus } : undefined} />
                 </div>
+              </div>
+            );
+          })}
+        </div>
 
+        {/* Row 2: Tabel AM (card terpisah) */}
+        <div className="grid grid-cols-2 gap-4">
+          {(["DPS", "DSS"] as const).map(div => {
+            const st = div === "DPS" ? dpsStats : dssStats;
+            const grp = div === "DPS" ? dpsGrouped : dssGrouped;
+            const isDps = div === "DPS";
+            const headerBg = isDps ? "bg-blue-700" : "bg-emerald-700";
+            const borderTop = isDps ? "border-t-[3px] border-blue-500" : "border-t-[3px] border-emerald-500";
+            return (
+              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${borderTop}`}>
                 {/* Table Toolbar */}
                 <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM</span>
+                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
@@ -1124,27 +1160,29 @@ export default function FunnelPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* AM Tree Table — scrollable */}
-                <div className="overflow-auto" style={{ maxHeight: "clamp(220px, 46vh, 540px)" }}>
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead className="sticky top-0 z-10">
-                      <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[200px]">AM / Fase / Proyek</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
-                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
-                        <th className="px-3 py-2.5 min-w-[140px]">Pelanggan</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {renderAmTbodyContent(grp, `Tidak ada AM ${div}`)}
-                    </tbody>
-                  </table>
+                {/* AM Tree Table — overflow-x luar, overflow-y dalam */}
+                <div className="overflow-x-auto">
+                  <div className="overflow-y-auto" style={{ maxHeight: "clamp(220px, 46vh, 540px)" }}>
+                    <table className="w-full text-left text-sm border-collapse" style={{ minWidth: "600px" }}>
+                      <thead className="sticky top-0 z-10">
+                        <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                          <th className="px-4 py-2.5 min-w-[280px]">AM / Fase / Proyek</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
+                          <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
+                          <th className="px-3 py-2.5 min-w-[140px]">Pelanggan</th>
+                          <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {renderAmTbodyContent(grp, `Tidak ada AM ${div}`)}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
         </div>
       )}
 

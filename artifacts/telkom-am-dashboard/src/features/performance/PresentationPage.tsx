@@ -1108,27 +1108,25 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
       {/* ── Split mode: DPS | DSS per-divisi panels ──────────────────────────── */}
       {viewMode==="split"&&(
+        <div className="flex flex-col gap-4">
+        {/* Row 1: Stats + Chart + Gauge (terpisah dari tabel) */}
         <div className="grid grid-cols-2 gap-4">
           {(["DPS","DSS"] as const).map(div=>{
             const st=div==="DPS"?dpsStats:dssStats;
-            const grp=div==="DPS"?dpsGrouped:dssGrouped;
             const isDps=div==="DPS";
             const divLabel=isDps?"Private Service":"State Service";
             const accent=isDps?"#3b82f6":"#10b981";
-            const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
             const textAccent=isDps?"text-blue-600":"text-emerald-600";
             const bgAccent=isDps?"bg-blue-50/40":"bg-emerald-50/40";
             const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
             return (
-              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col ${borderTop}`}>
+              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${borderTop}`}>
                 {/* Panel Header */}
-                <div className={`px-4 py-3 border-b border-border ${bgAccent} flex items-center justify-between gap-3 flex-wrap shrink-0`}>
+                <div className={`px-4 py-3 border-b border-border ${bgAccent} flex items-center justify-between gap-3 flex-wrap`}>
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-3.5 h-3.5 rounded-full shadow-sm shrink-0" style={{background:accent}}/>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl font-black uppercase tracking-widest text-foreground leading-none">{div}</span>
-                      </div>
+                      <div className="text-2xl font-black uppercase tracking-widest text-foreground leading-none">{div}</div>
                       <div className="text-sm font-black text-foreground/80 leading-tight mt-0.5">{divLabel}</div>
                     </div>
                   </div>
@@ -1148,7 +1146,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   </div>
                 </div>
                 {/* Bar chart + Gauge capaian */}
-                <div className="flex gap-0 border-b border-border shrink-0">
+                <div className="flex gap-0">
                   <div className="flex-1 min-w-0 px-4 py-2.5 border-r border-border">
                     <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">LOP per Fase</div>
                     <FSFaseBarChart data={data?{...data,byStatus:st.byStatus}:undefined} compact/>
@@ -1167,6 +1165,21 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     />
                   </div>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Tabel AM (card terpisah) */}
+        <div className="grid grid-cols-2 gap-4">
+          {(["DPS","DSS"] as const).map(div=>{
+            const st=div==="DPS"?dpsStats:dssStats;
+            const grp=div==="DPS"?dpsGrouped:dssGrouped;
+            const isDps=div==="DPS";
+            const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
+            const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
+            return (
+              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col ${borderTop}`}>
                 {/* Table Toolbar */}
                 <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0">
                   <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
@@ -1185,7 +1198,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 </div>
                 {/* AM Tree Table — overflow-x luar supaya scrollbar gampang diklik */}
                 <div className="overflow-x-auto">
-                  <div className="overflow-y-auto" style={{maxHeight:"clamp(200px,38vh,460px)"}}>
+                  <div className="overflow-y-auto" style={{maxHeight:"clamp(200px,45vh,560px)"}}>
                     <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
                       <thead className="sticky top-0 z-10">
                         <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
@@ -1205,6 +1218,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               </div>
             );
           })}
+        </div>
         </div>
       )}
 
