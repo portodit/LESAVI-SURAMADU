@@ -677,9 +677,17 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[snapshots]);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
+  const [mobilePortalEl, setMobilePortalEl] = useState<HTMLElement | null>(null);
   useEffect(()=>{
-    const el = document.getElementById("funnel-navbar-portal");
-    if(el) setNavbarPortalEl(el);
+    const find = () => {
+      const el = document.getElementById("funnel-navbar-portal");
+      if(el) setNavbarPortalEl(el);
+      const mel = document.getElementById("funnel-navbar-portal-mobile");
+      if(mel) setMobilePortalEl(mel);
+    };
+    find();
+    const t = setTimeout(find, 50);
+    return () => clearTimeout(t);
   },[]);
 
   const snapshotOptions = useMemo(()=>
@@ -842,6 +850,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   return (
     <div className="p-4 space-y-4">
       {navbarPortalEl && createPortal(navbarFilterBar, navbarPortalEl)}
+      {mobilePortalEl && createPortal(navbarFilterBar, mobilePortalEl)}
 
       {/* Row 1: LOP per Fase + Capaian Real */}
       {isLoading ? (
@@ -1265,16 +1274,16 @@ export default function EmbedPerforma() {
 
       {/* ─── Top Navbar ───────────── */}
       <div className="bg-card border-b border-border shrink-0 z-30">
-        {/* Main row — always visible */}
-        <div className="flex items-center gap-2 px-4 h-[76px]">
+        {/* Row 1 — Logo + Title + Nav Arrows (always visible) */}
+        <div className="flex items-center gap-2 px-3 sm:px-4 h-14 sm:h-[76px]">
           {/* Logo + Brand */}
-          <div className="flex items-center gap-2 shrink-0">
-            <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-10 object-contain" />
-            <div className="leading-tight">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
-              <p className="text-sm font-bold text-foreground">
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-8 sm:h-10 object-contain shrink-0" />
+            <div className="leading-tight min-w-0">
+              <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
+              <p className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[160px] sm:max-w-none">
                 {currentSlide === 1
-                  ? `SALES FUNNELING LOP MYTENS ${funnelSubtitle}`
+                  ? <><span className="sm:hidden">AM Sales Funnel</span><span className="hidden sm:inline">SALES FUNNELING LOP MYTENS {funnelSubtitle}</span></>
                   : "AM Performance Report"}
               </p>
             </div>
@@ -1328,7 +1337,7 @@ export default function EmbedPerforma() {
           {/* Slide arrows + fullscreen — always pushed to the right */}
           <div className="ml-auto flex items-center gap-1 shrink-0">
             <button onClick={() => setCurrentSlide(s => Math.max(s - 1, 0))} disabled={currentSlide === 0}
-              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="hidden sm:flex items-center gap-1">
@@ -1338,7 +1347,7 @@ export default function EmbedPerforma() {
               ))}
             </div>
             <button onClick={() => setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1))} disabled={currentSlide === SLIDES.length - 1}
-              className="p-1 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors disabled:opacity-30">
               <ChevronRight className="w-4 h-4" />
             </button>
             <div className="w-px h-5 bg-border/60 mx-0.5 hidden sm:block" />
@@ -1348,7 +1357,8 @@ export default function EmbedPerforma() {
             </button>
           </div>
         </div>
-        {/* Mobile-only filter row — scrollable, only on slide 0 */}
+
+        {/* Row 2 — Mobile-only scrollable filter row */}
         {currentSlide === 0 && (
           <div className="sm:hidden flex items-end gap-2 overflow-x-auto px-3 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <SelectDropdown
@@ -1384,6 +1394,13 @@ export default function EmbedPerforma() {
               className="shrink-0 w-24"
             />
           </div>
+        )}
+        {/* Mobile funnel filter row — portal target for FunnelSlide */}
+        {currentSlide === 1 && (
+          <div
+            id="funnel-navbar-portal-mobile"
+            className="sm:hidden flex items-end gap-2 overflow-x-auto px-3 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          />
         )}
       </div>
 
