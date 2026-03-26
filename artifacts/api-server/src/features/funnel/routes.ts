@@ -18,6 +18,7 @@ router.get("/funnel/snapshots", requireAuth, async (req, res): Promise<void> => 
     period: imp.period,
     rowsImported: imp.rowsImported,
     createdAt: imp.createdAt?.toISOString(),
+    snapshotDate: imp.snapshotDate ?? null,
   })));
 });
 

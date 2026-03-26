@@ -11,6 +11,7 @@ import settingsRouter from "../features/settings/routes";
 import gSheetsRouter from "../features/gsheets/routes";
 import publicAmRouter from "../features/am/publicRoutes";
 import publicPerformanceRouter from "../features/performance/publicRoutes";
+import publicFunnelRouter from "../features/funnel/publicRoutes";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(settingsRouter);
 router.use(gSheetsRouter);
 router.use(publicAmRouter);
 router.use(publicPerformanceRouter);
+router.use(publicFunnelRouter);
 
 export default router;

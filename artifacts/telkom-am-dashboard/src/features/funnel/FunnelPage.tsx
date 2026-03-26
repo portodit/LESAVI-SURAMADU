@@ -8,7 +8,7 @@ import { ChevronRight, ChevronDown, Search, X, TrendingUp, TrendingDown, Minimiz
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface FunnelSnapshot { id: number; period: string; rowsImported: number; createdAt: string; }
+interface FunnelSnapshot { id: number; period: string; rowsImported: number; createdAt: string; snapshotDate?: string | null; }
 
 interface LopRow {
   id: number; lopid: string; judulProyek: string; pelanggan: string; nilaiProyek: number;
@@ -577,9 +577,11 @@ export default function FunnelPage() {
       .sort((a, b) => b.id - a.id)
       .map(s => ({
         value: String(s.id),
-        label: s.createdAt
-          ? format(new Date(s.createdAt), "d MMM yyyy", { locale: idLocale })
-          : periodLabel(s.period),
+        label: s.snapshotDate
+          ? format(new Date(s.snapshotDate), "d MMM yyyy", { locale: idLocale })
+          : s.createdAt
+            ? format(new Date(s.createdAt), "d MMM yyyy HH:mm", { locale: idLocale })
+            : periodLabel(s.period),
       })),
     [snapshots]
   );
