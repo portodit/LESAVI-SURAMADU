@@ -1,7 +1,7 @@
 import { db, appSettingsTable, accountManagersTable, performanceDataTable, salesFunnelTable, salesActivityTable, telegramLogsTable, dataImportsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../shared/logger";
-import { generatePerfFeedback } from "./ai";
+import { generatePerfFeedback, generateBasaBasi, generateFunnelMotivation } from "./ai";
 
 const MONTH_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -80,6 +80,34 @@ function getEmbedUrl(): string {
   const domain = process.env.REPLIT_DEV_DOMAIN;
   if (domain) return `https://${domain}/presentation`;
   return `https://rlegs-suramadu.replit.app/presentation`;
+}
+
+function getFunnelDetailUrl(): string {
+  const domain = process.env.REPLIT_DEV_DOMAIN;
+  if (domain) return `https://${domain}/visualisasi/funnel`;
+  return `https://rlegs-suramadu.replit.app/visualisasi/funnel`;
+}
+
+// ── Funnel helpers ──────────────────────────────────────────────────────────
+
+function isFunnel5(status: string | null | undefined): boolean {
+  return status === "F5" || status === "Won";
+}
+
+interface FunnelCounts { F0: number; F1: number; F2: number; F3: number; F4: number; F5: number }
+
+function countByStatus(lops: { statusF?: string | null }[]): FunnelCounts {
+  const counts: FunnelCounts = { F0: 0, F1: 0, F2: 0, F3: 0, F4: 0, F5: 0 };
+  for (const l of lops) {
+    const s = l.statusF || "";
+    if (s === "F0") counts.F0++;
+    else if (s === "F1") counts.F1++;
+    else if (s === "F2") counts.F2++;
+    else if (s === "F3") counts.F3++;
+    else if (s === "F4") counts.F4++;
+    else if (s === "F5" || s === "Won") counts.F5++;
+  }
+  return counts;
 }
 
 // --- BUILD FUNCTIONS: each returns ONE message string ---
@@ -197,35 +225,146 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
   const [am] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.nik, nik));
   if (!am) return null;
 
-  const firstName = am.nama.split(" ")[0];
+  // Get the 2 latest funnel import snapshots (newest first)
+  const funnelImports = await db.select()
+    .from(dataImportsTable)
+    .where(eq(dataImportsTable.type, "funnel"))
+    .orderBy(desc(dataImportsTable.createdAt))
+    .limit(2);
 
-  const lops = await db.select().from(salesFunnelTable).where(eq(salesFunnelTable.nikAm, nik));
-  const activeLops = lops.filter(l => !["Won", "Lost"].includes(l.statusF || ""));
-  const wonLops = lops.filter(l => l.statusF === "Won");
-  const totalNilaiAktif = activeLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
-  const totalNilaiWon = wonLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+  if (funnelImports.length === 0) return null;
 
-  const greeting = greetingByTime();
+  // All LOPs for this AM across all snapshots
+  const allLops = await db.select().from(salesFunnelTable).where(eq(salesFunnelTable.nikAm, nik));
 
-  let msg = `📋 *SALES FUNNEL*\n`;
-  msg += `LESA VI — Witel Suramadu\n\n`;
-  msg += `Halo kak ${firstName}! 👋 ${greeting}\n\n`;
-  msg += `Berikut status *Sales Funnel* kamu:\n\n`;
-  msg += `LOP Aktif   : *${activeLops.length}* proyek\n`;
-  msg += `Nilai Aktif : *${formatRupiah(totalNilaiAktif)}*\n`;
-  msg += `LOP Won     : ${wonLops.length} proyek (${formatRupiah(totalNilaiWon)})\n\n`;
+  const latestImport = funnelImports[0];
+  const latestLops = allLops.filter(l => l.importId === latestImport.id);
+  const counts = countByStatus(latestLops);
+  const total = latestLops.length;
+  const snapshotDateLatest = latestImport.period || latestImport.createdAt?.toISOString()?.slice(0, 10) || "-";
 
-  if (activeLops.length > 0) {
-    msg += `*Top LOP Aktif:*\n`;
-    const top = activeLops.slice(0, 5);
-    for (const lop of top) {
-      msg += `• ${lop.namaProyek || "-"}\n  _${lop.statusF}_ · ${formatRupiah(lop.nilaiProyek || 0)}\n`;
-    }
-    if (activeLops.length > 5) msg += `_...dan ${activeLops.length - 5} proyek lainnya_\n`;
-    msg += `\n`;
-  } else {
-    msg += `_Belum ada LOP aktif. Yuk tambah pipeline baru! 💡_\n\n`;
+  const basaBasi = await generateBasaBasi(am.nama);
+
+  // ── Kondisi C: Only 1 snapshot — no comparison possible ─────────────────
+  if (funnelImports.length < 2) {
+    let msg = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `📋 *MONITORING SALES FUNNELING*\n`;
+    msg += `LESA VI — Witel Suramadu\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    msg += `Halo kak *${am.nama}*! 👋\n\n`;
+    msg += `_${basaBasi}_\n\n`;
+    msg += `Berikut data funneling kakak per\n`;
+    msg += `*${snapshotDateLatest}* ya kak 🙏\n\n`;
+    msg += `📊 *Ringkasan LOP Kakak Saat Ini:*\n`;
+    msg += `├ F0 (Lead)        : ${counts.F0} proyek\n`;
+    msg += `├ F1 (Prospect)    : ${counts.F1} proyek\n`;
+    msg += `├ F2 (Quote)       : ${counts.F2} proyek\n`;
+    msg += `├ F3 (Negosiasi)   : ${counts.F3} proyek\n`;
+    msg += `├ F4 (Closing)     : ${counts.F4} proyek\n`;
+    msg += `└ F5 (Won) ✅      : ${counts.F5} proyek\n`;
+    msg += `*Total             : ${total} proyek*\n\n`;
+    msg += `_ℹ️ Perbandingan dengan data sebelumnya belum tersedia_\n`;
+    msg += `_karena ini merupakan snapshot pertama yang tercatat._\n`;
+    msg += `_Perbandingan akan muncul pada laporan berikutnya._\n\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `📎 Detail lengkap:\n`;
+    msg += getFunnelDetailUrl();
+    return msg;
   }
+
+  // ── 2+ snapshots: compare latest vs previous ─────────────────────────────
+  const prevImport = funnelImports[1];
+  const prevLops = allLops.filter(l => l.importId === prevImport.id);
+  const snapshotDatePrev = prevImport.period || prevImport.createdAt?.toISOString()?.slice(0, 10) || "-";
+
+  const prevMap = new Map(prevLops.map(l => [l.lopid, l]));
+
+  const lopStagnan: { lopid: string; pelanggan: string; status: string }[] = [];
+  const lopBergerak: { lopid: string; pelanggan: string; statusLama: string; statusBaru: string }[] = [];
+
+  for (const lop of latestLops) {
+    const prev = prevMap.get(lop.lopid);
+    if (!prev) continue; // new LOP in this snapshot — skip
+
+    const statusBaru = lop.statusF || "";
+    const statusLama = prev.statusF || "";
+
+    if (statusBaru === statusLama) {
+      // Same status = stagnan, but ignore F5/Won (it's fine to stay Won)
+      if (!isFunnel5(statusBaru)) {
+        lopStagnan.push({ lopid: lop.lopid, pelanggan: lop.pelanggan, status: statusBaru });
+      }
+    } else {
+      lopBergerak.push({ lopid: lop.lopid, pelanggan: lop.pelanggan, statusLama, statusBaru });
+    }
+  }
+
+  const hasStagnan = lopStagnan.length > 0;
+
+  // ── Header (common) ──────────────────────────────────────────────────────
+  let msg = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `📋 *MONITORING SALES FUNNELING*\n`;
+  msg += `LESA VI — Witel Suramadu\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  msg += `Halo kak *${am.nama}*! 👋\n\n`;
+  msg += `_${basaBasi}_\n\n`;
+  msg += `Izin menginformasikan hasil monitoring sales funneling kakak\n`;
+  msg += `per *${snapshotDateLatest}* ya kak 🙏\n\n`;
+  msg += `📊 *Ringkasan LOP Kakak Saat Ini:*\n`;
+  msg += `├ F0 (Lead)        : ${counts.F0} proyek\n`;
+  msg += `├ F1 (Prospect)    : ${counts.F1} proyek\n`;
+  msg += `├ F2 (Quote)       : ${counts.F2} proyek\n`;
+  msg += `├ F3 (Negosiasi)   : ${counts.F3} proyek\n`;
+  msg += `├ F4 (Closing)     : ${counts.F4} proyek\n`;
+  msg += `└ F5 (Won) ✅      : ${counts.F5} proyek\n`;
+  msg += `*Total             : ${total} proyek*\n\n`;
+  msg += `📅 _Data dibandingkan dengan snapshot sebelumnya_\n`;
+  msg += `_tertanggal ${snapshotDatePrev}_\n`;
+
+  if (hasStagnan) {
+    // ── Kondisi A: Ada LOP stagnan ─────────────────────────────────────────
+    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `⚠️ *LOP Belum Bergerak:*\n`;
+    msg += `_(status sama seperti data sebelumnya)_\n\n`;
+    for (const lop of lopStagnan) {
+      msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
+      msg += `  Status masih *${lop.status}* sejak snapshot sebelumnya\n`;
+    }
+    msg += `\n`;
+    const motivation = await generateFunnelMotivation(am.nama, lopStagnan.length, false);
+    msg += `_${motivation}_\n`;
+
+    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `✅ *LOP yang Sudah Bergerak:*\n`;
+    msg += `_(ada perubahan status dibanding data sebelumnya)_\n\n`;
+    if (lopBergerak.length > 0) {
+      for (const lop of lopBergerak) {
+        msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
+        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
+      }
+    } else {
+      msg += `_Belum ada pergerakan status pada periode ini._\n`;
+    }
+  } else {
+    // ── Kondisi B: Semua LOP sudah bergerak ───────────────────────────────
+    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🎉 *LOP Bergerak Semua — Keren!*\n\n`;
+    const motivation = await generateFunnelMotivation(am.nama, 0, true);
+    msg += `_${motivation}_\n\n`;
+    msg += `✅ *Perubahan Status LOP:*\n\n`;
+    if (lopBergerak.length > 0) {
+      for (const lop of lopBergerak) {
+        msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
+        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
+      }
+    } else {
+      msg += `_Belum ada pergerakan status pada periode ini._\n`;
+    }
+  }
+
+  msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `📎 Detail lengkap:\n`;
+  msg += getFunnelDetailUrl();
 
   return msg;
 }

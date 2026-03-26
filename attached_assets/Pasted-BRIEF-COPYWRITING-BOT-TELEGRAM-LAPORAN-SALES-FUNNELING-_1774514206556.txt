@@ -1,0 +1,152 @@
+BRIEF COPYWRITING BOT TELEGRAM — LAPORAN SALES FUNNELING
+Buatkan template pesan Telegram untuk laporan monitoring sales funneling yang dikirim bot ke masing-masing Account Manager (AM) secara personal. Berikut ketentuannya:
+Konteks sistem:
+Bot hanya bisa kirim laporan funneling jika di database sudah tersimpan minimal 2 snapshot data funnel. Snapshot pertama sebagai data pembanding, snapshot terkini sebagai data yang dilaporkan. Jarak antar snapshot tidak harus 7 hari — bisa 4, 5, atau 6 hari tergantung kapan admin upload. Yang penting urutan snapshot ke-N dibandingkan snapshot ke N-1.
+Informasi yang disampaikan dalam pesan:
+
+Sapaan personal dengan nama lengkap AM di-bold, waktu sapaan dinamis (pagi/siang/sore/malam), basa-basi singkat yang diutamakan di-generate AI, jika AI tidak tersedia pakai teks default
+Tanggal data snapshot terkini yang sedang dilaporkan
+Ringkasan jumlah LOP per status funnel saat ini: F0, F1, F2, F3, F4, F5
+List LOP yang statusnya TIDAK BERGERAK dibanding snapshot sebelumnya — kecuali F5 ke F5 tidak dianggap masalah, hanya F0-F4 yang stagnan yang disorot
+List LOP yang statusnya SUDAH BERGERAK beserta perubahan dari status apa ke status apa
+Arahan dan motivasi untuk mendorong LOP yang stagnan agar segera naik ke funnel berikutnya hingga F5/Won supaya bonus cair
+
+Buat 2 versi kondisi:
+Kondisi A — Ada minimal 1 LOP stagnan (F0–F4 tidak bergerak):
+Sampaikan list LOP stagnan dengan lopid dan statusnya, berikan pesan tegas namun tetap supportif agar AM segera mengambil tindakan. Ingatkan bahwa LOP stagnan berisiko hangus dan bonus tidak cair.
+Kondisi B — Semua LOP sudah bergerak (tidak ada yang stagnan di F0–F4):
+Berikan apresiasi dan semangat, tetap sampaikan list perubahan status sebagai konfirmasi positif.
+Format list LOP:
+
+LOP stagnan: • [LOPID] — [Nama Pelanggan] (masih [STATUS])
+LOP bergerak: • [LOPID] — [Nama Pelanggan] ([STATUS LAMA] → [STATUS BARU])
+
+Tone: Profesional tapi hangat, seperti rekan kerja yang peduli. Gunakan bahasa Indonesia yang natural. Tidak terlalu formal, tidak terlalu santai. Boleh pakai emoji secukupnya, jangan berlebihan.
+Format Telegram: Teks bold pakai *asterisk*, italic pakai _underscore_. Gunakan garis ━━━ sebagai pemisah section.
+
+Syarat minimum bot kirim otomatis: Jelaskan dalam dokumentasi teknis bahwa trigger pengiriman bot funneling hanya aktif jika:
+
+Di tabel data_uploads sudah ada minimal 2 baris dengan jenis = 'funnel'
+Kedua upload tersebut memiliki upload_date yang berbeda
+Sistem akan otomatis mengambil upload_id terbaru sebagai data terkini dan upload_id sebelumnya sebagai data pembanding
+
+
+Kirim brief itu ke Claude dan minta dia buatkan template lengkap dengan placeholder variabel seperti {{nama_am}}, {{tanggal_snapshot}}, {{list_lop_stagnan}}, dll.loh claude dini yang nanti bikin systemnya, kamu yang buat template copywritingnya yang lengkap semua konddisi cok wkwk2:27 PMWKWKWK iya maap salah paham! Ini dia:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 MONITORING SALES FUNNELING
+LESA VI — Witel Suramadu
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Halo kak *{{NAMA_LENGKAP_AM}}*! 👋
+
+[AI GENERATED GREETING — jika AI tidak tersedia pakai default berikut:]
+_Semoga kakak dalam keadaan sehat dan semangat ya hari ini!_
+
+Izin menginformasikan hasil monitoring sales funneling kakak
+per *{{TANGGAL_SNAPSHOT_TERKINI}}* ya kak 🙏
+
+📊 *Ringkasan LOP Kakak Saat Ini:*
+├ F0 (Lead)        : {{F0_COUNT}} proyek
+├ F1 (Prospect)    : {{F1_COUNT}} proyek
+├ F2 (Quote)       : {{F2_COUNT}} proyek
+├ F3 (Negosiasi)   : {{F3_COUNT}} proyek
+├ F4 (Closing)     : {{F4_COUNT}} proyek
+└ F5 (Won) ✅      : {{F5_COUNT}} proyek
+*Total             : {{TOTAL_COUNT}} proyek*
+
+📅 _Data dibandingkan dengan snapshot sebelumnya_
+_tertanggal {{TANGGAL_SNAPSHOT_SEBELUMNYA}}_
+
+KONDISI A — Ada LOP stagnan (F0–F4 tidak bergerak):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ *LOP Belum Bergerak:*
+_(status sama seperti data sebelumnya)_
+
+{{#EACH LOP_STAGNAN}}
+- *{{LOPID}}* — {{NAMA_PELANGGAN}}
+  Status masih *{{STATUS}}* sejak snapshot sebelumnya
+{{/EACH}}
+
+[AI GENERATED — jika AI tidak tersedia pakai default berikut:]
+_Kak, LOP-LOP di atas tercatat belum ada pergerakan status_
+_sejak data sebelumnya. Mohon untuk segera dicek kembali_
+_apakah statusnya memang masih di situ atau sudah ada_
+_perkembangan yang belum terinput ya kak._
+_Jangan dibiarkan stagnan terlalu lama — segera dorong ke_
+_funnel berikutnya supaya makin dekat ke F5 dan bonus_
+_segera cair! 💰 Semangat kak, kamu pasti bisa! 💪_
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ *LOP yang Sudah Bergerak:*
+_(ada perubahan status dibanding data sebelumnya)_
+
+{{#IF ADA_LOP_BERGERAK}}
+{{#EACH LOP_BERGERAK}}
+- *{{LOPID}}* — {{NAMA_PELANGGAN}}
+  {{STATUS_LAMA}} → *{{STATUS_BARU}}* 🎯
+{{/EACH}}
+{{#ELSE}}
+_Belum ada pergerakan status pada periode ini._
+{{/IF}}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 Detail lengkap:
+{{LINK_DETAIL_AM}}
+
+Terima kasih kak, semangat terus! 🙏
+
+KONDISI B — Semua LOP sudah bergerak (tidak ada yang stagnan):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 *LOP Bergerak Semua — Keren!*
+
+[AI GENERATED — jika AI tidak tersedia pakai default berikut:]
+_Luar biasa kak! Semua LOP kakak tercatat ada pergerakan_
+_status dibanding data sebelumnya. Pertahankan momentum_
+_ini dan terus dorong hingga F5 ya kak! Bonus menanti! 💰_
+
+✅ *Perubahan Status LOP:*
+
+{{#EACH LOP_BERGERAK}}
+- *{{LOPID}}* — {{NAMA_PELANGGAN}}
+  {{STATUS_LAMA}} → *{{STATUS_BARU}}* 🎯
+{{/EACH}}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 Detail lengkap:
+{{LINK_DETAIL_AM}}
+
+Terima kasih kak, terus semangat! 🙏
+
+KONDISI C — Hanya 1 snapshot tersedia (belum bisa bandingin):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 MONITORING SALES FUNNELING
+LESA VI — Witel Suramadu
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Halo kak *{{NAMA_LENGKAP_AM}}*! 👋
+
+Berikut data funneling kakak per
+*{{TANGGAL_SNAPSHOT_TERKINI}}* ya kak 🙏
+
+📊 *Ringkasan LOP Kakak Saat Ini:*
+├ F0 : {{F0_COUNT}} proyek
+├ F1 : {{F1_COUNT}} proyek
+├ F2 : {{F2_COUNT}} proyek
+├ F3 : {{F3_COUNT}} proyek
+├ F4 : {{F4_COUNT}} proyek
+└ F5 : {{F5_COUNT}} proyek
+*Total : {{TOTAL_COUNT}} proyek*
+
+_ℹ️ Perbandingan dengan data sebelumnya belum tersedia_
+_karena ini merupakan snapshot pertama yang tercatat._
+_Perbandingan akan muncul pada laporan berikutnya._
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 Detail lengkap:
+{{LINK_DETAIL_AM}}
+
+Terima kasih kak! 🙏
+
+Variabel yang perlu disiapkan sistem:
+VariabelSumber{{NAMA_LENGKAP_AM}}tabel account_managers.nama{{TANGGAL_SNAPSHOT_TERKINI}}data_uploads.upload_date terbaru{{TANGGAL_SNAPSHOT_SEBELUMNYA}}data_uploads.upload_date N-1{{F0_COUNT}} s.d. {{F5_COUNT}}COUNT per status dari snapshot terkini{{LOP_STAGNAN}}JOIN 2 snapshot, status sama, status != F5{{LOP_BERGERAK}}JOIN 2 snapshot, status berbeda{{LINK_DETAIL_AM}}URL halaman detail AM di website

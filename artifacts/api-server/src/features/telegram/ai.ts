@@ -106,6 +106,72 @@ export async function generatePerfFeedback(
   }
 }
 
+// Funnel motivation fallbacks
+const FUNNEL_STAGNAN_FALLBACK =
+  `Kak, LOP-LOP di atas tercatat belum ada pergerakan status sejak data sebelumnya. ` +
+  `Mohon segera dicek kembali apakah statusnya memang masih di situ atau sudah ada perkembangan yang belum terinput ya kak. ` +
+  `Jangan dibiarkan stagnan terlalu lama — segera dorong ke funnel berikutnya supaya makin dekat ke F5 dan bonus segera cair! 💰 ` +
+  `Semangat kak, kamu pasti bisa! 💪`;
+
+const FUNNEL_ALL_MOVING_FALLBACK =
+  `Luar biasa kak! Semua LOP kakak tercatat ada pergerakan status dibanding data sebelumnya. ` +
+  `Pertahankan momentum ini dan terus dorong hingga F5 ya kak! Bonus menanti! 💰`;
+
+export async function generateFunnelMotivation(
+  namaLengkap: string,
+  stagnanCount: number,
+  allMoving: boolean,
+): Promise<string> {
+  const ai = getAI();
+
+  if (allMoving) {
+    if (!ai) return FUNNEL_ALL_MOVING_FALLBACK;
+    const prompt = [
+      `Kamu adalah BOT LESA VI, asisten AM di Telkom Witel Suramadu.`,
+      `AM bernama "${namaLengkap}" baru saja dikirim laporan funneling dan semua LOP-nya bergerak (ada perubahan status).`,
+      `Tulis apresiasi singkat yang hangat dan memotivasi — 2-3 kalimat saja.`,
+      `Dorong AM untuk terus mempertahankan momentum hingga F5/Won supaya bonus cair.`,
+      `Bahasa Indonesia santai dan akrab, pakai sapaan "kak".`,
+      `Jangan mulai dengan "Halo" atau "Hai". Format teks biasa, tanpa markdown berlebihan.`,
+    ].join("\n");
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: { maxOutputTokens: 200 },
+      });
+      const text = response.text?.trim();
+      return (text && text.length >= 15) ? text : FUNNEL_ALL_MOVING_FALLBACK;
+    } catch (err) {
+      logger.debug({ err }, "Gemini funnel motivation (all-moving) error (non-fatal)");
+      return FUNNEL_ALL_MOVING_FALLBACK;
+    }
+  } else {
+    if (!ai) return FUNNEL_STAGNAN_FALLBACK;
+    const prompt = [
+      `Kamu adalah BOT LESA VI, asisten AM di Telkom Witel Suramadu.`,
+      `AM bernama "${namaLengkap}" memiliki ${stagnanCount} LOP yang belum bergerak status-nya dari snapshot sebelumnya.`,
+      `Tulis pesan tegas namun tetap supportif — 2-3 kalimat saja.`,
+      `Ingatkan bahwa LOP stagnan berisiko hangus dan bonus tidak akan cair jika tidak ada pergerakan.`,
+      `Dorong AM untuk segera mengambil tindakan nyata.`,
+      `Bahasa Indonesia santai dan akrab, pakai sapaan "kak".`,
+      `Jangan mulai dengan "Halo" atau "Hai". Format teks biasa, tanpa markdown berlebihan.`,
+    ].join("\n");
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: { maxOutputTokens: 200 },
+      });
+      const text = response.text?.trim();
+      return (text && text.length >= 15) ? text : FUNNEL_STAGNAN_FALLBACK;
+    } catch (err) {
+      logger.debug({ err }, "Gemini funnel motivation (stagnan) error (non-fatal)");
+      return FUNNEL_STAGNAN_FALLBACK;
+    }
+  }
+}
+
 // AI chat for general messages
 export async function chatWithGemini(
   userMessage: string,
