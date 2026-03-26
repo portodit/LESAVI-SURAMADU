@@ -939,7 +939,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 const orderedPhases=[...FS_PHASES.filter(p=>am.phases.has(p)),...Array.from(am.phases.keys()).filter(p=>!FS_PHASES.includes(p))];
                 const ring=amExpanded?"#94a3b8":undefined;
                 const ringStyle=(extra?:React.CSSProperties):React.CSSProperties=>ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,...extra}:{};
-                const lastPhase=orderedPhases[orderedPhases.length-1];
                 return (
                   <React.Fragment key={amKey}>
                     <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors"
@@ -957,12 +956,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                           </button>
                         </div>
                       </td>
-                      <td className="px-3 py-3" colSpan={3}>
+                      <td className="px-3 py-3" colSpan={amExpanded?4:3}>
                         <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-black text-foreground tabular-nums text-sm">{fmtRupiahFS(amTotal)}</span>
-                      </td>
+                      {!amExpanded&&(
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-black text-foreground tabular-nums text-sm">{formatRupiahFull(amTotal)}</span>
+                        </td>
+                      )}
                     </tr>
                     {amExpanded&&orderedPhases.map(phase=>{
                       const lops=am.phases.get(phase)||[];
@@ -970,12 +971,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                       const phaseExpanded=!!expandedPhase[phaseKey];
                       const phaseTotal=lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
                       const c=FS_PHASE_COLORS[phase];
-                      const isLastPhase=phase===lastPhase;
-                      const phaseIsBottomOfRing=isLastPhase&&!phaseExpanded;
                       return (
                         <React.Fragment key={phaseKey}>
                           <tr className="cursor-pointer select-none hover:brightness-95 transition-all"
-                            style={{background:"rgba(253,242,248,0.75)",borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,...ringStyle(phaseIsBottomOfRing&&ring?{borderBottom:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}:{})}}
+                            style={{background:"rgba(253,242,248,0.75)",borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,...ringStyle({})}}
                             onClick={()=>togglePhaseRow(phaseKey)}>
                             <td className="px-4 py-2.5 pl-10">
                               <div className="flex items-center gap-2">
@@ -985,32 +984,57 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                                 <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                               </div>
                             </td>
-                            <td colSpan={3} className="px-3 py-2.5"/>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-black text-slate-700 tabular-nums">{fmtRupiahFS(phaseTotal)}</span>
-                            </td>
+                            {phaseExpanded
+                              ?<td colSpan={4} className="px-3 py-2.5"/>
+                              :<>
+                                <td colSpan={3} className="px-3 py-2.5"/>
+                                <td className="px-4 py-2.5 text-right">
+                                  <span className="text-sm font-black text-slate-700 tabular-nums">{formatRupiahFull(phaseTotal)}</span>
+                                </td>
+                              </>
+                            }
                           </tr>
-                          {phaseExpanded&&lops.map((lop:any,idx:number)=>{
-                            const isLastLop=idx===lops.length-1;
-                            const isBottomOfRing=isLastPhase&&isLastLop;
-                            return (
-                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors"
-                                style={ringStyle(isBottomOfRing&&ring?{borderBottom:`2px solid ${ring}`}:{})}>
-                                <td className="px-4 py-2 pl-16">
-                                  <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
+                          {phaseExpanded&&(
+                            <>
+                              {lops.map((lop:any,idx:number)=>(
+                                <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors"
+                                  style={ringStyle({})}>
+                                  <td className="px-4 py-2 pl-16">
+                                    <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {lop.kategoriKontrak?<span className="inline-block px-2 py-0.5 rounded text-[11px] bg-secondary border border-border text-muted-foreground font-medium">{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}
+                                  </td>
+                                  <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
+                                  <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
+                                </tr>
+                              ))}
+                              {/* Phase total row */}
+                              <tr className="bg-slate-50 border-t border-slate-200" style={ringStyle({})}>
+                                <td colSpan={4} className="px-4 py-1.5 pl-16">
+                                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Nilai {phase} {FS_PHASE_LABELS[phase]}</span>
                                 </td>
-                                <td className="px-3 py-2">
-                                  {lop.kategoriKontrak?<span className="inline-block px-2 py-0.5 rounded text-[11px] bg-secondary border border-border text-muted-foreground font-medium">{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}
+                                <td className="px-4 py-1.5 text-right tabular-nums font-black text-slate-700 whitespace-nowrap text-sm">
+                                  {formatRupiahFull(phaseTotal)}
                                 </td>
-                                <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
-                                <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                                <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                               </tr>
-                            );
-                          })}
+                            </>
+                          )}
                         </React.Fragment>
                       );
                     })}
+                    {/* AM total row — shown below all phases when expanded */}
+                    {amExpanded&&(
+                      <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
+                        <td colSpan={4} className="px-4 py-2 pl-10">
+                          <span className="text-xs font-black text-slate-600 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span>
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums font-black text-foreground whitespace-nowrap text-base">
+                          {formatRupiahFull(amTotal)}
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 );
               })}

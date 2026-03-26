@@ -914,9 +914,14 @@ export default function FunnelPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-3 py-3" colSpan={4}>
+                      <td className="px-3 py-3" colSpan={amExpanded ? 4 : 3}>
                         <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
                       </td>
+                      {!amExpanded && (
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-black text-foreground tabular-nums text-sm">{formatRupiahFull(amTotal)}</span>
+                        </td>
+                      )}
                     </tr>
 
                     {amExpanded && orderedPhases.map((phase) => {
@@ -942,7 +947,15 @@ export default function FunnelPage() {
                                 <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                               </div>
                             </td>
-                            <td colSpan={4} className="px-3 py-2.5" />
+                            {phaseExpanded
+                              ? <td colSpan={4} className="px-3 py-2.5" />
+                              : <>
+                                  <td colSpan={3} className="px-3 py-2.5" />
+                                  <td className="px-4 py-2.5 text-right">
+                                    <span className="text-sm font-black text-slate-700 tabular-nums">{formatRupiahFull(phaseTotal)}</span>
+                                  </td>
+                                </>
+                            }
                           </tr>
 
                           {phaseExpanded && (
