@@ -818,21 +818,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
         className="w-44 shrink-0"/>
       <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
-      {/* HO / Full HO toggle */}
-      <div className="flex flex-col gap-1 shrink-0">
-        <label className="text-xs font-bold text-foreground uppercase tracking-wide">Target</label>
-        <div className="flex h-9 border border-border rounded-lg overflow-hidden">
-          <button onClick={()=>setFilterMode("ho")}
-            className={cn("px-3 text-xs font-black transition-colors",filterMode==="ho"?"bg-foreground text-background":"bg-secondary/50 text-muted-foreground hover:bg-secondary")}>
-            HO
-          </button>
-          <div className="w-px bg-border"/>
-          <button onClick={()=>setFilterMode("fullho")}
-            className={cn("px-3 text-xs font-black transition-colors whitespace-nowrap",filterMode==="fullho"?"bg-foreground text-background":"bg-secondary/50 text-muted-foreground hover:bg-secondary")}>
-            Full HO
-          </button>
-        </div>
-      </div>
+      <FSSelectDropdown label="Target" value={filterMode} onChange={v=>setFilterMode(v as "ho"|"fullho")}
+        options={[{value:"ho",label:"HO"},{value:"fullho",label:"Full HO"}]}
+        className="w-28 shrink-0"/>
       {kontrakOptions.length>0&&(
         <FSCheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
           placeholder="Semua kontrak" summaryLabel="kontrak" className="w-36 shrink-0"/>
