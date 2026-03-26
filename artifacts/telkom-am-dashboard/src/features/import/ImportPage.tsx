@@ -132,9 +132,11 @@ export default function ImportData() {
   // Target HO state
   const curYear = new Date().getFullYear();
   const curMonth = new Date().getMonth() + 1;
-  const [tForm, setTForm] = useState({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" });
   const [tSaving, setTSaving] = useState(false);
   const [tDelConfirm, setTDelConfirm] = useState<number | null>(null);
+  const [editRowId, setEditRowId] = useState<number | "new" | null>(null);
+  const [editRowData, setEditRowData] = useState({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" });
+  const [focusField, setFocusField] = useState<string | null>(null);
   const { data: targets = [], refetch: refetchTargets } = useQuery<any[]>({
     queryKey: ["funnel-targets"],
     queryFn: () => apiFetch("/api/funnel/targets"),
@@ -280,9 +282,9 @@ export default function ImportData() {
     staleTime: 60_000,
   });
 
-  const handleSaveTarget = async () => {
-    if (!tForm.tahun || !tForm.bulan || !tForm.divisi) {
-      toast({ title: "Lengkapi form", description: "Tahun, bulan, dan divisi wajib diisi", variant: "destructive" }); return;
+  const handleSaveTargetRow = async () => {
+    if (!editRowData.tahun || !editRowData.bulan || !editRowData.divisi) {
+      toast({ title: "Lengkapi data", description: "Tahun, bulan, dan divisi wajib diisi", variant: "destructive" }); return;
     }
     setTSaving(true);
     try {
@@ -290,19 +292,23 @@ export default function ImportData() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tahun: Number(tForm.tahun), bulan: Number(tForm.bulan), divisi: tForm.divisi,
-          targetHo: Number(tForm.targetHo.replace(/\D/g,"")||0),
-          targetFullHo: Number(tForm.targetFullHo.replace(/\D/g,"")||0),
+          tahun: Number(editRowData.tahun),
+          bulan: Number(editRowData.bulan),
+          divisi: editRowData.divisi,
+          targetHo: Number(editRowData.targetHo.replace(/\D/g, "") || 0),
+          targetFullHo: Number(editRowData.targetFullHo.replace(/\D/g, "") || 0),
         }),
       });
-      toast({ title: "Target Disimpan", description: `Target ${tForm.divisi} ${MONTHS_FULL[Number(tForm.bulan)-1]} ${tForm.tahun} berhasil disimpan` });
+      toast({ title: "Tersimpan", description: `${editRowData.divisi} ${MONTHS_FULL[Number(editRowData.bulan)-1]} ${editRowData.tahun}` });
       refetchTargets();
       qc.invalidateQueries({ queryKey: ["funnel-data"] });
-      setTForm(p => ({ ...p, targetHo: "", targetFullHo: "" }));
+      setEditRowId(null);
+      setFocusField(null);
     } catch (e: any) {
       toast({ title: "Gagal Menyimpan", description: e.message || "Terjadi kesalahan", variant: "destructive" });
     } finally {
-      setTSaving(false); }
+      setTSaving(false);
+    }
   };
 
   const handleDeleteTarget = async (id: number) => {
@@ -615,159 +621,243 @@ export default function ImportData() {
           )}
         </div>
 
-        {/* Target HO Tab Content */}
+        {/* Target HO Tab Content — Excel-style inline edit */}
         {activeTab === "target-ho" && (
-          <div className="p-6 space-y-5">
-            <div>
-              <h3 className="text-sm font-black text-foreground uppercase tracking-wide mb-1 flex items-center gap-2">
-                <Target className="w-4 h-4 text-primary" /> Input Target HO &amp; Full HO
-              </h3>
-              <p className="text-xs text-muted-foreground">Masukkan target pipeline per divisi untuk digunakan pada kalkulasi capaian di dashboard Sales Funnel.</p>
-            </div>
-
-            {/* Form Input */}
-            <div className="bg-secondary/30 border border-border rounded-xl p-5 space-y-4">
-              {/* Period Selector */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Tahun</label>
-                  <input type="number" min="2020" max="2099" value={tForm.tahun}
-                    onChange={e => setTForm(p => ({ ...p, tahun: e.target.value }))}
-                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Bulan</label>
-                  <select value={tForm.bulan} onChange={e => setTForm(p => ({ ...p, bulan: e.target.value }))}
-                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    {MONTHS_FULL.map((m, i) => <option key={i+1} value={String(i+1)}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Divisi</label>
-                  <select value={tForm.divisi} onChange={e => setTForm(p => ({ ...p, divisi: e.target.value }))}
-                    className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    <option value="DPS">DPS</option>
-                    <option value="DSS">DSS</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Fillable Target Table */}
-              <div className="border border-border rounded-lg overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="bg-red-700 text-white">
-                      <th className="px-4 py-2.5 text-xs font-black uppercase">Nama Target</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase">Nilai Target (Rp)</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right text-white/70">Preview</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    <tr className="bg-background">
-                      <td className="px-4 py-3">
-                        <input disabled value="Target HO"
-                          className="w-full h-8 px-2 bg-muted/50 border border-border rounded text-sm font-bold text-foreground cursor-not-allowed opacity-70" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input type="text" placeholder="Contoh: 70257000000" value={tForm.targetHo}
-                          onChange={e => setTForm(p => ({ ...p, targetHo: e.target.value }))}
-                          className="w-full h-8 px-2 bg-background border border-border rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                        {tForm.targetHo && Number(tForm.targetHo.replace(/\D/g,"")) > 0
-                          ? `Rp ${(Number(tForm.targetHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M` : "—"}
-                      </td>
-                    </tr>
-                    <tr className="bg-secondary/20">
-                      <td className="px-4 py-3">
-                        <input disabled value="Target Full HO"
-                          className="w-full h-8 px-2 bg-muted/50 border border-border rounded text-sm font-bold text-foreground cursor-not-allowed opacity-70" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input type="text" placeholder="Contoh: 96575000000" value={tForm.targetFullHo}
-                          onChange={e => setTForm(p => ({ ...p, targetFullHo: e.target.value }))}
-                          className="w-full h-8 px-2 bg-background border border-border rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                        {tForm.targetFullHo && Number(tForm.targetFullHo.replace(/\D/g,"")) > 0
-                          ? `Rp ${(Number(tForm.targetFullHo.replace(/\D/g,"")) / 1e9).toFixed(2)}M` : "—"}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button onClick={handleSaveTarget} disabled={tSaving} className="gap-2 bg-primary text-white">
-                  {tSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Simpan Target
-                </Button>
-                <Button variant="ghost" onClick={() => setTForm({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" })}
-                  className="text-muted-foreground">
-                  <X className="w-4 h-4 mr-1" /> Reset Form
-                </Button>
-              </div>
-            </div>
-
-            {/* Reference from image */}
-            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-600" />
-              <div>
-                <span className="font-semibold">Contoh nilai target (Feb 2026):</span> DPS — Target HO: Rp 70,26M · Target Full HO: Rp 96,58M &nbsp;|&nbsp; DSS — Target HO: Rp 60,05M · Target Full HO: Rp 77,93M
-              </div>
-            </div>
-
-            {/* Existing targets table */}
+          <div className="p-6">
             <div className="border border-border rounded-xl overflow-hidden">
-              <div className="px-4 py-3 bg-secondary/30 border-b border-border flex items-center gap-2">
-                <History className="w-4 h-4 text-muted-foreground" />
-                <h4 className="text-sm font-bold text-foreground">Data Target HO Tersimpan</h4>
-                <span className="ml-auto text-xs text-muted-foreground">{targets.length} record</span>
-              </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="bg-red-700 text-white">
-                      <th className="px-4 py-2.5 text-xs font-black uppercase rounded-tl-none">Periode</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase">Divisi</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Tahun</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase w-32">Bulan</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Divisi</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target HO</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target Full HO</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right rounded-tr-none">Aksi</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right w-24">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {targets.length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                        <Target className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                        Belum ada data target. Gunakan form di atas untuk menambahkan.
-                      </td></tr>
-                    ) : targets.map((t: any) => (
-                      <tr key={t.id} className={cn("transition-colors", tDelConfirm === t.id ? "bg-red-50" : "hover:bg-secondary/20")}>
-                        <td className="px-4 py-3 font-mono text-sm font-semibold">{MONTHS_FULL[(t.bulan||1)-1]} {t.tahun}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded", t.divisi === "DPS" ? "bg-blue-100 text-blue-800" : "bg-violet-100 text-violet-800")}>{t.divisi || "Semua"}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-sm">Rp {((t.targetHo||0)/1e9).toFixed(2)}M</td>
-                        <td className="px-4 py-3 text-right font-mono text-sm font-semibold">Rp {((t.targetFullHo||0)/1e9).toFixed(2)}M</td>
-                        <td className="px-4 py-3 text-right">
-                          {tDelConfirm === t.id ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="text-xs text-red-600 font-semibold">Hapus?</span>
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteTarget(t.id)}>Ya, Hapus</Button>
-                              <Button size="sm" variant="outline" onClick={() => setTDelConfirm(null)}>Batal</Button>
-                            </div>
-                          ) : (
-                            <Button size="sm" variant="ghost" onClick={() => setTDelConfirm(t.id)} className="text-muted-foreground hover:text-red-600 hover:bg-red-50">
-                              <Trash2 className="w-3.5 h-3.5 mr-1" /> Hapus
-                            </Button>
-                          )}
+                  <tbody className="divide-y divide-border/60">
+                    {targets.length === 0 && editRowId !== "new" && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                          <Target className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                          Belum ada data. Klik <span className="font-semibold text-primary">+ Tambah Baris</span> di bawah.
                         </td>
                       </tr>
-                    ))}
+                    )}
+
+                    {targets.map((t: any) => {
+                      const isEditing = editRowId === t.id;
+                      const isDeleting = tDelConfirm === t.id;
+                      return (
+                        <tr
+                          key={t.id}
+                          className={cn(
+                            "transition-colors group",
+                            isDeleting ? "bg-red-50" : isEditing ? "bg-yellow-50" : "hover:bg-secondary/20"
+                          )}
+                          onDoubleClick={() => {
+                            if (isEditing) return;
+                            setEditRowId(t.id);
+                            setEditRowData({
+                              tahun: String(t.tahun),
+                              bulan: String(t.bulan),
+                              divisi: t.divisi || "DPS",
+                              targetHo: String(t.targetHo || ""),
+                              targetFullHo: String(t.targetFullHo || ""),
+                            });
+                            setFocusField(null);
+                          }}
+                        >
+                          {/* TAHUN */}
+                          <td className="px-2 py-1.5">
+                            {isEditing ? (
+                              <input
+                                type="number" min="2020" max="2099"
+                                value={editRowData.tahun}
+                                autoFocus={focusField === "tahun" || focusField === null}
+                                onChange={e => setEditRowData(p => ({ ...p, tahun: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                                className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono focus:outline-none"
+                              />
+                            ) : (
+                              <span className="px-2 font-mono text-sm">{t.tahun}</span>
+                            )}
+                          </td>
+                          {/* BULAN */}
+                          <td className="px-2 py-1.5">
+                            {isEditing ? (
+                              <select
+                                value={editRowData.bulan}
+                                onChange={e => setEditRowData(p => ({ ...p, bulan: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                                className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm focus:outline-none"
+                              >
+                                {MONTHS_FULL.map((m, i) => <option key={i+1} value={String(i+1)}>{m}</option>)}
+                              </select>
+                            ) : (
+                              <span className="px-2 text-sm">{MONTHS_FULL[(t.bulan||1)-1]}</span>
+                            )}
+                          </td>
+                          {/* DIVISI */}
+                          <td className="px-2 py-1.5">
+                            {isEditing ? (
+                              <select
+                                value={editRowData.divisi}
+                                onChange={e => setEditRowData(p => ({ ...p, divisi: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                                className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm focus:outline-none"
+                              >
+                                <option value="DPS">DPS</option>
+                                <option value="DSS">DSS</option>
+                              </select>
+                            ) : (
+                              <span className={cn("text-xs font-bold px-2 py-0.5 rounded", t.divisi === "DPS" ? "bg-blue-100 text-blue-800" : "bg-violet-100 text-violet-800")}>
+                                {t.divisi || "—"}
+                              </span>
+                            )}
+                          </td>
+                          {/* TARGET HO */}
+                          <td className="px-2 py-1.5 text-right">
+                            {isEditing ? (
+                              <input
+                                type="text" placeholder="0"
+                                value={editRowData.targetHo}
+                                onChange={e => setEditRowData(p => ({ ...p, targetHo: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                                className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono text-right focus:outline-none"
+                              />
+                            ) : (
+                              <span className="px-2 font-mono text-sm">Rp {((t.targetHo||0)/1e9).toFixed(2)}M</span>
+                            )}
+                          </td>
+                          {/* TARGET FULL HO */}
+                          <td className="px-2 py-1.5 text-right">
+                            {isEditing ? (
+                              <input
+                                type="text" placeholder="0"
+                                value={editRowData.targetFullHo}
+                                onChange={e => setEditRowData(p => ({ ...p, targetFullHo: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                                className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono text-right focus:outline-none"
+                              />
+                            ) : (
+                              <span className="px-2 font-mono text-sm font-semibold">Rp {((t.targetFullHo||0)/1e9).toFixed(2)}M</span>
+                            )}
+                          </td>
+                          {/* AKSI */}
+                          <td className="px-2 py-1.5 text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" onClick={handleSaveTargetRow} disabled={tSaving}
+                                  className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white text-xs">
+                                  {tSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setEditRowId(null); setFocusField(null); }}
+                                  className="h-7 px-2 text-muted-foreground hover:text-foreground text-xs">
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : isDeleting ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteTarget(t.id)} className="h-7 px-2 text-xs">Hapus</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setTDelConfirm(null)} className="h-7 px-2 text-xs">Batal</Button>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => setTDelConfirm(t.id)}
+                                className="h-7 px-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-opacity">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* New row being added */}
+                    {editRowId === "new" && (
+                      <tr className="bg-yellow-50">
+                        <td className="px-2 py-1.5">
+                          <input type="number" min="2020" max="2099"
+                            value={editRowData.tahun} autoFocus
+                            onChange={e => setEditRowData(p => ({ ...p, tahun: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                            className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono focus:outline-none"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <select value={editRowData.bulan}
+                            onChange={e => setEditRowData(p => ({ ...p, bulan: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                            className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm focus:outline-none">
+                            {MONTHS_FULL.map((m, i) => <option key={i+1} value={String(i+1)}>{m}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <select value={editRowData.divisi}
+                            onChange={e => setEditRowData(p => ({ ...p, divisi: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                            className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm focus:outline-none">
+                            <option value="DPS">DPS</option>
+                            <option value="DSS">DSS</option>
+                          </select>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input type="text" placeholder="0"
+                            value={editRowData.targetHo}
+                            onChange={e => setEditRowData(p => ({ ...p, targetHo: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                            className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono text-right focus:outline-none"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input type="text" placeholder="0"
+                            value={editRowData.targetFullHo}
+                            onChange={e => setEditRowData(p => ({ ...p, targetFullHo: e.target.value }))}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
+                            className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono text-right focus:outline-none"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" onClick={handleSaveTargetRow} disabled={tSaving}
+                              className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white text-xs">
+                              {tSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => { setEditRowId(null); setFocusField(null); }}
+                              className="h-7 px-2 text-muted-foreground hover:text-foreground text-xs">
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Add row button row */}
+                    {editRowId === null && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-1.5">
+                          <button
+                            onClick={() => {
+                              setEditRowId("new");
+                              setEditRowData({ tahun: String(curYear), bulan: String(curMonth), divisi: "DPS", targetHo: "", targetFullHo: "" });
+                              setFocusField(null);
+                            }}
+                            className="flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary font-semibold py-1 px-1 rounded transition-colors"
+                          >
+                            <span className="text-base leading-none">+</span> Tambah Baris
+                          </button>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
+            {targets.length > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">Klik dua kali pada baris untuk mengedit · Enter untuk simpan · Esc untuk batal</p>
+            )}
           </div>
         )}
 
