@@ -31,6 +31,13 @@ export interface SyncResult {
   error?: string;
 }
 
+/** Extract spreadsheet ID from a full Google Sheets URL, or return as-is if already an ID */
+export function extractSpreadsheetId(input: string): string {
+  if (!input) return input;
+  const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : input.trim();
+}
+
 /** Patterns that determine sheet type based on name prefix */
 const SHEET_PATTERNS: { prefix: string; type: "funnel" | "activity" | "performance" }[] = [
   { prefix: "TREG3_SALES_FUNNEL_", type: "funnel" },
@@ -121,8 +128,8 @@ export async function syncSelectedSheets(
     }
     // Funnel sheets use a dedicated spreadsheet if configured (1czGSp nationwide SIMLOP data)
     // Activity/performance sheets use the main spreadsheet (1ojCi6db)
-    const funnelSpreadsheetId = settings.gSheetsFunnelSpreadsheetId || settings.gSheetsSpreadsheetId;
-    const spreadsheetId = settings.gSheetsSpreadsheetId;
+    const funnelSpreadsheetId = extractSpreadsheetId(settings.gSheetsFunnelSpreadsheetId || settings.gSheetsSpreadsheetId);
+    const spreadsheetId = extractSpreadsheetId(settings.gSheetsSpreadsheetId);
     const apiKey = settings.gSheetsApiKey;
     const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl }).from(dataImportsTable);
     const results: SyncSheetResult[] = [];
@@ -444,8 +451,8 @@ export async function runGSheetsSync(): Promise<SyncResult> {
       return { syncedAt, sheetsFound: 0, results: [], error: "Spreadsheet ID atau API Key belum dikonfigurasi" };
     }
 
-    const spreadsheetId = settings.gSheetsSpreadsheetId;
-    const funnelSpreadsheetId = settings.gSheetsFunnelSpreadsheetId || spreadsheetId;
+    const spreadsheetId = extractSpreadsheetId(settings.gSheetsSpreadsheetId);
+    const funnelSpreadsheetId = extractSpreadsheetId(settings.gSheetsFunnelSpreadsheetId || settings.gSheetsSpreadsheetId);
     const apiKey = settings.gSheetsApiKey;
 
     // List sheets from both spreadsheets (funnel from 1czGSp, activity/performance from 1ojCi6db)

@@ -1175,7 +1175,7 @@ export default function ImportData() {
                     <li>Buka <strong>Google Cloud Console</strong> → APIs &amp; Services → Enable <strong>Google Sheets API</strong></li>
                     <li>Buat <strong>API Key</strong> (Credentials → Create → API Key)</li>
                     <li>Share spreadsheet dengan <strong>"Anyone with the link can view"</strong></li>
-                    <li>Salin <strong>Spreadsheet ID</strong> dari URL: <code className="font-mono bg-blue-100 px-1 rounded">...spreadsheets/d/<strong>[ID INI]</strong>/edit</code></li>
+                    <li>Salin <strong>URL lengkap</strong> atau hanya <strong>Spreadsheet ID</strong>-nya dari URL: <code className="font-mono bg-blue-100 px-1 rounded">...spreadsheets/d/<strong>[ID INI]</strong>/edit</code> — sistem otomatis ekstrak ID dari URL</li>
                     <li>Nama tab sheet harus berformat: <code className="font-mono bg-blue-100 px-1 rounded">TREG3_SALES_FUNNEL_YYYYMMDD</code></li>
                   </ol>
                 </div>
@@ -1184,9 +1184,13 @@ export default function ImportData() {
               {/* Form */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1 md:col-span-2">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Spreadsheet ID</label>
-                  <input type="text" value={gsForm.spreadsheetId} onChange={e => setGsForm(p => ({ ...p, spreadsheetId: e.target.value }))}
-                    placeholder="Contoh: 1ojCi6dbJKCSPZU_cWozEByDwzYbZ6hVaf3n9aDibiVk"
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Spreadsheet ID atau URL</label>
+                  <input type="text" value={gsForm.spreadsheetId} onChange={e => {
+                    const val = e.target.value.trim();
+                    const match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+                    setGsForm(p => ({ ...p, spreadsheetId: match ? match[1] : val }));
+                  }}
+                    placeholder="Paste URL atau Spreadsheet ID — contoh: 1ojCi6dbJK..."
                     className="w-full h-9 px-3 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div className="space-y-1 md:col-span-2">

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, appSettingsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
-import { runGSheetsSync, listAllSheets, syncSelectedSheets } from "./sync";
+import { runGSheetsSync, listAllSheets, syncSelectedSheets, extractSpreadsheetId } from "./sync";
 
 const router: IRouter = Router();
 
@@ -32,7 +32,7 @@ router.get("/gsheets/sheets", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   try {
-    const sheets = await listAllSheets(settings.gSheetsSpreadsheetId, settings.gSheetsApiKey);
+    const sheets = await listAllSheets(extractSpreadsheetId(settings.gSheetsSpreadsheetId), settings.gSheetsApiKey);
     res.json({ sheets });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || String(err) });
