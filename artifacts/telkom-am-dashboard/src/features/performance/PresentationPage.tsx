@@ -773,9 +773,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     if(groupedByAm.length===0) return;
     if(importId===lastAutoExpandIdFS.current) return;
     lastAutoExpandIdFS.current=importId;
-    const ak:Record<string,boolean>={};
-    for(const am of groupedByAm) ak[am.nikAm||am.namaAm]=true;
-    setExpandedAm(ak); setExpandedPhase({}); setAllExpanded(false);
+    setExpandedAm({}); setExpandedPhase({}); setAllExpanded(false);
   },[groupedByAm,importId]);
 
   function handleToggleAll(){

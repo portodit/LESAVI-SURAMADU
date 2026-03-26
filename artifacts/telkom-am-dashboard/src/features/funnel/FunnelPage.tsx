@@ -711,9 +711,7 @@ export default function FunnelPage() {
     if (groupedByAm.length === 0) return;
     if (importId === lastAutoExpandId.current) return;
     lastAutoExpandId.current = importId;
-    const ak: Record<string, boolean> = {};
-    for (const am of groupedByAm) ak[am.nikAm || am.namaAm] = true;
-    setExpandedAm(ak); setExpandedPhase({}); setAllExpanded(false);
+    setExpandedAm({}); setExpandedPhase({}); setAllExpanded(false);
   }, [groupedByAm, importId]);
 
   function toggleAmRow(key: string) {
