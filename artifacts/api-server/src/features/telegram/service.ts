@@ -1,7 +1,7 @@
 import { db, appSettingsTable, accountManagersTable, performanceDataTable, salesFunnelTable, salesActivityTable, telegramLogsTable, dataImportsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../shared/logger";
-import { generatePerfFeedback, generateBasaBasi, generateFunnelMotivation } from "./ai";
+import { generatePerfFeedback } from "./ai";
 
 const MONTH_NAMES = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -241,40 +241,58 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
   const [am] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.nik, nik));
   if (!am) return null;
 
-  // Get the 2 latest funnel import snapshots (newest first)
-  const funnelImports = await db.select()
+  // Get funnel import snapshots — sort: null snapshotDate first (most recent/current week),
+  // then by snapshotDate DESC, then createdAt DESC as tiebreaker
+  const funnelImportsRaw = await db.select()
     .from(dataImportsTable)
     .where(eq(dataImportsTable.type, "funnel"))
     .orderBy(desc(dataImportsTable.createdAt))
-    .limit(2);
+    .limit(10);
 
-  if (funnelImports.length === 0) return null;
+  if (funnelImportsRaw.length === 0) return null;
 
-  // All LOPs for this AM, then filter to current year (2026) only
+  // Sort: null snapshotDate (freshly uploaded, most recent week) comes first,
+  // then by snapshotDate DESC, then by createdAt DESC
+  const funnelImports = [...funnelImportsRaw].sort((a, b) => {
+    const aDate = a.snapshotDate;
+    const bDate = b.snapshotDate;
+    if (!aDate && !bDate) return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0);
+    if (!aDate) return -1; // null = newest
+    if (!bDate) return 1;
+    if (bDate > aDate) return 1;
+    if (aDate > bDate) return -1;
+    return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0);
+  });
+
+  // All LOPs for this AM in the 2 relevant snapshot imports
+  const latestImport = funnelImports[0];
+  const prevImport = funnelImports.length >= 2 ? funnelImports[1] : null;
+
+  const relevantImportIds = [latestImport.id, ...(prevImport ? [prevImport.id] : [])];
   const allLopsRaw = await db.select().from(salesFunnelTable).where(eq(salesFunnelTable.nikAm, nik));
-  const REPORT_YEAR = "2026";
+
+  // Filter to current year (2026) by reportDate only
+  const REPORT_YEAR = new Date().getFullYear().toString();
   const allLops = allLopsRaw.filter(l =>
-    (l.reportDate?.startsWith(REPORT_YEAR)) || (l.snapshotDate?.startsWith(REPORT_YEAR))
+    relevantImportIds.includes(l.importId!) &&
+    l.reportDate?.startsWith(REPORT_YEAR)
   );
 
-  const latestImport = funnelImports[0];
   const latestLops = allLops.filter(l => l.importId === latestImport.id);
   const counts = countByStatus(latestLops);
   const total = latestLops.length;
-  const snapshotDateLatest = formatSnapshotDate(latestImport.snapshotDate, latestImport.period, latestImport.createdAt?.toISOString()?.slice(0, 10) || "-");
-
-  const basaBasi = await generateBasaBasi(am.nama);
+  const snapshotDateLatest = formatSnapshotDate(
+    latestImport.snapshotDate,
+    latestImport.period,
+    latestImport.createdAt?.toISOString()?.slice(0, 10) || "-"
+  );
 
   // ── Kondisi C: Only 1 snapshot — no comparison possible ─────────────────
-  if (funnelImports.length < 2) {
-    let msg = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `📋 *MONITORING SALES FUNNELING*\n`;
-    msg += `LESA VI — Witel Suramadu\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  if (!prevImport) {
+    let msg = `📋 *MONITORING SALES FUNNELING*\n`;
+    msg += `LESA VI — Witel Suramadu\n\n`;
     msg += `Halo kak *${am.nama}*! 👋\n\n`;
-    msg += `_${basaBasi}_\n\n`;
-    msg += `Berikut data funneling kakak per\n`;
-    msg += `*${snapshotDateLatest}* ya kak 🙏\n\n`;
+    msg += `Berikut data funneling kakak per *${snapshotDateLatest}* ya kak 🙏\n\n`;
     msg += `📊 *Ringkasan LOP Kakak Saat Ini:*\n`;
     msg += `├ F0 (Lead)        : ${counts.F0} proyek\n`;
     msg += `├ F1 (Prospect)    : ${counts.F1} proyek\n`;
@@ -283,34 +301,38 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
     msg += `├ F4 (Closing)     : ${counts.F4} proyek\n`;
     msg += `└ F5 (Won) ✅      : ${counts.F5} proyek\n`;
     msg += `*Total             : ${total} proyek*\n\n`;
-    msg += `_ℹ️ Perbandingan dengan data sebelumnya belum tersedia_\n`;
-    msg += `_karena ini merupakan snapshot pertama yang tercatat._\n`;
+    msg += `_ℹ️ Perbandingan belum tersedia — ini snapshot pertama yang tercatat._\n`;
     msg += `_Perbandingan akan muncul pada laporan berikutnya._\n\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `📎 Detail lengkap:\n`;
     msg += getFunnelDetailUrl();
     return msg;
   }
 
   // ── 2+ snapshots: compare latest vs previous ─────────────────────────────
-  const prevImport = funnelImports[1];
   const prevLops = allLops.filter(l => l.importId === prevImport.id);
-  const snapshotDatePrev = formatSnapshotDate(prevImport.snapshotDate, prevImport.period, prevImport.createdAt?.toISOString()?.slice(0, 10) || "-");
+  const snapshotDatePrev = formatSnapshotDate(
+    prevImport.snapshotDate,
+    prevImport.period,
+    prevImport.createdAt?.toISOString()?.slice(0, 10) || "-"
+  );
 
   const prevMap = new Map(prevLops.map(l => [l.lopid, l]));
 
   const lopStagnan: { lopid: string; pelanggan: string; status: string }[] = [];
   const lopBergerak: { lopid: string; pelanggan: string; statusLama: string; statusBaru: string }[] = [];
+  const lopBaru: { lopid: string; pelanggan: string; status: string }[] = [];
 
   for (const lop of latestLops) {
     const prev = prevMap.get(lop.lopid);
-    if (!prev) continue; // new LOP in this snapshot — skip
+    if (!prev) {
+      lopBaru.push({ lopid: lop.lopid, pelanggan: lop.pelanggan, status: lop.statusF || "" });
+      continue;
+    }
 
     const statusBaru = lop.statusF || "";
     const statusLama = prev.statusF || "";
 
     if (statusBaru === statusLama) {
-      // Same status = stagnan, but ignore F5/Won (it's fine to stay Won)
       if (!isFunnel5(statusBaru)) {
         lopStagnan.push({ lopid: lop.lopid, pelanggan: lop.pelanggan, status: statusBaru });
       }
@@ -321,15 +343,11 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
 
   const hasStagnan = lopStagnan.length > 0;
 
-  // ── Header (common) ──────────────────────────────────────────────────────
-  let msg = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `📋 *MONITORING SALES FUNNELING*\n`;
-  msg += `LESA VI — Witel Suramadu\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  // ── Header ───────────────────────────────────────────────────────────────
+  let msg = `📋 *MONITORING SALES FUNNELING*\n`;
+  msg += `LESA VI — Witel Suramadu\n\n`;
   msg += `Halo kak *${am.nama}*! 👋\n\n`;
-  msg += `_${basaBasi}_\n\n`;
-  msg += `Izin menginformasikan hasil monitoring sales funneling kakak\n`;
-  msg += `per *${snapshotDateLatest}* ya kak 🙏\n\n`;
+  msg += `Berikut data funneling kakak per *${snapshotDateLatest}* ya kak 🙏\n\n`;
   msg += `📊 *Ringkasan LOP Kakak Saat Ini:*\n`;
   msg += `├ F0 (Lead)        : ${counts.F0} proyek\n`;
   msg += `├ F1 (Prospect)    : ${counts.F1} proyek\n`;
@@ -338,69 +356,73 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
   msg += `├ F4 (Closing)     : ${counts.F4} proyek\n`;
   msg += `└ F5 (Won) ✅      : ${counts.F5} proyek\n`;
   msg += `*Total             : ${total} proyek*\n\n`;
-  msg += `📅 _Data dibandingkan dengan snapshot sebelumnya_\n`;
-  msg += `_tertanggal ${snapshotDatePrev}_\n`;
+  msg += `📅 _Dibandingkan dengan snapshot *${snapshotDatePrev}*_\n`;
 
   const MAX_LIST = 10;
 
-  if (hasStagnan) {
-    // ── Kondisi A: Ada LOP stagnan ─────────────────────────────────────────
-    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `⚠️ *LOP Belum Bergerak (${lopStagnan.length}):*\n`;
-    msg += `_(status sama seperti data sebelumnya)_\n\n`;
-    const stagnanShow = lopStagnan.slice(0, MAX_LIST);
-    const stagnanRest = lopStagnan.length - stagnanShow.length;
-    for (const lop of stagnanShow) {
-      msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
-      msg += `  Status masih *${lop.status}* sejak snapshot sebelumnya\n`;
+  // ── LOP Baru (hanya ada di snapshot terkini) ──────────────────────────────
+  if (lopBaru.length > 0) {
+    msg += `\n🆕 *LOP Baru di Snapshot Ini (${lopBaru.length}):*\n`;
+    const baruShow = lopBaru.slice(0, MAX_LIST);
+    const baruRest = lopBaru.length - baruShow.length;
+    for (const lop of baruShow) {
+      msg += `\n• *${lop.lopid}* — ${lop.pelanggan}\n`;
+      msg += `  Status: *${lop.status}*\n`;
     }
-    if (stagnanRest > 0) {
-      msg += `_...dan ${stagnanRest} LOP lainnya belum bergerak (lihat detail)_\n`;
-    }
-    msg += `\n`;
-    const motivation = await generateFunnelMotivation(am.nama, lopStagnan.length, false);
-    msg += `_${motivation}_\n`;
-
-    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `✅ *LOP yang Sudah Bergerak (${lopBergerak.length}):*\n`;
-    msg += `_(ada perubahan status dibanding data sebelumnya)_\n\n`;
-    if (lopBergerak.length > 0) {
-      const bergerakShow = lopBergerak.slice(0, MAX_LIST);
-      const bergerakRest = lopBergerak.length - bergerakShow.length;
-      for (const lop of bergerakShow) {
-        msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
-        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
-      }
-      if (bergerakRest > 0) {
-        msg += `_...dan ${bergerakRest} LOP lainnya (lihat detail)_\n`;
-      }
-    } else {
-      msg += `_Belum ada pergerakan status pada periode ini._\n`;
-    }
-  } else {
-    // ── Kondisi B: Semua LOP sudah bergerak ───────────────────────────────
-    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🎉 *LOP Bergerak Semua — Keren!*\n\n`;
-    const motivation = await generateFunnelMotivation(am.nama, 0, true);
-    msg += `_${motivation}_\n\n`;
-    msg += `✅ *Perubahan Status LOP (${lopBergerak.length}):*\n\n`;
-    if (lopBergerak.length > 0) {
-      const bergerakShow = lopBergerak.slice(0, MAX_LIST);
-      const bergerakRest = lopBergerak.length - bergerakShow.length;
-      for (const lop of bergerakShow) {
-        msg += `• *${lop.lopid}* — ${lop.pelanggan}\n`;
-        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
-      }
-      if (bergerakRest > 0) {
-        msg += `_...dan ${bergerakRest} LOP lainnya (lihat detail)_\n`;
-      }
-    } else {
-      msg += `_Belum ada pergerakan status pada periode ini._\n`;
+    if (baruRest > 0) {
+      msg += `\n_...dan ${baruRest} LOP baru lainnya (lihat detail)_\n`;
     }
   }
 
-  msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `📎 Detail lengkap:\n`;
+  if (hasStagnan) {
+    // ── Kondisi A: Ada LOP stagnan ─────────────────────────────────────────
+    msg += `\n⚠️ *LOP Belum Bergerak (${lopStagnan.length}):*\n`;
+    msg += `_(status sama dengan snapshot *${snapshotDatePrev}*)_\n`;
+    const stagnanShow = lopStagnan.slice(0, MAX_LIST);
+    const stagnanRest = lopStagnan.length - stagnanShow.length;
+    for (const lop of stagnanShow) {
+      msg += `\n• *${lop.lopid}* — ${lop.pelanggan}\n`;
+      msg += `  Status masih *${lop.status}* sejak *${snapshotDatePrev}*\n`;
+    }
+    if (stagnanRest > 0) {
+      msg += `\n_...dan ${stagnanRest} LOP lainnya belum bergerak (lihat detail)_\n`;
+    }
+
+    msg += `\n✅ *LOP yang Sudah Bergerak (${lopBergerak.length}):*\n`;
+    msg += `_(ada perubahan status dibanding *${snapshotDatePrev}*)_\n`;
+    if (lopBergerak.length > 0) {
+      const bergerakShow = lopBergerak.slice(0, MAX_LIST);
+      const bergerakRest = lopBergerak.length - bergerakShow.length;
+      for (const lop of bergerakShow) {
+        msg += `\n• *${lop.lopid}* — ${lop.pelanggan}\n`;
+        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
+      }
+      if (bergerakRest > 0) {
+        msg += `\n_...dan ${bergerakRest} LOP lainnya (lihat detail)_\n`;
+      }
+    } else {
+      msg += `\n_Belum ada pergerakan status pada periode ini._\n`;
+    }
+  } else {
+    // ── Kondisi B: Semua LOP sudah bergerak / tidak ada LOP yang perlu dipantau ──
+    if (lopBergerak.length > 0) {
+      msg += `\n🎉 *Semua LOP Bergerak — Keren!*\n\n`;
+      msg += `✅ *Perubahan Status LOP (${lopBergerak.length}):*\n`;
+      const bergerakShow = lopBergerak.slice(0, MAX_LIST);
+      const bergerakRest = lopBergerak.length - bergerakShow.length;
+      for (const lop of bergerakShow) {
+        msg += `\n• *${lop.lopid}* — ${lop.pelanggan}\n`;
+        msg += `  ${lop.statusLama} → *${lop.statusBaru}* 🎯\n`;
+      }
+      if (bergerakRest > 0) {
+        msg += `\n_...dan ${bergerakRest} LOP lainnya (lihat detail)_\n`;
+      }
+    } else {
+      msg += `\n_Belum ada LOP tahun ${REPORT_YEAR} yang dapat dibandingkan pada snapshot ini._\n`;
+    }
+  }
+
+  msg += `\n📎 Detail lengkap:\n`;
   msg += getFunnelDetailUrl();
 
   // Hard safety cap: Telegram max is 4096 chars

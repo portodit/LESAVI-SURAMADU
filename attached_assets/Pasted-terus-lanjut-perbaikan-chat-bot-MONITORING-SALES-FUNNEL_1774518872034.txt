@@ -1,0 +1,98 @@
+terus lanjut perbaikan chat bot:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 MONITORING SALES FUNNELING
+LESA VI — Witel Suramadu
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+hapus aja garis divider itu jelek banget terus ini kenapa 13 maret? seharusnya 26 maret btw coba bantu perbaiki backend dlogic Ketika memiliki snapshot minggu ini an minggu lalu, pastikan snapshot nama file snapshot itu adalah tanggal yang cocok untuk ditaruh sebagai minggu ini, dan minggu lalu
+
+missal minggu ini pilih 13 maret 2026, yah minggu lalunya gabisa 26 maret, kalua mau pake 26 maret, seharusnya minggu ini yang dipilih 26 maret
+
+aturnya bebas mungkin langsng atur ddi dropdodwn, dimana dropdodwn minggu ini khusus yang terkini saja 
+
+
+
+
+Halo kak SAFIRINA FEBRYANTI! 👋
+
+Pagi semangat, Kak Safirina! Semoga
+
+Izin menginformasikan hasil monitoring sales funneling kakak
+per 13 Maret 2026 ya kak 🙏 (atur supaya nanti 26 maret yah pokoknya ini elaporkan di minggu terkini alias minggu ini 
+
+📊 Ringkasan LOP Kakak Saat Ini:
+├ F0 (Lead)        : 6 proyek
+├ F1 (Prospect)    : 111 proyek
+├ F2 (Quote)       : 24 proyek
+├ F3 (Negosiasi)   : 12 proyek
+├ F4 (Closing)     : 17 proyek
+└ F5 (Won) ✅      : 32 proyek
+Total             : 202 proyek
+
+📅 Data dibandingkan dengan snapshot sebelumnya
+tertanggal Maret 2026
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ LOP Belum Bergerak (170):
+(status sama seperti data sebelumnya)
+
+• LOP150471 — PHE WMO
+  Status masih F1 sejak snapshot sebelumnya (kasih tanggal snapshot sebelumnya snapshot kapan)
+
+kasih enter 
+
+• LOP164683 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+kasih enter 
+
+• LOP164684 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+kasih enter 
+• LOP164685 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP164691 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP164693 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP164695 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP164696 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP174861 — PT. GRAHA SARANA GRESIK
+  Status masih F1 sejak snapshot sebelumnya
+• LOP18880 — PETROKIMIA GRESIK
+  Status masih F3 sejak snapshot sebelumnya
+...dan 160 LOP lainnya belum bergerak (lihat detail)
+
+btw kenapa bisa ada 160 lop? padahal kalua di system itu did tahun 2026 filter dadri kolom report_date, hanya ada 9 lop loh kenapa ini bisa ada 160 yang disampein WKWKWK goblok 
+
+bandidnginnya seharusnya yang sama ama tahunb terkini saat ini yaitu 2026, bandidnginnya adadlah untuk lop yang sama dedngan snapshot sebelumnya,
+missal 26 maret ini ernayta safirina ada 12 lop, sedangkan 13 maret 9 lop yah nanti kasih tahu 3 lop mana saya yang baru didbuat minggu ini dan 9 lop yang sisanya itu apakah di minggu ini sudahd berubah status didbandingkan dengan minggu sebelumnya 13 maret.
+
+
+Kak Safirina, ada 1 (maksudndya apa ada 1? kayanya gausah pake AI sih langsung default aja wkwk) 
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ LOP yang Sudah Bergerak (0):
+(ada perubahan status dibanding data sebelumnya)
+
+Belum ada pergerakan status pada periode ini.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 Detail lengkap:
+https://a519d4f7-4cb6-47b5-a68c-4edfb8ecf9ee-00-i1xd6a6orel7.pike.replit.dev/visualisasi/funnel
+
+
+nanti chatbot atur supaya bertanya apakah ada hal lain yang ingin idbantu soal sales funneling? nah disini saya berharap bisa interaksi bisa dibantu pake ai sih poinnya  goals ai bisa nanti memastikan mau bertanya sales fdunnelng di minggu ini atau di minggu minggu sebelumnya (nanti kasih list snapshjot yang tersedia kalua mau minggu sebelumnya
+
+terus kalau udhd nentuin snapshot nanti suruh am buat nentuin mau bahas apa, kalau bisa sih Ketika am menulis permintannya, chatbot bisa berfikir juga gitu missal mau tanya f0 ada apa saja did snapshot yang dipilih nah nanti kasih tahu list f0 ada apa saja
+
+atau funnel lain
+
+atau kasih list lagi lop mana yang belum ada pergerakan jika dibandng dedngan snapshot sebelumnya d
+
+
+dll apakah bisa? biar lebih interaktif
+
+
+kalau dia gamau ngajak diskusi soal sales funneling kasih button Kembali ke menu utama
