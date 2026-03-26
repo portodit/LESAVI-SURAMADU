@@ -356,7 +356,13 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
   },[]);
   const toggleItem=(item:string)=>{const n=new Set(selected);if(n.has(item))n.delete(item);else n.add(item);onChange(n);};
   const toggleOpen=()=>{
-    if(triggerRef.current){const r=triggerRef.current.getBoundingClientRect();setPos({top:r.bottom+4,left:r.left});}
+    if(triggerRef.current){
+      const r=triggerRef.current.getBoundingClientRect();
+      const dropH=Math.min(options.length*40+72,256);
+      const spaceBelow=window.innerHeight-r.bottom;
+      const top=spaceBelow>=dropH?r.bottom+4:Math.max(4,r.top-dropH-4);
+      setPos({top,left:r.left});
+    }
     setOpen(o=>!o);
   };
   const unit=summaryLabel??"item";
@@ -1064,8 +1070,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
       {/* ── All mode: detail table ─────────────────────────────────────────── */}
       {viewMode!=="split"&&<div className="bg-card border border-border rounded-xl shadow-sm">
-        {/* Sticky toolbar — menempel di atas saat scroll */}
-        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border rounded-t-xl flex items-center justify-between gap-3 flex-wrap">
+        {/* Sticky toolbar — menempel di atas saat scroll, tanpa rounded agar mulus */}
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">Detail Funnel per AM</h3>
           <div className="flex items-center gap-2 flex-wrap">
             <FSCheckboxDropdown label="" options={amOptions} selected={filterAm} onChange={setFilterAm}
@@ -1083,8 +1089,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             </button>
           </div>
         </div>
-        {/* Tabel tanpa batasan tinggi — halaman yang scroll */}
-        <div className="overflow-x-auto">
+        {/* Sticky thead + horizontal scroll — overflow-y:clip supaya sticky thead tetap kerja */}
+        <div className="overflow-x-auto" style={{overflowY:"clip"}}>
           <table className="w-full text-left text-sm border-collapse" style={{minWidth:"820px"}}>
             <thead className="sticky top-[60px] z-10">
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
