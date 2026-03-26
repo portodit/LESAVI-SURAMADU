@@ -18,15 +18,7 @@ import FunnelVis from "@/features/funnel/FunnelPage";
 import ActivityVis from "@/features/activity/ActivityPage";
 import TelegramBot from "@/features/telegram/TelegramPage";
 import PengaturanPage from "@/features/settings/PengaturanPage";
-
-function AmManagement() {
-  return (
-    <div className="p-8 text-center text-muted-foreground">
-      <p className="text-lg font-semibold">Manajemen AM</p>
-      <p className="text-sm mt-2">Fitur dalam pengembangan</p>
-    </div>
-  );
-}
+import ManajemenAmPage from "@/features/am/ManajemenAmPage";
 
 function PublicAmPage() {
   return (
@@ -67,7 +59,7 @@ function ProtectedApp() {
         <Route path="/visualisasi/performa" component={PerformaVis} />
         <Route path="/visualisasi/funnel" component={FunnelVis} />
         <Route path="/visualisasi/activity" component={ActivityVis} />
-        <Route path="/am" component={AmManagement} />
+        <Route path="/am" component={ManajemenAmPage} />
         <Route path="/telegram" component={TelegramBot} />
         <Route path="/pengaturan" component={PengaturanPage} />
         <Route path="/">
