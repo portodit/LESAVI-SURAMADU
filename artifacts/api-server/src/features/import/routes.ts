@@ -290,7 +290,7 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
 
   // ── Apply cleaning pipeline (sesuai Power Query di Power BI)
   const cleaned = cleanFunnelRows(rows, {
-    pembuatOnly: true,        // Power BI: gunakan HANYA nik_pembuat_lop, skip nik_handling
+    preferPembuat: true,      // nik_pembuat_lop first; nik_handling[0] fallback (Excel kadang kosong di nik_pembuat_lop)
     skipIsReportFilter: true, // Power BI: tidak ada filter is_report
   });
 

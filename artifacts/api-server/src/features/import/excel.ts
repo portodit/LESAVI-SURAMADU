@@ -61,8 +61,8 @@ export function parseIndonesianNumber(val: any): number {
 }
 
 export function detectPeriodFromUrl(url: string): string | null {
-  // Extract YYYYMMDD from filename e.g. TREG3_ACTIVITY_20260316.xlsx
-  const match = url.match(/[_-](\d{8})[._?&]/);
+  // Extract YYYYMMDD from filename e.g. TREG3_ACTIVITY_20260316.xlsx or TREG3_ACTIVITY_20260316 (no ext)
+  const match = url.match(/[_-](\d{8})(?:[._?&\s]|$)/);
   if (match) {
     const raw = match[1];
     const year = raw.slice(0, 4);
@@ -73,8 +73,8 @@ export function detectPeriodFromUrl(url: string): string | null {
 }
 
 export function extractSnapshotDateFromUrl(url: string): string | null {
-  // Returns YYYY-MM-DD from YYYYMMDD in filename
-  const match = url.match(/[_-](\d{8})[._?&]/);
+  // Returns YYYY-MM-DD from YYYYMMDD in filename (handles with or without extension)
+  const match = url.match(/[_-](\d{8})(?:[._?&\s]|$)/);
   if (match) {
     const raw = match[1];
     return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
