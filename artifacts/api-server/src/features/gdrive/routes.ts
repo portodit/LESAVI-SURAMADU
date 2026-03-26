@@ -283,12 +283,16 @@ async function importFunnelRows(rows: any[], sourceUrl: string, period: string |
     };
   }).filter((r: any) => r.lopid);
 
-  // Delete any existing rows for these lopids (drive re-sync overwrites by lopid)
+  // Delete rows for THIS snapshot's lopids only — jangan hapus snapshot lain!
+  // Ini untuk handle re-sync file yang sama; snapshot berbeda tetap aman.
   const existingLopids = toInsert.map(r => r.lopid);
   if (existingLopids.length > 0) {
     for (let i = 0; i < existingLopids.length; i += 200) {
       const batch = existingLopids.slice(i, i + 200);
-      await db.delete(salesFunnelTable).where(sql`lopid = ANY(ARRAY[${sql.join(batch.map(id => sql`${id}`), sql`, `)}])`);
+      await db.delete(salesFunnelTable).where(and(
+        eq(salesFunnelTable.snapshotDate, snapshotStr),
+        sql`lopid = ANY(ARRAY[${sql.join(batch.map(id => sql`${id}`), sql`, `)}])`
+      ));
     }
   }
 

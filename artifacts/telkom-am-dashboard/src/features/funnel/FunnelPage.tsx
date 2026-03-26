@@ -399,9 +399,10 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
   const endX = cx + r * Math.cos(toRad(endAngle));
   const endY = cy + r * Math.sin(toRad(endAngle));
 
+  const surplus = real >= activeTarget;
   return (
-    <div className="flex items-center gap-3">
-      <svg width="180" height="130" viewBox="0 0 160 115" className="shrink-0">
+    <div className="flex items-center gap-4">
+      <svg width="220" height="160" viewBox="0 0 160 115" className="shrink-0">
         <path d={arc(startAngle, endAngle, r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
         {hasTarget && clamp > 0 && (
           <path d={arc(startAngle, startAngle + fillDeg, r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round" />
@@ -422,23 +423,23 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
         <text x={startX} y={startY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
         <text x={endX} y={endY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
       </svg>
-      <div className="flex-1 space-y-1.5 text-sm min-w-0">
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground text-xs">Real Pipeline</span>
-          <span className="font-bold text-foreground tabular-nums">{formatRupiah(real)}</span>
+      <div className="flex-1 space-y-2 text-sm min-w-0">
+        <div className="flex justify-between items-center gap-2">
+          <span className="text-xs font-semibold text-foreground">Real Pipeline</span>
+          <span className="font-black text-foreground tabular-nums">{formatRupiah(real)}</span>
         </div>
         {hasTarget && (
           <>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs">{mode === "ho" ? "Target HO" : "Target Full HO"}</span>
-              <span className="tabular-nums text-foreground">{formatRupiah(activeTarget)}</span>
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-xs font-semibold text-foreground">{mode === "ho" ? "Target HO" : "Target Full HO"}</span>
+              <span className="font-black tabular-nums text-foreground">{formatRupiah(activeTarget)}</span>
             </div>
-            <div className="pt-1.5 border-t border-border flex justify-between items-center">
-              <span className={cn("text-xs font-bold", real >= activeTarget ? "text-emerald-600" : "text-gray-900 dark:text-white")}>
-                {real >= activeTarget ? "Kelebihan" : "Kekurangan"}
+            <div className="pt-2 border-t-2 border-border flex justify-between items-center gap-2">
+              <span className={cn("text-xs font-black uppercase tracking-wide", surplus ? "text-emerald-600" : "text-red-600")}>
+                {surplus ? "Kelebihan" : "Kekurangan"}
               </span>
-              <span className={cn("font-bold tabular-nums text-sm", real >= activeTarget ? "text-emerald-600" : "text-gray-900 dark:text-white")}>
-                {real >= activeTarget ? "+" : "-"}{formatRupiah(Math.abs(activeTarget - real))}
+              <span className={cn("font-black tabular-nums text-base", surplus ? "text-emerald-600" : "text-red-600")}>
+                {surplus ? "+" : "-"}{formatRupiah(Math.abs(activeTarget - real))}
               </span>
             </div>
           </>
