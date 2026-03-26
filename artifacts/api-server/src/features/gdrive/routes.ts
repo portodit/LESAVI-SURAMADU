@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, appSettingsTable, dataImportsTable, accountManagersTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
 import { parseExcelBuffer, detectPeriod, extractSnapshotDateFromUrl, cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify } from "../import/excel";
+import XLSX from "xlsx";
 import { desc, eq, and, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -44,14 +45,12 @@ function isSupportedFile(name: string, mimeType: string): boolean {
 }
 
 async function downloadDriveFile(fileId: string, mimeType: string, apiKey: string): Promise<Buffer> {
-  let url: string;
   if (mimeType === GOOGLE_SHEET_MIME) {
-    // Google Sheets native — export sebagai XLSX
-    url = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(XLSX_MIME)}&key=${apiKey}`;
-  } else {
-    // File biasa (Excel) — download langsung
-    url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+    // Google Sheets native — gunakan Sheets API (tidak ada batas ukuran file)
+    return downloadGoogleSheetAsBuffer(fileId, apiKey);
   }
+  // File biasa (Excel) — download langsung
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -59,6 +58,41 @@ async function downloadDriveFile(fileId: string, mimeType: string, apiKey: strin
   }
   const ab = await res.arrayBuffer();
   return Buffer.from(ab);
+}
+
+/**
+ * Baca Google Sheets via Sheets API v4 (tidak ada limit ukuran)
+ * dan konversi ke XLSX buffer supaya bisa diproses parseExcelBuffer().
+ */
+async function downloadGoogleSheetAsBuffer(spreadsheetId: string, apiKey: string): Promise<Buffer> {
+  // 1) Ambil nama sheet pertama
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}&fields=sheets.properties`
+  );
+  if (!metaRes.ok) {
+    const body = await metaRes.text().catch(() => "");
+    throw new Error(`Gagal ambil metadata Sheets: ${metaRes.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+  }
+  const meta: any = await metaRes.json();
+  const sheetTitle: string = meta.sheets?.[0]?.properties?.title ?? "Sheet1";
+
+  // 2) Ambil semua nilai (UNFORMATTED_VALUE supaya angka tetap angka, bukan string format)
+  const valRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetTitle)}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`
+  );
+  if (!valRes.ok) {
+    const body = await valRes.text().catch(() => "");
+    throw new Error(`Gagal baca nilai Sheets: ${valRes.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+  }
+  const valData: any = await valRes.json();
+  const rawRows: any[][] = valData.values ?? [];
+
+  // 3) Konversi 2-D array ke XLSX buffer supaya pipeline parseExcelBuffer tetap sama
+  const ws = XLSX.utils.aoa_to_sheet(rawRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+  const xlsxBuf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  return Buffer.from(xlsxBuf);
 }
 
 // ── GET /api/gdrive/list?type=performance ────────────────────────────────────
