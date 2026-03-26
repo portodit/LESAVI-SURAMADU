@@ -400,8 +400,8 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
   const endY = cy + r * Math.sin(toRad(endAngle));
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width="240" height="172" viewBox="0 0 160 115">
+    <div className="flex items-center gap-3">
+      <svg width="180" height="130" viewBox="0 0 160 115" className="shrink-0">
         <path d={arc(startAngle, endAngle, r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
         {hasTarget && clamp > 0 && (
           <path d={arc(startAngle, startAngle + fillDeg, r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round" />
@@ -422,7 +422,7 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
         <text x={startX} y={startY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
         <text x={endX} y={endY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
       </svg>
-      <div className="w-full space-y-1.5 mt-1 text-sm">
+      <div className="flex-1 space-y-1.5 text-sm min-w-0">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground text-xs">Real Pipeline</span>
           <span className="font-bold text-foreground tabular-nums">{formatRupiah(real)}</span>
