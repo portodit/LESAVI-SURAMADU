@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { cn } from "@/shared/lib/utils";
-import { formatRupiah } from "@/shared/lib/utils";
+import { cn, formatRupiah, formatRupiahFull } from "@/shared/lib/utils";
 import { ChevronRight, ChevronDown, Search, X, TrendingUp, TrendingDown, Minimize2, Expand } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -900,7 +899,7 @@ export default function FunnelPage() {
                         </div>
                       </td>
                       <td className="px-3 py-3" colSpan={3}>
-                        <span className="text-xs text-muted-foreground font-medium">{amLopCount} LOP</span>
+                        <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-black text-foreground tabular-nums text-sm">{formatRupiah(amTotal)}</span>
@@ -942,7 +941,7 @@ export default function FunnelPage() {
                             const isLastLop = idx === lops.length - 1;
                             const isBottomOfRing = isLastPhase && isLastLop;
                             return (
-                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-rose-50/50 transition-colors"
+                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors"
                                 style={ringStyle(isBottomOfRing && ring ? { borderBottom: `2px solid ${ring}` } : {})}>
                                 <td className="px-4 py-2 pl-16">
                                   <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>
@@ -952,7 +951,7 @@ export default function FunnelPage() {
                                 <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
                                 <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
                                 <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                                <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">{formatRupiah(lop.nilaiProyek)}</td>
+                                <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                               </tr>
                             );
                           })}

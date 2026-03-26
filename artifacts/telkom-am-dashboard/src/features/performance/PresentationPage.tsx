@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { formatRupiah, formatPercent, getStatusColor, getAchPct, cn } from "@/shared/lib/utils";
+import { formatRupiah, formatRupiahFull, formatPercent, getStatusColor, getAchPct, cn } from "@/shared/lib/utils";
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   Line, ComposedChart, Legend, PieChart, Pie
@@ -648,7 +648,7 @@ function FSKpiGrid({ data }: { data:any }) {
   );
 }
 
-function FunnelSlide() {
+function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void }) {
   const [filterYear,setFilterYear] = useState("2026");
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
   const [importId,setImportId] = useState<number|null>(null);
@@ -753,6 +753,11 @@ function FunnelSlide() {
       return totB-totA;
     });
   },[filteredLops]);
+
+  useEffect(()=>{
+    const t=filterDivisi==="all"?"HO / FULL HO":filterDivisi==="DPS"?"HO":"FULL HO";
+    onTitleChange?.(t);
+  },[filterDivisi,onTitleChange]);
 
   const lastAutoExpandIdFS = useRef<number|null>(undefined as any);
   useEffect(()=>{
@@ -925,7 +930,7 @@ function FunnelSlide() {
                         </div>
                       </td>
                       <td className="px-3 py-3" colSpan={3}>
-                        <span className="text-xs text-muted-foreground font-medium">{amLopCount} LOP</span>
+                        <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-black text-foreground tabular-nums text-sm">{fmtRupiahFS(amTotal)}</span>
@@ -961,7 +966,7 @@ function FunnelSlide() {
                             const isLastLop=idx===lops.length-1;
                             const isBottomOfRing=isLastPhase&&isLastLop;
                             return (
-                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-rose-50/50 transition-colors"
+                              <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors"
                                 style={ringStyle(isBottomOfRing&&ring?{borderBottom:`2px solid ${ring}`}:{})}>
                                 <td className="px-4 py-2 pl-16">
                                   <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
@@ -971,7 +976,7 @@ function FunnelSlide() {
                                 </td>
                                 <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
                                 <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                                <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">{fmtRupiahFS(lop.nilaiProyek)}</td>
+                                <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                               </tr>
                             );
                           })}
@@ -1007,6 +1012,7 @@ export default function EmbedPerforma() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [funnelSubtitle, setFunnelSubtitle] = useState("HO / FULL HO");
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -1251,7 +1257,11 @@ export default function EmbedPerforma() {
             <img src={`${import.meta.env.BASE_URL}logo-tr3.png`} alt="Logo TR3" className="h-10 object-contain" />
             <div className="leading-tight">
               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">LESA VI WITEL SURAMADU</p>
-              <p className="text-sm font-bold text-foreground">AM Performance Report</p>
+              <p className="text-sm font-bold text-foreground">
+                {currentSlide === 1
+                  ? `SALES FUNNELING LOP MYTENS ${funnelSubtitle}`
+                  : "AM Performance Report"}
+              </p>
             </div>
           </div>
           {/* Desktop-only divider + filters */}
@@ -1366,7 +1376,7 @@ export default function EmbedPerforma() {
       <div className="flex-1 overflow-y-auto">
 
       {/* ─── Slide: Sales Funnel ──────────────────────────── */}
-      {currentSlide === 1 && <FunnelSlide />}
+      {currentSlide === 1 && <FunnelSlide onTitleChange={setFunnelSubtitle} />}
 
       {/* ─── Slide: Sales Activity (placeholder) ─────────── */}
       {currentSlide === 2 && (

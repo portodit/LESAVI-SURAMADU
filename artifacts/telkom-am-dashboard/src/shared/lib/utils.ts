@@ -19,6 +19,11 @@ export function formatPercent(value: number | null | undefined): string {
   return `${pct.toFixed(2).replace('.', ',')}%`;
 }
 
+export function formatRupiahFull(value: number | null | undefined): string {
+  const v = value ?? 0;
+  return `Rp ${v.toLocaleString('id-ID')}`;
+}
+
 export function formatRupiahShort(value: number | null | undefined): string {
   const v = value ?? 0;
   if (v >= 1e12) return `Rp${(v / 1e12).toFixed(2)}T`;
