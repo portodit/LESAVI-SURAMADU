@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/shared/lib/utils";
-import { ChevronRight, ChevronDown, Search, X, TrendingUp, Expand, Minimize2 } from "lucide-react";
+import { formatRupiah } from "@/shared/lib/utils";
+import { ChevronRight, ChevronDown, Search, X, TrendingUp, TrendingDown, Minimize2, Expand } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -43,13 +44,6 @@ const MONTHS_ID  = ["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Ok
 const MONTHS_FULL = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const MONTH_NUMS  = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
-function fmtRupiah(n: number): string {
-  if (!n && n !== 0) return "–";
-  if (n >= 1e12) return `Rp ${(n/1e12).toFixed(2)}T`;
-  if (n >= 1e9)  return `Rp ${(n/1e9).toFixed(2)}M`;
-  if (n >= 1e6)  return `Rp ${Math.round(n/1e6)} jt`;
-  return `Rp ${n.toLocaleString("id-ID")}`;
-}
 function fmtCompact(n: number): string {
   if (!n) return "–";
   if (n >= 1e12) return `${(n/1e12).toFixed(1)}T`;
@@ -71,7 +65,7 @@ async function apiFetch<T>(path: string): Promise<T> {
   return r.json();
 }
 
-// ─── SelectDropdown (matches PerformaPage style) ──────────────────────────────
+// ─── SelectDropdown ───────────────────────────────────────────────────────────
 
 function SelectDropdown({ label, value, onChange, options, disabled, className }: {
   label?: string; value: string; onChange: (v: string) => void;
@@ -132,7 +126,7 @@ function SelectDropdown({ label, value, onChange, options, disabled, className }
   );
 }
 
-// ─── CheckboxDropdown (matches PerformaPage style) ────────────────────────────
+// ─── CheckboxDropdown ─────────────────────────────────────────────────────────
 
 function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, summaryLabel, className }: {
   label: string; options: string[]; selected: Set<string>; onChange: (next: Set<string>) => void;
@@ -219,19 +213,19 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
   );
 }
 
-// ─── PeriodeTreeDropdown — Power BI style year > month tree picker ────────────
+// ─── PeriodeTreeDropdown — multi-year tree picker ─────────────────────────────
 
-function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, onChange, className }: {
+function PeriodeTreeDropdown({ label, filterYears, filterMonths, availableYears, onChange, className }: {
   label?: string;
-  filterYear: string;
+  filterYears: Set<string>;
   filterMonths: Set<string>;
   availableYears: string[];
-  onChange: (year: string, months: Set<string>) => void;
+  onChange: (years: Set<string>, months: Set<string>) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([filterYear]));
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set(filterYears));
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -246,11 +240,7 @@ function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, 
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  useEffect(() => {
-    setExpandedYears(prev => new Set([...prev, filterYear]));
-  }, [filterYear]);
-
-  const years = availableYears.length > 0 ? availableYears : [filterYear];
+  const years = availableYears.length > 0 ? availableYears : [...filterYears];
 
   const toggle = () => {
     if (triggerRef.current) {
@@ -265,20 +255,40 @@ function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, 
     setExpandedYears(prev => { const n = new Set(prev); n.has(yr) ? n.delete(yr) : n.add(yr); return n; });
   };
 
-  const selectYear = (yr: string) => onChange(yr, new Set());
-
-  const toggleMonth = (yr: string, mo: string) => {
-    if (yr !== filterYear) { onChange(yr, new Set([mo])); return; }
-    const n = new Set(filterMonths);
-    n.has(mo) ? n.delete(mo) : n.add(mo);
-    onChange(yr, n);
+  const toggleYear = (yr: string) => {
+    const n = new Set(filterYears);
+    if (n.has(yr)) {
+      n.delete(yr);
+      if (n.size === 0) n.add(yr); // keep at least one year
+    } else {
+      n.add(yr);
+    }
+    // Clear months when switching to multi-year
+    onChange(n, n.size === 1 ? filterMonths : new Set());
   };
 
-  const displayText = filterMonths.size === 0
-    ? `${filterYear} (semua bulan)`
-    : filterMonths.size === 1
-    ? `${MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
-    : `${filterYear} · ${filterMonths.size} bulan`;
+  const toggleMonth = (mo: string) => {
+    if (filterYears.size !== 1) return; // months only for single year
+    const n = new Set(filterMonths);
+    n.has(mo) ? n.delete(mo) : n.add(mo);
+    onChange(filterYears, n);
+  };
+
+  const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
+
+  const displayText = (() => {
+    const sortedYrs = [...filterYears].sort().reverse();
+    if (filterYears.size === years.length && years.length > 1) return "Semua Tahun";
+    if (singleYear) {
+      if (filterMonths.size === 0) return `${singleYear} (semua bulan)`;
+      if (filterMonths.size === 1) {
+        const m = [...filterMonths][0];
+        return `${MONTHS_ID[parseInt(m)]} ${singleYear}`;
+      }
+      return `${singleYear} · ${filterMonths.size} bulan`;
+    }
+    return sortedYrs.join(", ");
+  })();
 
   return (
     <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
@@ -287,25 +297,34 @@ function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, 
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left",
           open && "border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
-        {filterMonths.size > 0 && (
+        {filterYears.size > 1 && (
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{filterYears.size}</span>
+        )}
+        {singleYear && filterMonths.size > 0 && (
           <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{filterMonths.size}</span>
         )}
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
       </button>
       {open && createPortal(
         <div ref={dropRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
-          className="bg-card border border-border rounded-xl shadow-xl w-52 overflow-hidden">
+          className="bg-card border border-border rounded-xl shadow-xl w-56 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Periode</span>
-            <button onClick={() => onChange(filterYear, new Set())}
-              className="text-[11px] text-primary font-semibold hover:underline">Reset</button>
+            <div className="flex gap-1.5">
+              <button onClick={() => onChange(new Set(years), new Set())}
+                className="text-[11px] text-primary font-semibold hover:underline">Semua</button>
+              <span className="text-muted-foreground text-[11px]">·</span>
+              <button onClick={() => { const latest = [...years].sort().reverse()[0]; onChange(new Set([latest]), new Set()); }}
+                className="text-[11px] text-muted-foreground font-semibold hover:text-foreground hover:underline">Reset</button>
+            </div>
           </div>
-          <div className="max-h-64 overflow-y-auto py-1">
+          <div className="max-h-72 overflow-y-auto py-1">
             {years.map(yr => {
-              const isActive = yr === filterYear;
-              const allSel = isActive && filterMonths.size === 0;
-              const someSel = isActive && filterMonths.size > 0;
+              const isActive = filterYears.has(yr);
               const exp = expandedYears.has(yr);
+              const isSingle = filterYears.size === 1 && isActive;
+              const allMonthsSel = isSingle && filterMonths.size === 0;
+              const someSel = isSingle && filterMonths.size > 0;
               return (
                 <div key={yr}>
                   <div className="flex items-center gap-1 px-2 py-1.5 hover:bg-secondary/40 transition-colors">
@@ -314,21 +333,24 @@ function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, 
                       <ChevronRight className={cn("w-3 h-3 transition-transform", exp && "rotate-90")} />
                     </button>
                     <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
-                      <input type="checkbox" checked={allSel}
-                        ref={el => { if (el) el.indeterminate = someSel; }}
-                        onChange={() => selectYear(yr)}
+                      <input type="checkbox" checked={isActive}
+                        ref={el => { if (el) el.indeterminate = someSel && !allMonthsSel; }}
+                        onChange={() => toggleYear(yr)}
                         className="w-3.5 h-3.5 accent-primary cursor-pointer" />
                       <span className={cn("text-sm font-semibold", isActive ? "text-primary" : "text-foreground")}>{yr}</span>
+                      {isSingle && filterMonths.size > 0 && (
+                        <span className="text-[10px] text-muted-foreground">({filterMonths.size} bln)</span>
+                      )}
                     </label>
                   </div>
-                  {exp && (
+                  {exp && isSingle && (
                     <div className="ml-6 pb-1">
                       {MONTH_NUMS.map((mo, idx) => {
-                        const checked = isActive && filterMonths.has(mo);
+                        const checked = filterMonths.has(mo);
                         return (
                           <label key={mo} className="flex items-center gap-2 px-2 py-1 hover:bg-secondary/30 cursor-pointer rounded select-none">
                             <input type="checkbox" checked={checked}
-                              onChange={() => toggleMonth(yr, mo)}
+                              onChange={() => toggleMonth(mo)}
                               className="w-3.5 h-3.5 accent-primary cursor-pointer" />
                             <span className={cn("text-sm", checked ? "text-foreground font-medium" : "text-muted-foreground")}>
                               {MONTHS_FULL[idx + 1]}
@@ -336,6 +358,11 @@ function PeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, 
                           </label>
                         );
                       })}
+                    </div>
+                  )}
+                  {exp && !isSingle && (
+                    <div className="ml-6 pb-1 px-2 py-1.5">
+                      <span className="text-[11px] text-muted-foreground italic">Pilih 1 tahun untuk filter bulan</span>
                     </div>
                   )}
                 </div>
@@ -399,20 +426,20 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
       <div className="w-full space-y-1.5 mt-1 text-sm">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground text-xs">Real Pipeline</span>
-          <span className="font-bold text-foreground font-mono">{fmtRupiah(real)}</span>
+          <span className="font-bold text-foreground tabular-nums">{formatRupiah(real)}</span>
         </div>
         {hasTarget && (
           <>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground text-xs">{mode === "ho" ? "Target HO" : "Target Full HO"}</span>
-              <span className="font-mono text-foreground">{fmtRupiah(activeTarget)}</span>
+              <span className="tabular-nums text-foreground">{formatRupiah(activeTarget)}</span>
             </div>
             <div className="pt-1.5 border-t border-border flex justify-between items-center">
               <span className={cn("text-xs font-bold", real >= activeTarget ? "text-emerald-600" : "text-gray-900 dark:text-white")}>
                 {real >= activeTarget ? "Kelebihan" : "Kekurangan"}
               </span>
-              <span className={cn("font-bold font-mono text-sm", real >= activeTarget ? "text-emerald-600" : "text-gray-900 dark:text-white")}>
-                {real >= activeTarget ? "+" : "-"}{fmtRupiah(Math.abs(activeTarget - real))}
+              <span className={cn("font-bold tabular-nums text-sm", real >= activeTarget ? "text-emerald-600" : "text-gray-900 dark:text-white")}>
+                {real >= activeTarget ? "+" : "-"}{formatRupiah(Math.abs(activeTarget - real))}
               </span>
             </div>
           </>
@@ -468,17 +495,38 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
 function KpiGrid({ data }: { data: FunnelData | undefined }) {
   if (!data) return null;
   const kpis = [
-    { label: "Total LOP", value: data.totalLop.toLocaleString("id-ID"), sub: "proyek aktif", color: "text-foreground" },
-    { label: "Total Nilai Pipeline", value: fmtCompact(data.totalNilai), sub: "nilai seluruh LOP", color: "text-blue-600" },
-    { label: "Jumlah Pelanggan", value: data.pelangganCount.toLocaleString("id-ID"), sub: "unique customer", color: "text-amber-600" },
+    {
+      label: "Total LOP",
+      value: data.totalLop.toLocaleString("id-ID"),
+      sub: "proyek aktif",
+      color: "text-foreground",
+      icon: <TrendingUp className="w-8 h-8 text-emerald-500 opacity-80" />,
+    },
+    {
+      label: "Total Nilai Pipeline",
+      value: formatRupiah(data.totalNilai),
+      sub: "nilai seluruh LOP",
+      color: "text-blue-600",
+      icon: <TrendingUp className="w-8 h-8 text-blue-400 opacity-80" />,
+    },
+    {
+      label: "Jumlah Pelanggan",
+      value: data.pelangganCount.toLocaleString("id-ID"),
+      sub: "unique customer",
+      color: "text-amber-600",
+      icon: <TrendingUp className="w-8 h-8 text-amber-400 opacity-80" />,
+    },
   ];
   return (
     <div className="grid grid-cols-3 gap-3">
       {kpis.map(k => (
-        <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-3">
-          <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">{k.label}</div>
-          <div className={cn("text-3xl font-black font-mono leading-tight", k.color)}>{k.value}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
+        <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">{k.label}</div>
+            <div className={cn("text-2xl font-black tabular-nums leading-tight", k.color)}>{k.value}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
+          </div>
+          <div className="shrink-0 opacity-70">{k.icon}</div>
         </div>
       ))}
     </div>
@@ -511,7 +559,7 @@ export default function FunnelPage() {
   const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
   const [filterKontrak, setFilterKontrak] = useState<Set<string>>(new Set());
   const [filterAm, setFilterAm] = useState<Set<string>>(new Set());
-  const [filterYear, setFilterYear] = useState<string>("2026");
+  const [filterYears, setFilterYears] = useState<Set<string>>(new Set(["2026"]));
   const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expandedAm, setExpandedAm] = useState<Record<string, boolean>>({});
@@ -525,7 +573,6 @@ export default function FunnelPage() {
     staleTime: 60_000,
   });
 
-  // Snapshot options — all available imports, newest first
   const snapshotOptions = useMemo(() =>
     [...snapshots]
       .sort((a, b) => b.id - a.id)
@@ -540,7 +587,6 @@ export default function FunnelPage() {
 
   const selectedSnapshot = useMemo(() => snapshots.find(s => s.id === importId), [snapshots, importId]);
 
-  // Auto-select first snapshot; reset period to snapshot's year when snapshot changes
   useEffect(() => {
     if (snapshotOptions.length > 0 && importId === null) {
       setImportId(Number(snapshotOptions[0].value));
@@ -549,7 +595,8 @@ export default function FunnelPage() {
 
   useEffect(() => {
     if (selectedSnapshot) {
-      setFilterYear(selectedSnapshot.period.slice(0, 4));
+      const yr = selectedSnapshot.period.slice(0, 4);
+      setFilterYears(new Set([yr]));
       setFilterMonths(new Set());
     }
   }, [selectedSnapshot?.id]);
@@ -566,9 +613,9 @@ export default function FunnelPage() {
     staleTime: 30_000,
   });
 
-  // Year options derived from unique report_date years in loaded data, newest first
-  const yearOptions = useMemo(() => {
-    if (!data) return [{ value: filterYear, label: filterYear }];
+  // Available years derived from loaded data
+  const availableYears = useMemo(() => {
+    if (!data) return [...filterYears];
     const yearSet = new Set<string>();
     for (const l of data.lops) {
       if (!l.reportDate) continue;
@@ -576,24 +623,23 @@ export default function FunnelPage() {
       if (/^\d{4}$/.test(yr)) yearSet.add(yr);
     }
     const sorted = [...yearSet].sort().reverse();
-    return sorted.length > 0
-      ? sorted.map(y => ({ value: y, label: y }))
-      : [{ value: filterYear, label: filterYear }];
+    return sorted.length > 0 ? sorted : [...filterYears];
   }, [data]);
 
-  // Period-filtered LOPs (mirrors Power BI Date slicer on report_date)
+  // Period-filtered LOPs: filter by selected years + months (months only for single year)
   const periodFilteredLops = useMemo(() => {
     if (!data) return [];
+    const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
     return data.lops.filter(l => {
       if (!l.reportDate) return false;
       const rd = String(l.reportDate).slice(0, 10);
-      if (filterYear && rd.slice(0, 4) !== filterYear) return false;
-      if (filterMonths.size > 0 && !filterMonths.has(rd.slice(5, 7))) return false;
+      const yr = rd.slice(0, 4);
+      if (!filterYears.has(yr)) return false;
+      if (singleYear && filterMonths.size > 0 && !filterMonths.has(rd.slice(5, 7))) return false;
       return true;
     });
-  }, [data, filterYear, filterMonths]);
+  }, [data, filterYears, filterMonths]);
 
-  // Computed stats from period-filtered LOPs (used by charts/summary cards)
   const periodStats = useMemo(() => {
     const lops = periodFilteredLops;
     const byStatusMap: Record<string, { status: string; count: number; totalNilai: number }> = {};
@@ -659,7 +705,6 @@ export default function FunnelPage() {
     });
   }, [filteredLops]);
 
-  // Auto-expand all rows when data first loads or snapshot changes
   const lastAutoExpandId = useRef<number | null>(undefined as any);
   useEffect(() => {
     if (groupedByAm.length === 0) return;
@@ -693,8 +738,6 @@ export default function FunnelPage() {
 
   const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0;
   const hasDetailFilter = filterAm.size > 0;
-  const lopBadge = filteredLops.length !== periodStats.totalLop
-    ? `${filteredLops.length} / ${periodStats.totalLop}` : filteredLops.length.toLocaleString("id-ID");
 
   const effectiveTargetHo = data?.targetHo || 0;
   const effectiveTargetFullHo = data?.targetFullHo || 0;
@@ -707,19 +750,17 @@ export default function FunnelPage() {
       {/* Filter Bar */}
       <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-end gap-2 flex-nowrap overflow-x-auto">
-          {/* SNAPSHOT */}
           <SelectDropdown label="Snapshot" value={String(importId || "")}
             onChange={v => setImportId(Number(v))}
             options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Belum ada data" }]}
             disabled={snapshotOptions.length === 0} className="w-36 shrink-0" />
 
-          {/* PERIODE (Power BI tree: year > months) */}
           <div className="w-px h-9 bg-border self-end shrink-0" />
           <PeriodeTreeDropdown label="Periode"
-            filterYear={filterYear} filterMonths={filterMonths}
-            availableYears={yearOptions.map(o => o.value)}
-            onChange={(y, ms) => { setFilterYear(y); setFilterMonths(ms); }}
-            className="w-44 shrink-0" />
+            filterYears={filterYears} filterMonths={filterMonths}
+            availableYears={availableYears}
+            onChange={(yrs, ms) => { setFilterYears(yrs); setFilterMonths(ms); }}
+            className="w-48 shrink-0" />
 
           <div className="w-px h-9 bg-border self-end shrink-0" />
           <SelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
@@ -757,7 +798,6 @@ export default function FunnelPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Row 1: LOP per Fase + Capaian Real */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
               <h3 className="text-sm font-display font-semibold text-foreground mb-3">LOP per Fase</h3>
@@ -770,7 +810,6 @@ export default function FunnelPage() {
               <Gauge pct={pct} targetHo={effectiveTargetHo} targetFullHo={effectiveTargetFullHo} real={periodStats.realFullHo} mode={filterTarget} />
             </div>
           </div>
-          {/* Row 2: KPI Cards */}
           <KpiGrid data={data ? { ...data, totalLop: periodStats.totalLop, totalNilai: periodStats.totalNilai, pelangganCount: periodStats.pelangganCount } : undefined} />
         </div>
       )}
@@ -781,7 +820,6 @@ export default function FunnelPage() {
           <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Funnel per AM
-            <span className="bg-foreground text-background text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">{lopBadge}</span>
           </h3>
           <div className="flex items-end gap-2 flex-1 justify-end flex-wrap">
             <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
@@ -813,24 +851,18 @@ export default function FunnelPage() {
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 rounded-tl-lg w-8">
-                  <button onClick={handleToggleAll} title={allExpanded ? "Collapse semua" : "Expand semua"}
-                    className="text-white/70 hover:text-white transition-colors">
-                    {allExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
-                  </button>
-                </th>
-                <th className="px-4 py-3 min-w-[200px]">AM / Fase / Proyek</th>
-                <th className="px-3 py-3 whitespace-nowrap">Kat. Kontrak</th>
-                <th className="px-3 py-3 font-mono whitespace-nowrap">LOP ID</th>
-                <th className="px-3 py-3 min-w-[140px]">Pelanggan</th>
-                <th className="px-4 py-3 text-right whitespace-nowrap rounded-tr-lg">Nilai Proyek</th>
+                <th className="px-4 py-3 rounded-tl-lg min-w-[260px]">AM / Fase / Proyek</th>
+                <th className="px-3 py-3 whitespace-nowrap w-28">KATEGORI</th>
+                <th className="px-3 py-3 font-mono whitespace-nowrap w-28">LOP ID</th>
+                <th className="px-3 py-3 min-w-[220px]">Pelanggan</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap rounded-tr-lg w-40">Nilai Proyek</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {isLoading ? (
-                <tr><td colSpan={6} className="text-center py-16 text-muted-foreground text-sm">Memuat data...</td></tr>
+                <tr><td colSpan={5} className="text-center py-16 text-muted-foreground text-sm">Memuat data...</td></tr>
               ) : groupedByAm.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-16 text-muted-foreground text-sm">
+                <tr><td colSpan={5} className="text-center py-16 text-muted-foreground text-sm">
                   {search || hasActiveFilter || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel"}
                 </td></tr>
               ) : groupedByAm.map(am => {
@@ -840,7 +872,6 @@ export default function FunnelPage() {
                 const amLopCount = Array.from(am.phases.values()).flat().length;
                 const orderedPhases = [...PHASES.filter(p => am.phases.has(p)), ...Array.from(am.phases.keys()).filter(p => !PHASES.includes(p))];
 
-                // Expanded ring helpers
                 const ring = amExpanded ? "#94a3b8" : undefined;
                 const ringStyle = (extra?: React.CSSProperties): React.CSSProperties =>
                   ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, ...extra } : {};
@@ -854,22 +885,28 @@ export default function FunnelPage() {
                       style={ring ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` } : { borderTop: "2px solid transparent" }}
                       onClick={() => toggleAmRow(amKey)}
                     >
-                      <td className="px-4 py-3 w-8">
-                        <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", amExpanded && "rotate-90")} />
-                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", amExpanded && "rotate-90")} />
                           <span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>
-                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi === "DPS" ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700")}>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0", am.divisi === "DPS" ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700")}>
                             {am.divisi}
                           </span>
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); toggleAmRow(amKey); }}
+                            className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
+                            title={amExpanded ? "Collapse" : "Expand"}
+                          >
+                            {amExpanded ? <Minimize2 className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
+                          </button>
                         </div>
                       </td>
                       <td className="px-3 py-3" colSpan={3}>
                         <span className="text-xs text-muted-foreground font-medium">{amLopCount} LOP</span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-black text-foreground font-mono text-sm">{fmtRupiah(amTotal)}</span>
+                        <span className="font-black text-foreground tabular-nums text-sm">{formatRupiah(amTotal)}</span>
                       </td>
                     </tr>
 
@@ -890,11 +927,9 @@ export default function FunnelPage() {
                             style={{ background: "#f1f5f9", borderLeft: `4px solid ${c?.bar || "#94a3b8"}`, ...ringStyle(phaseIsBottomOfRing && ring ? { borderBottom: `2px solid ${ring}`, borderRight: `2px solid ${ring}` } : {}) }}
                             onClick={() => togglePhaseRow(phaseKey)}
                           >
-                            <td className="px-4 py-2.5 pl-6">
-                              <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform", phaseExpanded && "rotate-90")} />
-                            </td>
-                            <td className="px-4 py-2.5">
+                            <td className="px-4 py-2.5 pl-10">
                               <div className="flex items-center gap-2">
+                                <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0", phaseExpanded && "rotate-90")} />
                                 <span className="text-sm font-black font-mono" style={{ color: c?.text }}>{phase}</span>
                                 <span className="text-sm font-bold text-slate-700">{PHASE_LABELS[phase]}</span>
                                 <span className="text-xs font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
@@ -902,7 +937,7 @@ export default function FunnelPage() {
                             </td>
                             <td colSpan={3} className="px-3 py-2.5" />
                             <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-black text-slate-700 font-mono">{fmtRupiah(phaseTotal)}</span>
+                              <span className="text-sm font-black text-slate-700 tabular-nums">{formatRupiah(phaseTotal)}</span>
                             </td>
                           </tr>
 
@@ -912,16 +947,15 @@ export default function FunnelPage() {
                             return (
                               <tr key={`${lop.lopid}-${idx}`} className="hover:bg-blue-50/50 transition-colors"
                                 style={ringStyle(isBottomOfRing && ring ? { borderBottom: `2px solid ${ring}` } : {})}>
-                                <td className="px-4 py-2" />
-                                <td className="px-4 py-2 pl-12">
-                                  <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[220px]" title={lop.judulProyek}>
+                                <td className="px-4 py-2 pl-16">
+                                  <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>
                                     {lop.judulProyek}
                                   </div>
                                 </td>
                                 <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
                                 <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
-                                <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[160px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                                <td className="px-4 py-2 text-right font-mono text-sm font-bold text-foreground whitespace-nowrap">{fmtRupiah(lop.nilaiProyek)}</td>
+                                <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                                <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">{formatRupiah(lop.nilaiProyek)}</td>
                               </tr>
                             );
                           })}
