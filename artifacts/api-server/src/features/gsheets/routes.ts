@@ -1,17 +1,30 @@
 import { Router, type IRouter } from "express";
 import { db, appSettingsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
-import { runGSheetsSync, listFunnelSheets } from "./sync";
+import { runGSheetsSync, listAllSheets, syncSelectedSheets } from "./sync";
 
 const router: IRouter = Router();
 
-// ── Manual sync trigger ────────────────────────────────────────────────────────
+// ── Manual sync trigger (all auto-detected sheets) ─────────────────────────────
 router.post("/gsheets/sync", requireAuth, async (req, res): Promise<void> => {
   const result = await runGSheetsSync();
   res.json(result);
 });
 
-// ── Preview available sheets (without importing) ────────────────────────────────
+// ── Import selected sheets with explicit type ──────────────────────────────────
+router.post("/gsheets/sync-selected", requireAuth, async (req, res): Promise<void> => {
+  const { selections } = req.body as {
+    selections: Array<{ title: string; sheetId: number; type: "funnel" | "activity" | "performance" }>;
+  };
+  if (!Array.isArray(selections) || selections.length === 0) {
+    res.status(400).json({ error: "Pilih minimal satu sheet untuk diimport" });
+    return;
+  }
+  const result = await syncSelectedSheets(selections);
+  res.json(result);
+});
+
+// ── Preview all available sheets (with auto-detection hints) ───────────────────
 router.get("/gsheets/sheets", requireAuth, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(appSettingsTable);
   if (!settings?.gSheetsSpreadsheetId || !settings?.gSheetsApiKey) {
@@ -19,8 +32,7 @@ router.get("/gsheets/sheets", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   try {
-    const pattern = settings.gSheetsFunnelPattern || "TREG3_SALES_FUNNEL_";
-    const sheets = await listFunnelSheets(settings.gSheetsSpreadsheetId, settings.gSheetsApiKey, pattern);
+    const sheets = await listAllSheets(settings.gSheetsSpreadsheetId, settings.gSheetsApiKey);
     res.json({ sheets });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || String(err) });

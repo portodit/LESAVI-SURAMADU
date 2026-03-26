@@ -151,6 +151,9 @@ export default function ImportData() {
   const [gsSyncResult, setGsSyncResult] = useState<any>(null);
   const [gsSheets, setGsSheets] = useState<any[]>([]);
   const [gsLoadingSheets, setGsLoadingSheets] = useState(false);
+  const [gsSelected, setGsSelected] = useState<Record<string, boolean>>({});
+  const [gsTypeOverride, setGsTypeOverride] = useState<Record<string, "funnel" | "activity" | "performance" | "">>({});
+  const [gsSyncingSelected, setGsSyncingSelected] = useState(false);
 
   const { data: gsStatus, refetch: refetchGsStatus } = useQuery<any>({
     queryKey: ["gsheets-status"],
@@ -217,12 +220,56 @@ export default function ImportData() {
   const handleLoadGsSheets = async () => {
     setGsLoadingSheets(true);
     setGsSheets([]);
+    setGsSelected({});
+    setGsTypeOverride({});
     try {
       const data = await apiFetch<{ sheets: any[] }>("/api/gsheets/sheets");
-      setGsSheets(data.sheets || []);
+      const sheets = data.sheets || [];
+      setGsSheets(sheets);
+      const autoSel: Record<string, boolean> = {};
+      const autoType: Record<string, "funnel" | "activity" | "performance" | ""> = {};
+      sheets.forEach((s: any) => {
+        autoSel[s.title] = !!s.detectedType;
+        autoType[s.title] = s.detectedType || "";
+      });
+      setGsSelected(autoSel);
+      setGsTypeOverride(autoType);
     } catch (e: any) {
       toast({ title: "Gagal Memuat Sheet", description: e.message, variant: "destructive" });
     } finally { setGsLoadingSheets(false); }
+  };
+
+  const handleSyncSelected = async () => {
+    const selections = gsSheets
+      .filter((s: any) => gsSelected[s.title])
+      .map((s: any) => ({
+        title: s.title,
+        sheetId: s.sheetId,
+        type: (gsTypeOverride[s.title] || s.detectedType) as "funnel" | "activity" | "performance",
+      }))
+      .filter(sel => !!sel.type);
+    if (selections.length === 0) {
+      toast({ title: "Belum ada pilihan", description: "Pilih minimal satu sheet dan pastikan tipe data sudah dipilih", variant: "destructive" });
+      return;
+    }
+    setGsSyncingSelected(true);
+    try {
+      const result = await apiFetch<any>("/api/gsheets/sync-selected", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selections }),
+      });
+      setGsSyncResult(result);
+      refetchGsStatus();
+      const imported = (result.results || []).filter((r: any) => r.status === "imported").length;
+      toast({
+        title: imported > 0 ? `${imported} sheet berhasil diimport` : "Sync selesai",
+        description: result.error || `${selections.length} sheet diproses`,
+      });
+      if (imported > 0) qc.invalidateQueries({ queryKey: ["import-history"] });
+    } catch (e: any) {
+      toast({ title: "Gagal Import", description: e.message, variant: "destructive" });
+    } finally { setGsSyncingSelected(false); }
   };
 
   // Data Quality proof state
@@ -1222,33 +1269,81 @@ export default function ImportData() {
                 </Button>
               </div>
 
-              {/* Available sheets preview */}
-              {gsSheets.length > 0 && (
-                <div className="border border-emerald-200 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-200 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <p className="text-xs font-bold text-emerald-800">{gsSheets.length} sheet terdeteksi di spreadsheet</p>
+              {/* Available sheets — all sheets with checkbox + type selector */}
+              {gsSheets.length > 0 && (() => {
+                const detected = gsSheets.filter((s: any) => s.detectedType);
+                const selectedCount = gsSheets.filter((s: any) => gsSelected[s.title]).length;
+                return (
+                  <div className="border border-border rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-secondary/40 border-b border-border flex items-center gap-2">
+                      <Sheet className="w-3.5 h-3.5 text-primary" />
+                      <p className="text-xs font-bold text-foreground">
+                        {gsSheets.length} sheet ditemukan
+                        {detected.length > 0 && <span className="ml-1 text-emerald-700">({detected.length} terdeteksi otomatis)</span>}
+                      </p>
+                      <div className="ml-auto flex items-center gap-2">
+                        <button onClick={() => {
+                          const allSel: Record<string, boolean> = {};
+                          gsSheets.forEach((s: any) => { allSel[s.title] = true; });
+                          setGsSelected(allSel);
+                        }} className="text-[11px] text-primary font-semibold hover:underline">Pilih Semua</button>
+                        <span className="text-muted-foreground text-[11px]">·</span>
+                        <button onClick={() => setGsSelected({})} className="text-[11px] text-muted-foreground font-semibold hover:underline">Batal Semua</button>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                      {gsSheets.map((s: any) => {
+                        const match = s.title.match(/(\d{8})$/);
+                        const dateStr = match ? `${match[1].slice(0,4)}-${match[1].slice(4,6)}-${match[1].slice(6,8)}` : null;
+                        const currentType = gsTypeOverride[s.title] || s.detectedType || "";
+                        const isChecked = !!gsSelected[s.title];
+                        return (
+                          <div key={s.sheetId} className={cn("px-3 py-2 flex items-center gap-2.5 text-sm transition-colors", isChecked ? "bg-primary/5" : "hover:bg-secondary/20")}>
+                            <input type="checkbox" checked={isChecked}
+                              onChange={e => setGsSelected(p => ({ ...p, [s.title]: e.target.checked }))}
+                              className="w-3.5 h-3.5 accent-primary shrink-0 cursor-pointer" />
+                            <Sheet className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="font-mono text-[11px] text-foreground flex-1 truncate" title={s.title}>{s.title}</span>
+                            {dateStr && <span className="text-[10px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded-full shrink-0">{dateStr}</span>}
+                            <select
+                              value={currentType}
+                              onChange={e => setGsTypeOverride(p => ({ ...p, [s.title]: e.target.value as any }))}
+                              className={cn(
+                                "h-6 px-1.5 text-[10px] font-semibold rounded border focus:outline-none shrink-0",
+                                currentType === "funnel" ? "bg-blue-50 border-blue-200 text-blue-700"
+                                  : currentType === "activity" ? "bg-purple-50 border-purple-200 text-purple-700"
+                                  : currentType === "performance" ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                  : "bg-secondary border-border text-muted-foreground"
+                              )}>
+                              <option value="">-- Pilih Tipe --</option>
+                              <option value="funnel">Sales Funnel</option>
+                              <option value="activity">Sales Activity</option>
+                              <option value="performance">Performa AM</option>
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Import selected action */}
+                    <div className="px-4 py-3 bg-secondary/20 border-t border-border flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedCount > 0
+                          ? <><strong className="text-foreground">{selectedCount} sheet</strong> dipilih untuk diimport</>
+                          : "Centang sheet yang ingin diimport"}
+                      </p>
+                      <Button
+                        onClick={handleSyncSelected}
+                        disabled={gsSyncingSelected || selectedCount === 0}
+                        size="sm"
+                        className="gap-2 h-8 text-xs"
+                      >
+                        {gsSyncingSelected ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                        Import Pilihan ({selectedCount})
+                      </Button>
+                    </div>
                   </div>
-                  <div className="divide-y divide-border">
-                    {gsSheets.map((s: any) => {
-                      const match = s.title.match(/(\d{8})$/);
-                      const dateStr = match ? `${match[1].slice(0,4)}-${match[1].slice(4,6)}-${match[1].slice(6,8)}` : null;
-                      const typeLabel = s.detectedType === "funnel" ? { label: "Sales Funnel", cls: "bg-blue-100 text-blue-700" }
-                        : s.detectedType === "activity" ? { label: "Sales Activity", cls: "bg-purple-100 text-purple-700" }
-                        : s.detectedType === "performance" ? { label: "Performa AM", cls: "bg-emerald-100 text-emerald-700" }
-                        : null;
-                      return (
-                        <div key={s.sheetId} className="px-4 py-2 flex items-center gap-3 text-sm hover:bg-secondary/20">
-                          <Sheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="font-mono text-xs text-foreground">{s.title}</span>
-                          {typeLabel && <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", typeLabel.cls)}>{typeLabel.label}</span>}
-                          {dateStr && <span className="ml-auto text-[11px] text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">{dateStr}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 

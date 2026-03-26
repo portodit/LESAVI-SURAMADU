@@ -90,6 +90,72 @@ export async function listFunnelSheets(
   return listAllMatchingSheets(spreadsheetId, apiKey);
 }
 
+/** List ALL sheets in a spreadsheet, with auto-detection flag for recognized patterns */
+export async function listAllSheets(
+  spreadsheetId: string,
+  apiKey: string,
+): Promise<Array<{ title: string; sheetId: number; detectedType: "funnel" | "activity" | "performance" | null }>> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}&fields=sheets.properties(sheetId,title)`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const err = await resp.text().catch(() => "");
+    throw new Error(`Google Sheets API error ${resp.status}: ${err.slice(0, 200)}`);
+  }
+  const data = await resp.json() as { sheets: { properties: { sheetId: number; title: string } }[] };
+  return (data.sheets || []).map(s => ({
+    title: s.properties.title,
+    sheetId: s.properties.sheetId,
+    detectedType: detectSheetType(s.properties.title),
+  }));
+}
+
+/** Import a specific set of sheets (user-selected, with explicit type override) */
+export async function syncSelectedSheets(
+  selections: Array<{ title: string; sheetId: number; type: "funnel" | "activity" | "performance" }>,
+): Promise<SyncResult> {
+  const syncedAt = new Date().toISOString();
+  try {
+    const [settings] = await db.select().from(appSettingsTable);
+    if (!settings?.gSheetsSpreadsheetId || !settings?.gSheetsApiKey) {
+      return { syncedAt, sheetsFound: 0, results: [], error: "Spreadsheet ID atau API Key belum dikonfigurasi" };
+    }
+    const spreadsheetId = settings.gSheetsSpreadsheetId;
+    const apiKey = settings.gSheetsApiKey;
+    const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl }).from(dataImportsTable);
+    const results: SyncSheetResult[] = [];
+
+    for (const sel of selections) {
+      const sheet: SheetInfo = { title: sel.title, sheetId: sel.sheetId, detectedType: sel.type };
+      const dateInfo = parseDateFromSheetName(sel.title);
+      if (!dateInfo) {
+        results.push({ sheetName: sel.title, date: "", period: "", type: sel.type, status: "error", message: "Format tanggal tidak dikenali di nama sheet (harus diakhiri YYYYMMDD)" });
+        continue;
+      }
+      const alreadyFromThisSheet = existingImports.some(i => i.type === sel.type && i.period === dateInfo.period && i.sourceUrl?.includes(sel.title));
+      if (alreadyFromThisSheet) {
+        results.push({ sheetName: sel.title, date: dateInfo.date, period: dateInfo.period, type: sel.type, status: "skipped", message: "Snapshot ini sudah pernah diimport" });
+        continue;
+      }
+      logger.info({ sheet: sel.title, type: sel.type }, "GSheets sync-selected: importing sheet");
+      let result: SyncSheetResult;
+      if (sel.type === "funnel") result = await importFunnelSheet(spreadsheetId, sheet, apiKey, dateInfo);
+      else if (sel.type === "activity") result = await importActivitySheet(spreadsheetId, sheet, apiKey, dateInfo);
+      else result = await importPerformanceSheet(spreadsheetId, sheet, apiKey, dateInfo);
+      results.push(result);
+    }
+
+    await db.update(appSettingsTable)
+      .set({ gSheetsLastSyncAt: new Date(), gSheetsLastSyncResult: JSON.stringify({ syncedAt, sheetsFound: selections.length, results }) })
+      .where(eq(appSettingsTable.id, settings.id));
+
+    return { syncedAt, sheetsFound: selections.length, results };
+  } catch (err: any) {
+    const error = err?.message || String(err);
+    logger.error({ err }, "GSheets sync-selected failed");
+    return { syncedAt, sheetsFound: 0, results: [], error };
+  }
+}
+
 /** Fetch a sheet's data as ParsedRow[] via Sheets API v4 values endpoint */
 export async function fetchSheetData(
   spreadsheetId: string,
