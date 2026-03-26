@@ -155,14 +155,14 @@ function CheckboxDropdown({ label, options, selected, onChange, placeholder, lab
       ? `Semua ${summaryLabel || label}`
       : selected.size === 1 ? lFn([...selected][0]) : `${selected.size} ${summaryLabel || label} dipilih`;
   return (
-    <div className={cn("flex flex-col gap-0.5", className)} ref={triggerRef}>
-      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
+    <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
+      <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">{label}</label>
       <button
         onClick={toggle}
-        className="h-9 px-2 bg-secondary/50 border border-border rounded-md text-xs flex items-center gap-1 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full whitespace-nowrap"
+        className="h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 focus:ring-2 focus:ring-primary/20 focus:border-primary w-full whitespace-nowrap"
       >
-        <span className="flex-1 text-left truncate">{displayLabel}</span>
-        <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
+        <span className="flex-1 text-left truncate font-medium text-foreground">{displayLabel}</span>
+        <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
       </button>
       {open && createPortal(
         <div
@@ -224,18 +224,18 @@ function SelectDropdown({ label, value, onChange, options, className, disabled }
   };
   const current = options.find(o => o.value === value);
   return (
-    <div className={cn("flex flex-col gap-0.5", className)} ref={triggerRef}>
-      {label && <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>}
+    <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
+      {label && <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">{label}</label>}
       <button
         onClick={toggle}
         disabled={disabled}
         className={cn(
-          "h-9 px-2 bg-secondary/50 border border-border rounded-md text-xs flex items-center gap-1 w-full disabled:opacity-40 transition-colors",
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors",
           open && "border-primary/50 bg-secondary/70"
         )}
       >
-        <span className="flex-1 text-left truncate">{current?.label ?? value}</span>
-        <ChevronDown className={cn("w-3 h-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <span className="flex-1 text-left truncate font-medium text-foreground">{current?.label ?? value}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && createPortal(
         <div
@@ -639,9 +639,9 @@ function FSKpiGrid({ data }: { data:any }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {kpis.map(k=>(
-        <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-3">
-          <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">{k.label}</div>
-          <div className={cn("text-3xl font-black font-mono leading-tight",k.color)}>{k.value}</div>
+        <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-4">
+          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">{k.label}</div>
+          <div className={cn("text-3xl font-black tabular-nums leading-tight tracking-tight",k.color)}>{k.value}</div>
           <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
         </div>
       ))}

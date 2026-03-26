@@ -112,7 +112,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
 
     let matched = allTargets;
     if (lookupYear) matched = matched.filter(t => t.tahun === lookupYear);
-    if (lookupMonth) matched = matched.filter(t => t.bulan === lookupMonth);
+    // bulan=null means target berlaku seluruh tahun — tetap match jika bulan tidak dispesifik
+    if (lookupMonth) matched = matched.filter(t => t.bulan === null || t.bulan === lookupMonth);
 
     if (divisiFilter && divisiFilter !== "all") {
       const divMatch = matched.filter(t => t.divisi === divisiFilter);
