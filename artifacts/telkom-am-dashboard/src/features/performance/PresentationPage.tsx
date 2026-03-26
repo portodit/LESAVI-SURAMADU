@@ -599,28 +599,31 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode }: { pct:number; targ
   );
 }
 
-function FSFaseBarChart({ data }: { data:any }) {
+function FSFaseBarChart({ data, compact }: { data:any; compact?: boolean }) {
   if(!data) return null;
   const phaseMap: Record<string,{count:number;nilai:number}> = {};
   for(const p of FS_PHASES) phaseMap[p]={count:0,nilai:0};
   for(const s of (data.byStatus||[])) { if(phaseMap[s.status]){phaseMap[s.status].count=s.count;phaseMap[s.status].nilai=s.totalNilai;} }
   const maxCount=Math.max(...FS_PHASES.map(p=>phaseMap[p].count),1);
   return (
-    <div className="space-y-2">
+    <div className={compact?"space-y-1":"space-y-2"}>
       {FS_PHASES.map(phase=>{
         const d=phaseMap[phase]; const pct=(d.count/maxCount)*100; const c=FS_PHASE_COLORS[phase];
+        const tooltip=`${phase}: ${d.count} proyek · ${fmtCompactFS(d.nilai)}`;
         return (
-          <div key={phase} className="flex items-center gap-2">
-            <div className="w-6 shrink-0">
-              <span className="text-xs font-black font-mono" style={{color:c.text}}>{phase}</span>
+          <div key={phase} className="flex items-center gap-2 group" title={tooltip}>
+            <div className={compact?"w-5 shrink-0":"w-6 shrink-0"}>
+              <span className={compact?"text-[10px] font-black font-mono":"text-xs font-black font-mono"} style={{color:c.text}}>{phase}</span>
             </div>
-            <div className="flex-1 bg-secondary rounded h-6 overflow-hidden">
+            <div className={`flex-1 bg-secondary rounded overflow-hidden relative ${compact?"h-4":"h-5"}`}>
               <div className="h-full rounded transition-all duration-500" style={{width:`${Math.max(pct,2)}%`,backgroundColor:c.bar}}/>
+              <div className="absolute inset-0 flex items-center pl-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[10px] font-black text-white drop-shadow-sm whitespace-nowrap">{d.count} proyek · {fmtCompactFS(d.nilai)}</span>
+              </div>
             </div>
-            <span className="text-xs font-black font-mono w-16 shrink-0" style={{color:c.text}}>
-              {d.count} proyek
+            <span className={compact?"text-[10px] font-black font-mono w-14 shrink-0 text-right":"text-xs font-black font-mono w-14 shrink-0 text-right"} style={{color:c.text}}>
+              {d.count} <span className="font-normal text-muted-foreground text-[9px]">LOP</span>
             </span>
-            <span className="text-xs font-bold font-mono text-muted-foreground w-20 text-right shrink-0">{fmtCompactFS(d.nilai)}</span>
           </div>
         );
       })}
@@ -773,24 +776,25 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const dpsGrouped = useMemo(() => groupedByAm.filter(a => a.divisi === "DPS"), [groupedByAm]);
   const dssGrouped = useMemo(() => groupedByAm.filter(a => a.divisi === "DSS"), [groupedByAm]);
 
-  function computeDivisiStatsFS(divisiKey: string) {
-    const lops = filteredLops.filter((l:any) => l.divisi === divisiKey);
+  function computeDivisiStatsFromGroup(grp: typeof dpsGrouped) {
+    const allLops: any[] = [];
+    for (const am of grp) for (const lops of am.phases.values()) allLops.push(...(lops as any[]));
     const byStatusMap: Record<string,{status:string;count:number;totalNilai:number}> = {};
-    for (const l of lops) {
+    for (const l of allLops) {
       const s = l.statusF||"Unknown";
       if (!byStatusMap[s]) byStatusMap[s]={status:s,count:0,totalNilai:0};
       byStatusMap[s].count++;
       byStatusMap[s].totalNilai += l.nilaiProyek||0;
     }
     return {
-      totalLop: lops.length,
-      totalNilai: lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
-      pelangganCount: new Set(lops.map((l:any)=>l.pelanggan).filter(Boolean)).size,
+      totalLop: allLops.length,
+      totalNilai: allLops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
+      pelangganCount: new Set(allLops.map((l:any)=>l.pelanggan).filter(Boolean)).size,
       byStatus: Object.values(byStatusMap),
     };
   }
-  const dpsStats = useMemo(()=>computeDivisiStatsFS("DPS"),[filteredLops]);
-  const dssStats = useMemo(()=>computeDivisiStatsFS("DSS"),[filteredLops]);
+  const dpsStats = useMemo(()=>computeDivisiStatsFromGroup(dpsGrouped),[dpsGrouped]);
+  const dssStats = useMemo(()=>computeDivisiStatsFromGroup(dssGrouped),[dssGrouped]);
 
   const lastAutoExpandIdFS = useRef<number|null>(undefined as any);
   useEffect(()=>{
@@ -1027,8 +1031,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
         <div className="p-3">
           <div className="border border-border rounded-lg overflow-hidden">
-          <div className="overflow-auto" style={{maxHeight:"clamp(300px,55vh,700px)"}}>
-          <table className="w-full text-left text-sm border-collapse">
+          <div className="overflow-x-auto">
+          <div className="overflow-y-auto" style={{maxHeight:"clamp(300px,55vh,700px)"}}>
+          <table className="w-full text-left text-sm border-collapse" style={{minWidth:"760px"}}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
                 <th className="px-4 py-3 min-w-[260px]">AM / Fase / Proyek</th>
@@ -1044,6 +1049,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           </table>
           </div>
           </div>
+          </div>
         </div>
       </div>}
 
@@ -1054,24 +1060,30 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             const st=div==="DPS"?dpsStats:dssStats;
             const grp=div==="DPS"?dpsGrouped:dssGrouped;
             const isDps=div==="DPS";
+            const divLabel=isDps?"Private Service":"State Service";
             const accent=isDps?"#3b82f6":"#10b981";
             const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
-            const textAccent=isDps?"text-blue-700":"text-emerald-700";
-            const bgAccent=isDps?"bg-blue-50/60":"bg-emerald-50/60";
+            const textAccent=isDps?"text-blue-600":"text-emerald-600";
+            const bgAccent=isDps?"bg-blue-50/40":"bg-emerald-50/40";
             const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
+            const divPct=effectiveTargetFullHo>0?Math.min((st.totalNilai/effectiveTargetFullHo)*100,200):0;
             return (
-              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden ${borderTop}`}>
+              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col ${borderTop}`}>
                 {/* Panel Header */}
-                <div className={`px-4 py-3 border-b border-border ${bgAccent} flex items-center justify-between gap-3 flex-wrap`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-3 h-3 rounded-full shadow-sm" style={{background:accent}}/>
-                    <span className={`text-base font-black uppercase tracking-wide ${textAccent}`}>{div}</span>
-                    <span className="text-xs text-muted-foreground font-medium">{isDps?"Enterprise Service":"Solution & System"}</span>
+                <div className={`px-4 py-3 border-b border-border ${bgAccent} flex items-center justify-between gap-3 flex-wrap shrink-0`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-3.5 h-3.5 rounded-full shadow-sm shrink-0" style={{background:accent}}/>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-black uppercase tracking-widest text-foreground leading-none">{div}</span>
+                      </div>
+                      <div className="text-sm font-black text-foreground/80 leading-tight mt-0.5">{divLabel}</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-4">
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Total LOP</div>
-                      <div className={`text-2xl font-black tabular-nums leading-tight ${textAccent}`}>{st.totalLop}</div>
+                      <div className={`text-3xl font-black tabular-nums leading-tight ${textAccent}`}>{st.totalLop}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Total Nilai</div>
@@ -1083,42 +1095,62 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                   </div>
                 </div>
-                {/* Phase Bar Chart */}
-                <div className="px-4 py-3 border-b border-border">
-                  <FSFaseBarChart data={data?{...data,byStatus:st.byStatus}:undefined}/>
+                {/* Gauge capaian + bar chart side-by-side */}
+                <div className="flex gap-3 px-4 py-2.5 border-b border-border shrink-0">
+                  <div className="flex-1 min-w-0">
+                    <FSFaseBarChart data={data?{...data,byStatus:st.byStatus}:undefined} compact/>
+                  </div>
+                  <div className="shrink-0 flex flex-col items-center justify-center w-40">
+                    <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mb-1">
+                      Capaian vs Target Full HO
+                    </div>
+                    <div className="relative w-full h-4 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{width:`${Math.min(divPct,100)}%`, backgroundColor:accent}}/>
+                    </div>
+                    <div className="flex justify-between w-full mt-1">
+                      <span className="text-[10px] font-black" style={{color:accent}}>{divPct.toFixed(1)}%</span>
+                      <span className="text-[10px] text-muted-foreground">{filterMode==="ho"?"HO":"Full HO"}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 text-center">
+                      Target: {formatRupiah(effectiveTargetFullHo)}
+                    </div>
+                  </div>
                 </div>
                 {/* Table Toolbar */}
-                <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM</span>
+                <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0">
+                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none"/>
                       <input type="text" placeholder="Cari…" value={search} onChange={e=>setSearch(e.target.value)}
-                        className="pl-6 pr-5 py-1 text-xs bg-background border border-border rounded-md w-36 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
+                        className="pl-6 pr-5 py-1 text-xs bg-background border border-border rounded-md w-32 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
                       {search&&<button onClick={()=>setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3 h-3"/></button>}
                     </div>
                     <button onClick={handleToggleAll} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2.5 py-1 transition-colors whitespace-nowrap">
                       {allExpanded?<Minimize2 className="w-3 h-3"/>:<Expand className="w-3 h-3"/>}
-                      {allExpanded?"Collapse":"Expand"} Semua
+                      {allExpanded?"Collapse":"Expand"}
                     </button>
                   </div>
                 </div>
-                {/* AM Tree Table */}
-                <div className="overflow-auto" style={{maxHeight:"clamp(220px,44vh,500px)"}}>
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead className="sticky top-0 z-10">
-                      <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[200px]">AM / Fase / Proyek</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
-                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
-                        <th className="px-3 py-2.5 min-w-[140px]">Pelanggan</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`)}
-                    </tbody>
-                  </table>
+                {/* AM Tree Table — overflow-x luar supaya scrollbar gampang diklik */}
+                <div className="overflow-x-auto">
+                  <div className="overflow-y-auto" style={{maxHeight:"clamp(200px,38vh,460px)"}}>
+                    <table className="w-full text-left text-sm border-collapse" style={{minWidth:"520px"}}>
+                      <thead className="sticky top-0 z-10">
+                        <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                          <th className="px-4 py-2.5 min-w-[200px]">AM / Fase / Proyek</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
+                          <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
+                          <th className="px-3 py-2.5 min-w-[120px]">Pelanggan</th>
+                          <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[130px]">Nilai Proyek</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`)}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             );
