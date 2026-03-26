@@ -1035,7 +1035,8 @@ export default function FunnelPage() {
 
       {/* Detail Table — hanya di "all" mode */}
       {viewMode !== "split" && <div className="bg-card border border-border rounded-xl shadow-sm">
-        <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
+        {/* Sticky toolbar — tanpa rounded agar mulus saat floating */}
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Funnel per AM
@@ -1063,26 +1064,22 @@ export default function FunnelPage() {
             </button>
           </div>
         </div>
-
-        <div className="p-3">
-          <div className="border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
+        {/* overflow-y:clip supaya sticky thead tetap kerja walaupun overflow-x:auto aktif */}
+        <div className="overflow-x-auto" style={{overflowY: "clip"}}>
+          <table className="w-full text-left text-sm border-collapse" style={{minWidth:"820px"}}>
+            <thead className="sticky top-[60px] z-10">
               <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 rounded-tl-lg min-w-[320px]">AM / Fase / Proyek</th>
+                <th className="px-4 py-3 min-w-[320px]">AM / Fase / Proyek</th>
                 <th className="px-3 py-3 whitespace-nowrap w-28">KATEGORI</th>
                 <th className="px-3 py-3 font-mono whitespace-nowrap w-28">LOP ID</th>
                 <th className="px-3 py-3 min-w-[220px]">Pelanggan</th>
-                <th className="px-4 py-3 text-right whitespace-nowrap rounded-tr-lg min-w-[200px]">Nilai Proyek</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap min-w-[200px]">Nilai Proyek</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {renderAmTbodyContent(groupedByAm, search || hasActiveFilter || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel")}
             </tbody>
           </table>
-          </div>
-          </div>
         </div>
       </div>}
 
