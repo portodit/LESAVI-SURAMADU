@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, appSettingsTable, dataImportsTable, accountManagersTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
-import { parseExcelBuffer, detectPeriod, cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify } from "../import/excel";
+import { parseExcelBuffer, detectPeriod, extractSnapshotDateFromUrl, cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify } from "../import/excel";
 import { desc, eq, and, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -75,7 +75,7 @@ router.get("/gdrive/list", requireAuth, async (req, res): Promise<void> => {
 // ── POST /api/gdrive/sync?type=performance ───────────────────────────────────
 router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
   const { type } = req.query;
-  const { fileId: explicitFileId } = req.body;
+  const { fileId: explicitFileId, snapshotDate: snapshotDateBodyOverride } = req.body;
   const folderKey = DRIVE_FOLDER_KEYS[String(type)];
   if (!folderKey) { res.status(400).json({ error: "type tidak valid" }); return; }
 
@@ -103,17 +103,18 @@ router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
     if (rows.length === 0) { res.status(400).json({ error: "File Excel kosong atau tidak dapat dibaca" }); return; }
 
     const sourceUrl = `https://drive.google.com/file/d/${targetFile.id}`;
-    const snapshotDate = detectPeriod(rows, targetFile.name);
+    const period = detectPeriod(rows, targetFile.name);
+    const snapshotDate = snapshotDateBodyOverride || extractSnapshotDateFromUrl(targetFile.name) || new Date().toISOString().slice(0, 10);
 
     if (type === "performance") {
-      const result = await importPerformanceRows(rows, sourceUrl, snapshotDate, targetFile.name);
-      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime });
+      const result = await importPerformanceRows(rows, sourceUrl, period, snapshotDate, targetFile.name);
+      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime, snapshotDate });
     } else if (type === "funnel") {
-      const result = await importFunnelRows(rows, sourceUrl, snapshotDate, targetFile.name);
-      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime });
+      const result = await importFunnelRows(rows, sourceUrl, period, snapshotDate, targetFile.name);
+      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime, snapshotDate });
     } else if (type === "activity") {
-      const result = await importActivityRows(rows, sourceUrl, snapshotDate, targetFile.name);
-      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime });
+      const result = await importActivityRows(rows, sourceUrl, period, snapshotDate, targetFile.name);
+      res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime, snapshotDate });
     } else {
       res.status(400).json({ error: `Sync untuk tipe '${type}' belum didukung` });
     }
@@ -134,7 +135,7 @@ async function getAmSlugMap() {
   return map;
 }
 
-async function importPerformanceRows(rows: any[], sourceUrl: string, period: string | null, fileName: string) {
+async function importPerformanceRows(rows: any[], sourceUrl: string, period: string | null, snapshotDateFull: string, fileName: string) {
   const isRawFormat = rows.length > 0 && ("PERIODE" in rows[0] || "NAMA_AM" in rows[0]);
   const slugMap = await getAmSlugMap();
 
@@ -174,8 +175,8 @@ async function importPerformanceRows(rows: any[], sourceUrl: string, period: str
   }
 
   const [importRecord] = await db.insert(dataImportsTable).values({
-    type: "performance", sourceUrl, period, rowCount: toInsert.length,
-    status: "success", notes: `Auto-sync dari Google Drive: ${fileName}`,
+    type: "performance", sourceUrl, period: period || new Date().toISOString().slice(0, 7),
+    rowsImported: toInsert.length, snapshotDate: snapshotDateFull,
   }).returning();
 
   if (toInsert.length > 0) {
@@ -187,7 +188,7 @@ async function importPerformanceRows(rows: any[], sourceUrl: string, period: str
   return { imported: toInsert.length, importId: importRecord.id, period };
 }
 
-async function importFunnelRows(rows: any[], sourceUrl: string, period: string | null, fileName: string) {
+async function importFunnelRows(rows: any[], sourceUrl: string, period: string | null, snapshotDateFull: string, fileName: string) {
   const cleaned = cleanFunnelRows(rows);
   const slugMap = await getAmSlugMap();
   const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, slug: accountManagersTable.slug, divisi: accountManagersTable.divisi }).from(accountManagersTable);
@@ -218,13 +219,13 @@ async function importFunnelRows(rows: any[], sourceUrl: string, period: string |
       namaAm: am?.nama || row.namaAm,
       nikAm: am?.nik || row.nik,
       reportDate: row.reportDate || null,
-      snapshotDate: snapshotDate || new Date().toISOString().slice(0, 10),
+      snapshotDate: snapshotDateFull || new Date().toISOString().slice(0, 10),
     };
   }).filter((r: any) => r.lopid);
 
   const [importRecord] = await db.insert(dataImportsTable).values({
-    type: "funnel", sourceUrl, period, rowCount: toInsert.length,
-    status: "success", notes: `Auto-sync dari Google Drive: ${fileName}`,
+    type: "funnel", sourceUrl, period: period || new Date().toISOString().slice(0, 7),
+    rowsImported: toInsert.length, snapshotDate: snapshotDateFull,
   }).returning();
 
   for (const row of toInsert) {
@@ -238,7 +239,7 @@ async function importFunnelRows(rows: any[], sourceUrl: string, period: string |
   return { imported: toInsert.length, importId: importRecord.id, period };
 }
 
-async function importActivityRows(rows: any[], sourceUrl: string, period: string | null, fileName: string) {
+async function importActivityRows(rows: any[], sourceUrl: string, period: string | null, snapshotDateFull: string, fileName: string) {
   const cleaned = cleanActivityRows(rows);
   const slugMap = await getAmSlugMap();
 
@@ -254,8 +255,8 @@ async function importActivityRows(rows: any[], sourceUrl: string, period: string
   })).filter((r: any) => r.namaAm);
 
   const [importRecord] = await db.insert(dataImportsTable).values({
-    type: "activity", sourceUrl, period, rowCount: toInsert.length,
-    status: "success", notes: `Auto-sync dari Google Drive: ${fileName}`,
+    type: "activity", sourceUrl, period: period || new Date().toISOString().slice(0, 7),
+    rowsImported: toInsert.length, snapshotDate: snapshotDateFull,
   }).returning();
 
   for (const row of toInsert) {

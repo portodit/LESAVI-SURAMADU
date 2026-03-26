@@ -150,6 +150,10 @@ export default function ImportData() {
   const [driveFiles, setDriveFiles] = useState<Record<string, any[]>>({});
   const [driveSyncing, setDriveSyncing] = useState<Record<string, boolean>>({});
   const [driveSyncResult, setDriveSyncResult] = useState<Record<string, any>>({});
+  // Upload mode per tab: "manual" | "drive"
+  const [uploadMode, setUploadMode] = useState<Record<string, "manual" | "drive">>({ performansi: "manual", funnel: "manual", activity: "manual" });
+  // Date override for Drive mode per driveType ("performance" | "funnel" | "activity")
+  const [driveSnapshotOverride, setDriveSnapshotOverride] = useState<Record<string, string>>({});
 
   // Google Sheets sync state
   const [gsForm, setGsForm] = useState<{
@@ -198,6 +202,12 @@ export default function ImportData() {
       folderActivity: appSettings.gDriveFolderActivity || "",
       folderTarget: appSettings.gDriveFolderTarget || "",
     });
+    // Auto-default upload mode to "drive" for tabs with configured folders
+    setUploadMode(p => ({
+      performansi: appSettings.gDriveFolderPerformance ? "drive" : p.performansi,
+      funnel: appSettings.gDriveFolderFunnel ? "drive" : p.funnel,
+      activity: appSettings.gDriveFolderActivity ? "drive" : p.activity,
+    }));
   }, [appSettings]);
 
   const handleSaveGsSettings = async () => {
@@ -248,20 +258,29 @@ export default function ImportData() {
     setDriveFiles(p => ({ ...p, [type]: [] }));
     try {
       const data = await apiFetch<{ files: any[] }>(`/api/gdrive/list?type=${type}`);
-      setDriveFiles(p => ({ ...p, [type]: data.files || [] }));
+      const files = data.files || [];
+      setDriveFiles(p => ({ ...p, [type]: files }));
+      // Auto-detect snapshot date from latest file name
+      if (files.length > 0) {
+        const detected = extractDateFromFilename(files[0].name);
+        if (detected) {
+          setDriveSnapshotOverride(p => ({ ...p, [type]: detected.isoDate }));
+        }
+      }
     } catch (e: any) {
       toast({ title: "Gagal Memuat Daftar File", description: e.message, variant: "destructive" });
     } finally { setDriveListLoading(p => ({ ...p, [type]: false })); }
   };
 
-  const handleDriveSync = async (type: string, fileId?: string) => {
+  const handleDriveSync = async (type: string, fileId?: string, snapshotDateDirect?: string) => {
     setDriveSyncing(p => ({ ...p, [type]: true }));
     setDriveSyncResult(p => ({ ...p, [type]: null }));
     try {
+      const snapshotDate = snapshotDateDirect ?? driveSnapshotOverride[type] ?? undefined;
       const result = await apiFetch<any>(`/api/gdrive/sync?type=${type}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId }),
+        body: JSON.stringify({ fileId, snapshotDate: snapshotDate || undefined }),
       });
       setDriveSyncResult(p => ({ ...p, [type]: result }));
       qc.invalidateQueries({ queryKey: ["import-history"] });
@@ -903,211 +922,303 @@ export default function ImportData() {
         )}
 
         {/* File-based tabs content */}
-        {activeTab !== "target-ho" && activeTab !== "gsheets" && (
-        <div className="p-6 space-y-4">
-          {/* File upload with drag & drop */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              File Excel (.xlsx / .xls)
-            </label>
+        {activeTab !== "target-ho" && activeTab !== "gsheets" && (() => {
+          const typeMap: Record<string, string> = { performansi: "performance", funnel: "funnel", activity: "activity" };
+          const driveType = typeMap[activeTab];
+          const driveHasFolder = driveType === "performance" ? !!appSettings?.gDriveFolderPerformance
+            : driveType === "funnel" ? !!appSettings?.gDriveFolderFunnel
+            : !!appSettings?.gDriveFolderActivity;
+          const curMode = uploadMode[activeTab] || "manual";
+          const driveFilesList = driveFiles[driveType] || [];
+          const isListing = !!driveListLoading[driveType];
+          const isSyncing = !!driveSyncing[driveType];
+          const syncResult = driveSyncResult[driveType];
+          const curDriveSnap = driveSnapshotOverride[driveType] || "";
+          const driveDetected = driveFilesList.length > 0 ? extractDateFromFilename(driveFilesList[0].name) : null;
 
-            {currentFile ? (
-              <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-emerald-800 truncate">{currentFile.name}</p>
-                  <p className="text-xs text-emerald-600">
-                    {(currentFile.size / 1024).toFixed(0)} KB
-                    {currentSheetName && <> · Sheet: <span className="font-medium">{currentSheetName}</span></>}
-                  </p>
-                </div>
-                <button onClick={clearFile} className="text-emerald-400 hover:text-emerald-700 transition-colors p-0.5">
-                  <X className="w-4 h-4" />
+          return (
+          <div className="p-6 space-y-4">
+            {/* Upload mode toggle */}
+            <div className="flex items-center gap-1 p-1 bg-secondary/40 border border-border rounded-lg w-fit">
+              {([
+                { key: "manual", label: "Upload Manual", icon: UploadCloud },
+                { key: "drive",  label: "Google Drive",  icon: FolderOpen },
+              ] as const).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setUploadMode(p => ({ ...p, [activeTab]: key }));
+                    if (key === "drive" && driveHasFolder && driveFilesList.length === 0) {
+                      handleDriveList(driveType);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all",
+                    curMode === key
+                      ? "bg-white text-foreground shadow-sm border border-border"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  {key === "drive" && !driveHasFolder && (
+                    <span className="ml-1 text-[9px] font-normal text-muted-foreground/60 normal-case">(belum diatur)</span>
+                  )}
                 </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={cn(
-                  "w-full px-4 py-8 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all select-none",
-                  isDragOver
-                    ? "border-primary bg-primary/5 scale-[1.01]"
-                    : "border-border hover:border-primary/40 hover:bg-primary/[0.02]"
-                )}
-              >
-                <UploadCloud className={cn("w-8 h-8 mx-auto mb-2 transition-colors", isDragOver ? "text-primary" : "text-muted-foreground/40")} />
-                <p className={cn("text-sm font-semibold transition-colors", isDragOver ? "text-primary" : "text-muted-foreground")}>
-                  {isDragOver ? "Lepaskan file di sini" : "Klik atau seret file Excel ke sini"}
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Format: .xlsx atau .xls</p>
-              </div>
-            )}
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileInputChange} />
-          </div>
-
-          {/* Auto-detected / warning banners */}
-          {fileDetected && (
-            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
-              <Calendar className="w-3.5 h-3.5 shrink-0" />
-              <span>Snapshot terdeteksi dari nama file: <strong>{fileDetected.display}</strong> (Periode: {fileDetected.period})</span>
+              ))}
             </div>
-          )}
-          {!fileDetected && currentFile && (
-            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-amber-50 border-amber-200 text-amber-700 text-xs font-medium">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>Tanggal tidak terdeteksi dari nama file — isi tanggal snapshot secara manual di bawah</span>
-            </div>
-          )}
 
-          {/* Same-day duplicate warning */}
-          {sameDayImport && (
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border bg-amber-50 border-amber-300 text-amber-800">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-              <div className="text-xs">
-                <p className="font-bold mb-0.5">Sudah Ada Snapshot Hari Ini</p>
-                <p className="text-amber-700 leading-relaxed">
-                  {formatSnapshotTitle(sameDayImport.createdAt, sameDayImport.type, sameDayImport.snapshotDate)} sudah tersimpan ({sameDayImport.rowsImported} baris).
-                  Jika Anda mengimport ulang, data lama untuk periode ini akan <strong>ditimpa</strong>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Snapshot date + Import button */}
-          <div className="flex items-end gap-2 flex-wrap">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Tanggal Snapshot
-                <span className="text-[10px] font-normal normal-case text-muted-foreground/60">(opsional)</span>
-              </label>
-              <input
-                type="date"
-                value={currentSnapshotOverride}
-                onChange={e => setSnapshotOverride(prev => ({ ...prev, [activeTab]: e.target.value }))}
-                className="h-9 px-3 bg-secondary/40 border border-border rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all"
-              />
-            </div>
-            {currentSnapshotOverride && !isPending && (
-              <Button size="sm" variant="outline" onClick={() => setSnapshotOverride(prev => ({ ...prev, [activeTab]: "" }))}>
-                Reset
-              </Button>
-            )}
-            {/* Progress bar (inline, appears when importing) */}
-            {importProgress && (
-              <div className="flex-1 min-w-[160px] flex flex-col justify-end gap-1.5 pb-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-muted-foreground truncate">{importProgress.stage}</span>
-                  <span className={cn(
-                    "text-[11px] font-bold tabular-nums shrink-0",
-                    importProgress.percent === 100 ? "text-emerald-600" : "text-primary"
-                  )}>{importProgress.percent}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-200 ease-out",
-                      importProgress.percent === 100 ? "bg-emerald-500" : "bg-primary"
-                    )}
-                    style={{ width: `${importProgress.percent}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            <Button onClick={handleSync} disabled={isPending || !currentFile} className="h-9 px-5 gap-2">
-              {isPending
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Mengimport...</>
-                : <><UploadCloud className="w-4 h-4" /> Import Sekarang <ArrowRight className="w-3.5 h-3.5" /></>
-              }
-            </Button>
-          </div>
-
-          {/* Period info */}
-          {finalPeriod && !isPending && (
-            <p className="text-xs text-muted-foreground">
-              periode: <span className="font-semibold text-foreground">{finalPeriod}</span>
-              {finalSnapshotDate && <> &middot; snapshot: <span className="font-semibold text-foreground">{finalSnapshotDate}</span></>}
-            </p>
-          )}
-
-          {/* Cleaning info */}
-          <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-secondary/60 border border-border text-xs text-muted-foreground">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary/60" />
-            <div>
-              <span className="font-semibold text-foreground">Pipeline cleaning aktif:</span>
-              {activeTab === "performansi" && " File RAW (PERIODE, NAMA_AM, TARGET_REVENUE, REAL_REVENUE per pelanggan) — otomatis diagregasi per AM."}
-              {activeTab === "funnel" && " Filter witel=SURAMADU, divisi=DPS/DSS, validasi NIK, fix AM Reni→Havea (mulai 2026), UPPER+TRIM pelanggan."}
-              {activeTab === "activity" && " Filter witel=SURAMADU, divisi=DPS/DSS, validasi NIK, UPPER+TRIM nama customer."}
-            </div>
-          </div>
-
-          {/* Google Drive sync section — only if folder configured for this tab */}
-          {(() => {
-            const typeMap: Record<string, string> = { performansi: "performance", funnel: "funnel", activity: "activity" };
-            const driveType = typeMap[activeTab];
-            if (!driveType) return null;
-            const driveHasFolder = driveType === "performance" ? !!appSettings?.gDriveFolderPerformance
-              : driveType === "funnel" ? !!appSettings?.gDriveFolderFunnel
-              : !!appSettings?.gDriveFolderActivity;
-            if (!driveHasFolder) return null;
-            const files = driveFiles[driveType] || [];
-            const isListing = !!driveListLoading[driveType];
-            const isSyncing = !!driveSyncing[driveType];
-            const syncResult = driveSyncResult[driveType];
-            return (
-              <div className="border-t border-dashed border-border pt-4 space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-                  <p className="text-xs font-bold text-foreground uppercase tracking-wide">Atau Sync dari Google Drive</p>
-                  <span className="text-[10px] font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Folder sudah dikonfigurasi</span>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="outline" size="sm" onClick={() => handleDriveList(driveType)} disabled={isListing} className="gap-2 h-8 text-xs">
-                    {isListing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5 text-amber-500" />}
-                    Cek File di Drive
-                  </Button>
-                  <Button size="sm" onClick={() => handleDriveSync(driveType)} disabled={isSyncing} className="gap-2 h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white">
-                    {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    Sync File Terbaru
-                  </Button>
-                </div>
-                {files.length > 0 && (
-                  <div className="border border-border rounded-xl overflow-hidden">
-                    <div className="px-4 py-2 bg-secondary/40 border-b border-border">
-                      <p className="text-[11px] font-bold text-foreground">{files.length} file Excel ditemukan di folder</p>
+            {/* ── MANUAL MODE ────────────────────────────────────────────────── */}
+            {curMode === "manual" && (
+              <>
+                {/* File upload with drag & drop */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    File Excel (.xlsx / .xls)
+                  </label>
+                  {currentFile ? (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-emerald-800 truncate">{currentFile.name}</p>
+                        <p className="text-xs text-emerald-600">
+                          {(currentFile.size / 1024).toFixed(0)} KB
+                          {currentSheetName && <> · Sheet: <span className="font-medium">{currentSheetName}</span></>}
+                        </p>
+                      </div>
+                      <button onClick={clearFile} className="text-emerald-400 hover:text-emerald-700 transition-colors p-0.5">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
-                      {files.map((f: any, i: number) => (
-                        <div key={f.id} className={cn("px-4 py-2.5 flex items-center gap-3", i === 0 ? "bg-amber-50" : "")}>
-                          <FileSpreadsheet className={cn("w-3.5 h-3.5 shrink-0", i === 0 ? "text-amber-600" : "text-muted-foreground")} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-foreground truncate">{f.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {f.modifiedTime ? format(new Date(f.modifiedTime), "d MMM yyyy, HH:mm", { locale: id }) : ""}
-                            </p>
-                          </div>
-                          {i === 0 && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">Terbaru</span>}
-                          <Button variant="ghost" size="sm" onClick={() => handleDriveSync(driveType, f.id)} disabled={isSyncing} className="h-6 px-2 text-[10px] shrink-0">
-                            <Download className="w-3 h-3 mr-1" /> Sync ini
-                          </Button>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "w-full px-4 py-8 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all select-none",
+                        isDragOver
+                          ? "border-primary bg-primary/5 scale-[1.01]"
+                          : "border-border hover:border-primary/40 hover:bg-primary/[0.02]"
+                      )}
+                    >
+                      <UploadCloud className={cn("w-8 h-8 mx-auto mb-2 transition-colors", isDragOver ? "text-primary" : "text-muted-foreground/40")} />
+                      <p className={cn("text-sm font-semibold transition-colors", isDragOver ? "text-primary" : "text-muted-foreground")}>
+                        {isDragOver ? "Lepaskan file di sini" : "Klik atau seret file Excel ke sini"}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">Format: .xlsx atau .xls</p>
+                    </div>
+                  )}
+                  <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileInputChange} />
+                </div>
+
+                {/* Auto-detected / warning banners */}
+                {fileDetected && (
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    <span>Snapshot terdeteksi dari nama file: <strong>{fileDetected.display}</strong> (Periode: {fileDetected.period})</span>
+                  </div>
+                )}
+                {!fileDetected && currentFile && (
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-amber-50 border-amber-200 text-amber-700 text-xs font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Tanggal tidak terdeteksi dari nama file — isi tanggal snapshot secara manual di bawah</span>
+                  </div>
+                )}
+
+                {/* Same-day duplicate warning */}
+                {sameDayImport && (
+                  <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border bg-amber-50 border-amber-300 text-amber-800">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                    <div className="text-xs">
+                      <p className="font-bold mb-0.5">Sudah Ada Snapshot Hari Ini</p>
+                      <p className="text-amber-700 leading-relaxed">
+                        {formatSnapshotTitle(sameDayImport.createdAt, sameDayImport.type, sameDayImport.snapshotDate)} sudah tersimpan ({sameDayImport.rowsImported} baris).
+                        Jika Anda mengimport ulang, data lama untuk periode ini akan <strong>ditimpa</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Snapshot date + Import button */}
+                <div className="flex items-end gap-2 flex-wrap">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" /> Tanggal Snapshot
+                      <span className="text-[10px] font-normal normal-case text-muted-foreground/60">(opsional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={currentSnapshotOverride}
+                      onChange={e => setSnapshotOverride(prev => ({ ...prev, [activeTab]: e.target.value }))}
+                      className="h-9 px-3 bg-secondary/40 border border-border rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all"
+                    />
+                  </div>
+                  {currentSnapshotOverride && !isPending && (
+                    <Button size="sm" variant="outline" onClick={() => setSnapshotOverride(prev => ({ ...prev, [activeTab]: "" }))}>
+                      Reset
+                    </Button>
+                  )}
+                  {/* Progress bar (inline, appears when importing) */}
+                  {importProgress && (
+                    <div className="flex-1 min-w-[160px] flex flex-col justify-end gap-1.5 pb-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-medium text-muted-foreground truncate">{importProgress.stage}</span>
+                        <span className={cn(
+                          "text-[11px] font-bold tabular-nums shrink-0",
+                          importProgress.percent === 100 ? "text-emerald-600" : "text-primary"
+                        )}>{importProgress.percent}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-200 ease-out",
+                            importProgress.percent === 100 ? "bg-emerald-500" : "bg-primary"
+                          )}
+                          style={{ width: `${importProgress.percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <Button onClick={handleSync} disabled={isPending || !currentFile} className="h-9 px-5 gap-2">
+                    {isPending
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Mengimport...</>
+                      : <><UploadCloud className="w-4 h-4" /> Import Sekarang <ArrowRight className="w-3.5 h-3.5" /></>
+                    }
+                  </Button>
+                </div>
+
+                {/* Period info */}
+                {finalPeriod && !isPending && (
+                  <p className="text-xs text-muted-foreground">
+                    periode: <span className="font-semibold text-foreground">{finalPeriod}</span>
+                    {finalSnapshotDate && <> &middot; snapshot: <span className="font-semibold text-foreground">{finalSnapshotDate}</span></>}
+                  </p>
+                )}
+
+                {/* Cleaning info */}
+                <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-secondary/60 border border-border text-xs text-muted-foreground">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary/60" />
+                  <div>
+                    <span className="font-semibold text-foreground">Pipeline cleaning aktif:</span>
+                    {activeTab === "performansi" && " File RAW (PERIODE, NAMA_AM, TARGET_REVENUE, REAL_REVENUE per pelanggan) — otomatis diagregasi per AM."}
+                    {activeTab === "funnel" && " Filter witel=SURAMADU, divisi=DPS/DSS, validasi NIK, fix AM Reni→Havea (mulai 2026), UPPER+TRIM pelanggan."}
+                    {activeTab === "activity" && " Filter witel=SURAMADU, divisi=DPS/DSS, validasi NIK, UPPER+TRIM nama customer."}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── DRIVE MODE ─────────────────────────────────────────────────── */}
+            {curMode === "drive" && (
+              <>
+                {!driveHasFolder ? (
+                  <div className="flex items-start gap-3 px-4 py-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                    <div className="text-xs">
+                      <p className="font-bold mb-1">Folder Google Drive Belum Dikonfigurasi</p>
+                      <p className="text-amber-700">Buka tab <strong>Google Sheets</strong> → pilih mode <em>Auto-sync Drive</em> → isi URL folder untuk tab ini.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Snapshot date override for Drive mode */}
+                    <div className="space-y-2">
+                      <div className="flex items-end gap-2 flex-wrap">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" /> Tanggal Snapshot
+                            <span className="text-[10px] font-normal normal-case text-muted-foreground/60">(auto-detect dari nama file)</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={curDriveSnap}
+                            onChange={e => setDriveSnapshotOverride(p => ({ ...p, [driveType]: e.target.value }))}
+                            className="h-9 px-3 bg-secondary/40 border border-border rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all"
+                          />
                         </div>
-                      ))}
+                        {curDriveSnap && (
+                          <Button size="sm" variant="outline" onClick={() => setDriveSnapshotOverride(p => ({ ...p, [driveType]: driveDetected?.isoDate || "" }))}>
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+                      {curDriveSnap && (
+                        <p className="text-xs text-muted-foreground">
+                          snapshot: <span className="font-semibold text-foreground">{curDriveSnap}</span>
+                          &middot; periode: <span className="font-semibold text-foreground">{curDriveSnap.slice(0, 7)}</span>
+                        </p>
+                      )}
                     </div>
-                  </div>
+
+                    {/* Drive action buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      <Button variant="outline" size="sm" onClick={() => handleDriveList(driveType)} disabled={isListing} className="gap-2 h-8 text-xs">
+                        {isListing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5 text-amber-500" />}
+                        {driveFilesList.length > 0 ? "Refresh Daftar File" : "Cek File di Drive"}
+                      </Button>
+                      <Button size="sm" onClick={() => handleDriveSync(driveType)} disabled={isSyncing} className="gap-2 h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white">
+                        {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        Sync File Terbaru
+                      </Button>
+                    </div>
+
+                    {/* File list */}
+                    {driveFilesList.length > 0 && (
+                      <div className="border border-border rounded-xl overflow-hidden">
+                        <div className="px-4 py-2 bg-secondary/40 border-b border-border">
+                          <p className="text-[11px] font-bold text-foreground">{driveFilesList.length} file Excel ditemukan di folder</p>
+                        </div>
+                        <div className="divide-y divide-border/50 max-h-52 overflow-y-auto">
+                          {driveFilesList.map((f: any, i: number) => {
+                            const fDetected = extractDateFromFilename(f.name);
+                            return (
+                              <div key={f.id} className={cn("px-4 py-2.5 flex items-center gap-3", i === 0 ? "bg-amber-50" : "")}>
+                                <FileSpreadsheet className={cn("w-3.5 h-3.5 shrink-0", i === 0 ? "text-amber-600" : "text-muted-foreground")} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-foreground truncate">{f.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {f.modifiedTime ? format(new Date(f.modifiedTime), "d MMM yyyy, HH:mm", { locale: id }) : ""}
+                                    {fDetected && <> · <span className="font-medium text-emerald-600">Snapshot: {fDetected.display}</span></>}
+                                  </p>
+                                </div>
+                                {i === 0 && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">Terbaru</span>}
+                                <Button
+                                  variant="ghost" size="sm"
+                                  onClick={() => {
+                                    if (fDetected) setDriveSnapshotOverride(p => ({ ...p, [driveType]: fDetected.isoDate }));
+                                    handleDriveSync(driveType, f.id, fDetected?.isoDate);
+                                  }}
+                                  disabled={isSyncing}
+                                  className="h-6 px-2 text-[10px] shrink-0"
+                                >
+                                  <Download className="w-3 h-3 mr-1" /> Sync ini
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sync result */}
+                    {syncResult && (
+                      <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs">
+                        <CircleCheck className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          Berhasil sync <strong>{syncResult.imported} baris</strong> dari <em>{syncResult.fileName}</em>
+                          {syncResult.snapshotDate && <> · snapshot: <strong>{syncResult.snapshotDate}</strong></>}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
-                {syncResult && (
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs">
-                    <CircleCheck className="w-3.5 h-3.5 shrink-0" />
-                    <span>Berhasil sync <strong>{syncResult.imported} baris</strong> dari <em>{syncResult.fileName}</em></span>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-        )}
+              </>
+            )}
+          </div>
+          );
+        })()}
       </div>
 
       {/* History Table — only for file-import tabs (not gsheets, history appears in respective type tabs) */}
