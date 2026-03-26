@@ -15,6 +15,12 @@ This is a **SharePoint Bot / Telkom AM Dashboard** project — a full-stack dash
 ## Active AM List (13 AMs)
 ANA RUKMANA (402478), CAESAR RIO ANGGINA TORUAN (405690), ERVINA HANDAYANI (920064), HANDIKA DAGNA NEVANDA (980067, cross_witel), HAVEA PERTIWI (870022), KATATA VEKANIDYA SEKAR PUSPITASARI (405075), MOH RIZAL (850046), NADYA ZAHROTUL HAYATI (403613), NI MADE NOVI WIRANA (896661), NYARI KUSUMANINGRUM (401431, cross_witel), SAFIRINA FEBRYANTI (910017), VIVIN VIOLITA (910024), WILDAN ARIEF (404429, cross_witel)
 
+## Seed Script
+- **File**: `scripts/src/seed-master-am.ts`
+- **Run**: `pnpm --filter @workspace/scripts run seed-am`
+- **Idempotent**: upsert by NIK — aman dijalankan berulang kali
+- Seeds both `master_am` and `account_managers` tables with 13 active AMs
+
 ## GSheets Funnel Import Cleaning Rules (exact Power BI Power Query match)
 GSheets `1czGSp` = 76,808 rows nationwide SIMLOP+SIGMA dump. Source mirrors local Excel "Sales_Funnel_Suramadu" that Power BI reads.
 Power Query steps (from .pbix):
