@@ -34,11 +34,11 @@ export default function Login() {
   if (isAuthLoading) return null;
 
   return (
-    <div className="min-h-screen w-full flex font-sans">
-      {/* ── Left panel — form ───────────────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-14 lg:px-16 py-12 bg-white">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 font-sans px-4 py-8">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10">
+
         {/* Logo */}
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="flex items-center gap-3.5">
             <img
               src={`${import.meta.env.BASE_URL}logo-tr3.png`}
@@ -46,7 +46,7 @@ export default function Login() {
               className="h-12 object-contain"
             />
             <div className="leading-tight">
-              <p className="text-base font-bold text-gray-800 tracking-wide uppercase">LESA VI · WITEL SURAMADU</p>
+              <p className="text-base font-display font-bold text-gray-900 tracking-tight leading-snug">LESA VI · WITEL SURAMADU</p>
               <p className="text-[11px] font-semibold tracking-[0.15em] text-[#cc0000] uppercase">AM Performance Dashboard</p>
             </div>
           </div>
@@ -54,12 +54,12 @@ export default function Login() {
 
         {/* Heading */}
         <div className="mb-7">
-          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">Masuk ke Dashboard</h1>
+          <h1 className="text-2xl font-display font-bold text-gray-900 mb-1.5">Masuk ke Dashboard</h1>
           <p className="text-sm text-gray-500">Selamat datang kembali. Masukkan kredensial Anda untuk melanjutkan.</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5 max-w-sm">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Error */}
           {error && (
@@ -124,54 +124,9 @@ export default function Login() {
         </form>
 
         {/* Footer */}
-        <p className="mt-10 text-xs text-gray-400">
+        <p className="mt-8 text-xs text-gray-400 text-center">
           &copy; {new Date().getFullYear()} Telkom Indonesia · TREG 3 Suramadu · LESA VI
         </p>
-      </div>
-
-      {/* ── Right panel — image + overlay + copy ───────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between">
-        <img
-          src={`${import.meta.env.BASE_URL}telkom-building.webp`}
-          alt="Telkom Building"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#8B0000]/80 via-[#cc0000]/60 to-[#1a0000]/90" />
-
-        {/* Top badge */}
-        <div className="relative z-10 p-8">
-          <span className="text-xs font-bold text-white/80 tracking-[0.2em] uppercase bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-            TELKOM INDONESIA · TREG 3
-          </span>
-        </div>
-
-        {/* Center copy */}
-        <div className="relative z-10 px-10 pb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-6 h-0.5 bg-red-300"/>
-            <span className="text-xs font-bold text-red-200 tracking-[0.15em] uppercase">WITEL SURAMADU · LESA VI</span>
-          </div>
-          <h2 className="text-4xl font-display font-black text-white leading-tight mb-4">
-            Pantau Performa.<br/>Raih Target.
-          </h2>
-          <p className="text-sm text-white/70 leading-relaxed mb-8 max-w-sm">
-            Dashboard terpadu untuk monitoring Account Manager — revenue, funneling, activity, dan reminder otomatis via Telegram.
-          </p>
-          <div className="flex items-end gap-8">
-            <div>
-              <p className="text-2xl font-black text-white">30+</p>
-              <p className="text-xs text-white/60 mt-0.5">Account Manager</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white">4</p>
-              <p className="text-xs text-white/60 mt-0.5">Divisi Aktif</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white">✓</p>
-              <p className="text-xs text-white/60 mt-0.5">Update Real-time</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

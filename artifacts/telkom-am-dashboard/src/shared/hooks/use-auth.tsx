@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect } from "react";
 import { useGetMe, useLogin, useLogout, type AuthResponse, type LoginBody } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/shared/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: user, isLoading: isUserLoading, refetch } = useGetMe({
     query: {
@@ -45,7 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await logoutMutation.mutateAsync();
-      await refetch();
+      // Hapus semua cache query agar user data tidak tersimpan stale
+      queryClient.clear();
       setLocation("/login");
     } catch (err) {
       toast({ title: "Logout gagal", variant: "destructive" });
