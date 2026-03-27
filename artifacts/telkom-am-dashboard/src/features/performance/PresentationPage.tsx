@@ -1009,6 +1009,16 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   const navbarFilterBar = (
     <div className="flex items-end gap-2 flex-nowrap overflow-x-auto">
+      <div className="flex flex-col gap-1 shrink-0">
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Mode View</label>
+        <button onClick={()=>setViewMode(v=>v==="split"?"all":"split")}
+          className={cn("h-9 flex items-center gap-1.5 px-3 text-sm border rounded-lg transition-colors whitespace-nowrap font-semibold",
+            viewMode==="split"?"bg-red-700 text-white border-red-700":"text-muted-foreground border-border hover:text-foreground")}>
+          <Columns2 className="w-3.5 h-3.5"/>
+          {viewMode==="split"?"Semua":"Par Divisi"}
+        </button>
+      </div>
+      <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
       <FSSelectDropdown label="Snapshot" value={String(importId||"")} onChange={v=>setImportId(Number(v))}
         options={snapshotOptions.length>0?snapshotOptions:[{value:"",label:"Belum ada data"}]}
         disabled={snapshotOptions.length===0} className="w-36 shrink-0"/>
@@ -1021,15 +1031,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       <FSSelectDropdown label="Target" value={filterMode} onChange={v=>setFilterMode(v as "ho"|"fullho")}
         options={[{value:"ho",label:"HO"},{value:"fullho",label:"Full HO"}]}
         className="w-28 shrink-0"/>
-      <div className="flex flex-col gap-1 shrink-0">
-        <label className="text-xs font-bold text-transparent uppercase">.</label>
-        <button onClick={()=>setViewMode(v=>v==="split"?"all":"split")}
-          className={cn("h-9 flex items-center gap-1.5 px-3 text-sm border rounded-lg transition-colors whitespace-nowrap font-semibold",
-            viewMode==="split"?"bg-red-700 text-white border-red-700":"text-muted-foreground border-border hover:text-foreground")}>
-          <Columns2 className="w-3.5 h-3.5"/>
-          {viewMode==="split"?"Semua":"Par Divisi"}
-        </button>
-      </div>
       {kontrakOptions.length>0&&(
         <FSCheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
           placeholder="Semua kontrak" summaryLabel="kontrak" className="w-36 shrink-0"/>

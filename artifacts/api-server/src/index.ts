@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./shared/logger";
 import { ensureDefaultAdmin } from "./shared/auth";
+import { ensureDefaultSeed } from "./shared/seed";
 import { startTelegramPoller } from "./features/telegram/poller";
 import { startGSheetsScheduler } from "./features/gsheets/scheduler";
 
@@ -21,6 +22,10 @@ if (Number.isNaN(port) || port <= 0) {
 ensureDefaultAdmin()
   .then(() => logger.info("Default admin user ensured"))
   .catch(err => logger.error({ err }, "Failed to ensure default admin"));
+
+ensureDefaultSeed()
+  .then(() => logger.info("Default seed data ensured"))
+  .catch(err => logger.error({ err }, "Failed to ensure default seed data"));
 
 app.listen(port, (err) => {
   if (err) {
