@@ -34,11 +34,11 @@ export default function Login() {
   if (isAuthLoading) return null;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 font-sans px-4 py-8">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 px-8 py-10">
-
+    <div className="min-h-screen w-full flex font-sans">
+      {/* ── Left panel — form ───────────────────────────────────── */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-14 lg:px-16 py-12 bg-white">
         {/* Logo */}
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="flex items-center gap-3.5">
             <img
               src={`${import.meta.env.BASE_URL}logo-tr3.png`}
@@ -46,6 +46,7 @@ export default function Login() {
               className="h-12 object-contain"
             />
             <div className="leading-tight">
+              <p className="text-base font-bold text-gray-800 tracking-wide uppercase">LESA VI · WITEL SURAMADU</p>
               <p className="text-[11px] font-semibold tracking-[0.15em] text-[#cc0000] uppercase">AM Performance Dashboard</p>
             </div>
           </div>
@@ -53,12 +54,12 @@ export default function Login() {
 
         {/* Heading */}
         <div className="mb-7">
-          <h1 className="text-2xl font-display font-bold text-gray-900 mb-1.5">Masuk ke Dashboard</h1>
+          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">Masuk ke Dashboard</h1>
           <p className="text-sm text-gray-500">Selamat datang kembali. Masukkan kredensial Anda untuk melanjutkan.</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 max-w-sm">
 
           {/* Error */}
           {error && (
@@ -123,9 +124,24 @@ export default function Login() {
         </form>
 
         {/* Footer */}
-        <p className="mt-8 text-xs text-gray-400 text-center">
+        <p className="mt-10 text-xs text-gray-400">
           &copy; {new Date().getFullYear()} Telkom Indonesia · TREG 3 Suramadu · LESA VI
         </p>
+      </div>
+
+      {/* ── Right panel — image + overlay only ─────────────────── */}
+      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+        <img
+          src={`${import.meta.env.BASE_URL}telkom-building.webp`}
+          alt="Telkom Building"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#8B0000]/80 via-[#cc0000]/60 to-[#1a0000]/90" />
+        <div className="absolute top-6 left-6">
+          <span className="text-xs font-bold text-white/70 tracking-[0.2em] uppercase bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            TELKOM INDONESIA · TREG 3
+          </span>
+        </div>
       </div>
     </div>
   );
