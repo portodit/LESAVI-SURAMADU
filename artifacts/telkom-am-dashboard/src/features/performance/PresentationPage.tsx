@@ -832,8 +832,26 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? "";
   }
 
-  const dpsGrouped = useMemo(() => groupedByAm.filter(a => resolveAmDivisi(a) === "DPS"), [groupedByAm]);
-  const dssGrouped = useMemo(() => groupedByAm.filter(a => resolveAmDivisi(a) === "DSS"), [groupedByAm]);
+  // Build per-divisi groups by filtering LOPs by their own divisi field.
+  // Cross-divisi AMs (e.g. HANDIKA: 27 DPS + 44 DSS) appear correctly in each panel.
+  function buildGroupedForDivisiFS(lops: any[]) {
+    const amMap = new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
+    for (const l of lops) {
+      const key = l.nikAm || l.namaAm || "Unknown";
+      if (!amMap.has(key)) amMap.set(key, {namaAm:l.namaAm||key,nikAm:l.nikAm||"",divisi:l.divisi||"",phases:new Map()});
+      const e = amMap.get(key)!;
+      const phase = l.statusF || "Unknown";
+      if (!e.phases.has(phase)) e.phases.set(phase, []);
+      e.phases.get(phase)!.push(l);
+    }
+    return Array.from(amMap.values()).sort((a,b) => {
+      const totA = Array.from(a.phases.values()).flat().reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const totB = Array.from(b.phases.values()).flat().reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      return totB - totA;
+    });
+  }
+  const dpsGrouped = useMemo(() => buildGroupedForDivisiFS(filteredLops.filter((l:any) => l.divisi === "DPS")), [filteredLops]);
+  const dssGrouped = useMemo(() => buildGroupedForDivisiFS(filteredLops.filter((l:any) => l.divisi === "DSS")), [filteredLops]);
 
   function computeDivisiStatsFromGroup(grp: typeof dpsGrouped) {
     const allLops: any[] = [];
