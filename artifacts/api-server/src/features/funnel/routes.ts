@@ -194,6 +194,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     unidentifiedLops: unidentifiedCount,
     byStatus: statusGroups,
     byAm: amGroups,
+    masterAms: masterAms.filter(m => m.aktif).map(m => ({ nik: m.nik, nama: m.nama, divisi: m.divisi })),
     lops: allLops.map(l => ({
       id: l.id,
       lopid: l.lopid,
