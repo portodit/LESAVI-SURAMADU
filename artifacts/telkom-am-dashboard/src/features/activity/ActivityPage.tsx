@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/utils";
-import { Search, ChevronDown, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, Expand, Minimize2 } from "lucide-react";
+import { Search, ChevronDown, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, Expand, Minimize2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -513,9 +513,9 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
           </div>
         </div>
 
-        <div className="text-sm font-black font-mono text-foreground text-center">{kpiCount}</div>
-        <div className="text-sm font-bold font-mono text-foreground/70 text-center">{am.kpiTarget}</div>
-        <div className={cn("text-sm font-bold font-mono text-center", sisa === 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+        <div className="text-sm font-black text-foreground text-center tabular-nums">{kpiCount}</div>
+        <div className="text-sm font-black text-foreground text-center tabular-nums">{am.kpiTarget}</div>
+        <div className={cn("text-sm font-black text-center tabular-nums", sisa === 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
           {sisa === 0 ? "✓" : sisa}
         </div>
         <div><StatusBadge pct={pct} /></div>
@@ -556,16 +556,16 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
 
                     {/* Tanggal */}
                     <div>
-                      <div className="text-sm font-bold text-foreground font-mono">{short}</div>
-                      <div className="text-[11px] font-medium text-foreground/60 mt-px">{day}</div>
-                      {time && <div className="text-[10px] text-foreground/40 font-mono">{time}</div>}
+                      <div className="text-base font-black text-foreground font-mono leading-tight">{short}</div>
+                      <div className="text-xs font-semibold text-foreground/80 mt-0.5">{day}</div>
+                      {time && <div className="text-xs font-bold text-foreground/70 font-mono mt-0.5">{time}</div>}
                     </div>
 
                     {/* Pelanggan & Catatan */}
                     <div>
                       <div className="text-sm font-bold text-foreground">{act.caName || "–"}</div>
                       {act.activityNotes && (
-                        <div className="text-xs font-medium text-foreground/60 mt-0.5 leading-snug line-clamp-2">{act.activityNotes}</div>
+                        <div className="text-sm font-medium text-foreground/70 mt-0.5 leading-snug">{act.activityNotes}</div>
                       )}
                     </div>
 
@@ -596,17 +596,17 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
               })}
 
               {/* Summary footer */}
-              <div className="flex items-center gap-5 px-6 py-3 border-t-2 border-primary/20 bg-primary/5">
-                <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-wide">Ringkasan:</span>
+              <div className="flex items-center gap-5 px-6 py-3 border-t-2 border-border bg-secondary/60">
+                <span className="text-sm font-black text-foreground uppercase tracking-wide">Ringkasan:</span>
                 <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
                   ✓ {kpiCount} aktivitas memenuhi KPI
                 </span>
                 {nonKpiCount > 0 && (
-                  <span className="text-sm font-bold text-foreground/60">
+                  <span className="text-sm font-semibold text-foreground/70">
                     ✗ {nonKpiCount} tidak memenuhi KPI
                   </span>
                 )}
-                <span className="ml-auto text-sm font-black text-foreground">
+                <span className="ml-auto text-base font-black text-foreground">
                   {am.activities.length} aktivitas total
                 </span>
               </div>
@@ -673,9 +673,7 @@ export default function ActivityPage() {
 
   useEffect(() => {
     if (data && selectedLabels === null) {
-      setSelectedLabels(new Set(
-        (data.distinctLabels ?? []).filter(l => !l.toLowerCase().includes("tanpa"))
-      ));
+      setSelectedLabels(new Set(data.distinctLabels ?? []));
     }
   }, [data, selectedLabels]);
 
@@ -708,7 +706,15 @@ export default function ActivityPage() {
       ).length;
       return cnt >= a.kpiTarget;
     }).length;
-    return { totalKpi, reach, below: filteredAms.length - reach };
+    const dgPelanggan = filteredAms.reduce((s, a) =>
+      s + a.activities.filter(act => {
+        if (!act.label) return false;
+        const l = act.label.toLowerCase();
+        return !l.includes("tanpa") && !l.includes("proyek");
+      }).length, 0);
+    const dgProyek = filteredAms.reduce((s, a) =>
+      s + a.activities.filter(act => act.label && act.label.toLowerCase().includes("proyek")).length, 0);
+    return { totalKpi, reach, below: filteredAms.length - reach, dgPelanggan, dgProyek };
   }, [filteredAms, kpiLabels]);
 
   const periodLabel = month === "all"
@@ -782,18 +788,6 @@ export default function ActivityPage() {
               className="min-w-[180px]"
             />
           )}
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide opacity-0 select-none">Cari</label>
-            <div className="h-9 flex items-center gap-2 bg-secondary/50 border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[180px]">
-              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <input
-                type="text" placeholder="Cari nama AM…"
-                value={search} onChange={e => setSearch(e.target.value)}
-                className="border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"
-              />
-            </div>
-          </div>
         </div>
       </div>
 
@@ -803,7 +797,16 @@ export default function ActivityPage() {
           icon={<Target className="w-5 h-5 text-primary" />}
           label="Total Aktivitas KPI"
           value={isLoading ? "—" : stats.totalKpi}
-          sub={<>dari <strong className="text-foreground">{filteredAms.length}</strong> AM · {periodLabel}</>}
+          sub={<>
+            <span className="block">dari <strong className="text-foreground">{filteredAms.length}</strong> AM · {periodLabel}</span>
+            {!isLoading && (
+              <span className="block mt-0.5">
+                <span className="text-blue-600 font-semibold">{stats.dgPelanggan} dg pelanggan</span>
+                {" · "}
+                <span className="text-teal-600 font-semibold">{stats.dgProyek} dg proyek</span>
+              </span>
+            )}
+          </>}
           accent="bg-primary/10"
         />
         <OverviewCard
@@ -847,18 +850,25 @@ export default function ActivityPage() {
               {filteredAms.length} AM
             </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {/* Search bar — pindah ke sini dari filter bar */}
+            <div className="h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[160px]">
+              <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+              <input
+                type="text" placeholder="Cari nama AM…"
+                value={search} onChange={e => setSearch(e.target.value)}
+                className="border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"
+              />
+            </div>
+            {/* Toggle Expand/Collapse jadi 1 tombol */}
             <button
-              onClick={() => setExpandAll(true)}
+              onClick={() => setExpandAll(prev => prev === true ? false : true)}
               className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5"
             >
-              <Expand className="w-3 h-3" /> Expand Semua
-            </button>
-            <button
-              onClick={() => setExpandAll(false)}
-              className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5"
-            >
-              <Minimize2 className="w-3 h-3" /> Collapse
+              {expandAll === true
+                ? <><Minimize2 className="w-3 h-3" /> Collapse Semua</>
+                : <><Expand className="w-3 h-3" /> Expand Semua</>
+              }
             </button>
           </div>
         </div>
