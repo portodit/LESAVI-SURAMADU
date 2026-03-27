@@ -830,9 +830,8 @@ export default function ActivityPage() {
           label="Total Aktivitas KPI"
           value={isLoading ? "—" : stats.totalKpi}
           sub={<>
-            <span className="block">dari <strong className="text-foreground">{filteredAms.length}</strong> AM · {periodLabel}</span>
             {!isLoading && (
-              <span className="block mt-0.5">
+              <span className="block">
                 <span className="text-blue-600 font-semibold">{stats.dgPelanggan} dg pelanggan</span>
                 {" · "}
                 <span className="text-teal-600 font-semibold">{stats.dgProyek} dg proyek</span>
@@ -858,17 +857,12 @@ export default function ActivityPage() {
       </div>
 
       {/* ─── KPI Info note ─── */}
-      {labelOptions.length > 0 && (
-        <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border/60 rounded-xl px-4 py-3">
-          <span className="mt-0.5">📌</span>
-          <span>
-            Progress KPI dihitung dari aktivitas kategori{" "}
-            <strong className="text-blue-600 dark:text-blue-400">Dengan Pelanggan</strong> dan{" "}
-            <strong className="text-blue-600 dark:text-blue-400">Pelanggan dengan Proyek</strong> saja.
-            Kategori <strong>Tanpa Pelanggan</strong> tidak terhitung dalam capaian KPI.
-          </span>
-        </div>
-      )}
+      <div className="flex items-start gap-2.5 text-sm font-medium text-foreground/80 bg-secondary/60 border border-border/60 rounded-xl px-4 py-3.5">
+        <span className="mt-0.5 shrink-0 text-base">📌</span>
+        <span>
+          Progress KPI dihitung dari aktivitas kategori <strong className="text-primary font-bold">Dengan Pelanggan</strong> dan <strong className="text-primary font-bold">Pelanggan dengan Proyek</strong> saja. Kategori <strong className="text-primary font-bold">Tanpa Pelanggan</strong> tidak terhitung dalam capaian KPI.
+        </span>
+      </div>
 
       {/* ─── Table Section ─── */}
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">

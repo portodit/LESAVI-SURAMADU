@@ -1551,7 +1551,6 @@ function ActivitySlide() {
                     {stats.totalDgPelanggan} dg pelanggan<br className="sm:hidden"/>{" · "}{stats.totalDgProyek} dg proyek
                   </span>
                 </div>
-                <div className="text-sm font-semibold text-foreground mt-1">dari <strong>{amList.length}</strong> AM · {periodLabel}</div>
               </div>
             </div>
             {/* Card 2: AM Capai KPI */}
@@ -1607,7 +1606,7 @@ function ActivitySlide() {
               </div>
             </div>
             <div className="overflow-x-auto">
-            <div style={{minWidth:"560px"}}>
+            <div style={{minWidth:"780px"}}>
             {/* Header */}
             <div className="grid text-xs font-black uppercase tracking-wide text-white"
               style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
