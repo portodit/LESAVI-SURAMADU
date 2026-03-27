@@ -10,6 +10,8 @@ import { Loader2 } from "lucide-react";
 
 import Login from "@/features/auth/LoginPage";
 import EmbedPerforma from "@/features/performance/PresentationPage";
+import PresentationLoginPage from "@/features/performance/PresentationLoginPage";
+import { getPresentationSession } from "@/shared/hooks/use-presentation-auth";
 import Dashboard from "@/features/dashboard/DashboardPage";
 import ImportData from "@/features/import/ImportPage";
 import ImportDetail from "@/features/import/ImportDetailPage";
@@ -81,13 +83,24 @@ const queryClient = new QueryClient({
   },
 });
 
+function PresentationGuard() {
+  const [, setLocation] = useLocation();
+  const session = getPresentationSession();
+  useEffect(() => {
+    if (!session) setLocation("/presentation/login");
+  }, [session, setLocation]);
+  if (!session) return null;
+  return <EmbedPerforma />;
+}
+
 function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/am-public/:slug" component={PublicAmPage} />
       <Route path="/embed/performa" component={EmbedPerforma} />
-      <Route path="/presentation" component={EmbedPerforma} />
+      <Route path="/presentation/login" component={PresentationLoginPage} />
+      <Route path="/presentation" component={PresentationGuard} />
       <Route component={ProtectedApp} />
     </Switch>
   );
