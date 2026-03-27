@@ -1290,11 +1290,15 @@ function actFmtDate(d:string|null):{short:string;day:string}{
   }catch{return {short:d.slice(5,10).replace("-","/"),day:""};}
 }
 
+// Column grid for ActivitySlide table
+const ACT_GRID_COLS = "32px 1fr 240px 80px 72px 64px 110px";
+
 function ActivitySlide() {
   const now = new Date();
   const [filterYear,  setFilterYear]  = useState(String(now.getFullYear()));
   const [filterMonth, setFilterMonth] = useState(String(now.getMonth()+1));
   const [filterDivisi, setFilterDivisi] = useState("all");
+  const [filterSnapId, setFilterSnapId] = useState<string>("all");
   const [expandedAm, setExpandedAm] = useState<Record<string,boolean>>({});
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
@@ -1313,11 +1317,117 @@ function ActivitySlide() {
 
   const divisiOptions = [{value:"all",label:"Semua"},{value:"DPS",label:"DPS"},{value:"DSS",label:"DSS"}];
 
+  // ─── Snapshots ──────────────────────────────────────────────────────────
+  const {data:actSnaps=[]} = useQuery<any[]>({
+    queryKey:["activity-snapshots-slide"],
+    queryFn:async()=>{
+      const r=await fetch(`${BASE_PATH}/api/activity/snapshots`,{credentials:"include"});
+      if(!r.ok) return [];
+      return r.json();
+    },
+    staleTime:60_000,
+  });
+
+  const snapOptions = useMemo(()=>[
+    {value:"all",label:"Semua import"},
+    ...(Array.isArray(actSnaps)?actSnaps:[]).map((s:any)=>{
+      let lbl = s.period||`Import #${s.id}`;
+      if(s.snapshotDate){
+        try{
+          const d=new Date(s.snapshotDate);
+          lbl=`${d.getDate()} ${ACT_MONTHS_SHORT[d.getMonth()+1]} ${d.getFullYear()}${s.period?` · ${s.period}`:""}`;
+        }catch{/**/}
+      }
+      return {value:String(s.id),label:lbl};
+    }),
+  ],[actSnaps]);
+
+  // ─── Period picker (createPortal) ──────────────────────────────────────
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [periodPos, setPeriodPos] = useState({top:0,left:0});
+  const periodTriggerRef = useRef<HTMLDivElement>(null);
+  const periodDropRef = useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{
+      if(periodTriggerRef.current&&!periodTriggerRef.current.contains(e.target as Node)&&
+         periodDropRef.current&&!periodDropRef.current.contains(e.target as Node)) setPeriodOpen(false);
+    };
+    document.addEventListener("mousedown",h);
+    return()=>document.removeEventListener("mousedown",h);
+  },[]);
+  const togglePeriod=()=>{
+    if(periodTriggerRef.current){
+      const r=periodTriggerRef.current.getBoundingClientRect();
+      setPeriodPos({top:r.bottom+4,left:r.left});
+    }
+    setPeriodOpen(o=>!o);
+  };
+
+  const periodDisplay = filterMonth==="all"
+    ? `${filterYear} (semua bulan)`
+    : `${ACT_MONTHS_SHORT[parseInt(filterMonth)]} ${filterYear}`;
+
+  const PeriodDropPortal = (
+    <div ref={periodTriggerRef} className="flex flex-col gap-1 shrink-0">
+      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Periode</label>
+      <button type="button" onClick={togglePeriod}
+        className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 min-w-[170px] transition-colors text-left",
+          periodOpen&&"border-primary/50 ring-2 ring-primary/20")}>
+        <span className="flex-1 truncate font-medium text-foreground">{periodDisplay}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",periodOpen&&"rotate-180")}/>
+      </button>
+      {periodOpen&&createPortal(
+        <div ref={periodDropRef}
+          style={{position:"fixed",top:periodPos.top,left:periodPos.left,zIndex:9999}}
+          className="bg-card border border-border rounded-xl shadow-xl w-[240px] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Periode</span>
+            <button onClick={()=>{setFilterMonth("all");setPeriodOpen(false);}}
+              className="text-[11px] text-primary font-bold hover:underline">Semua · Reset</button>
+          </div>
+          {/* Year */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide flex-1">Tahun</span>
+            <div className="flex gap-1">
+              {["2026","2025","2024"].map(y=>(
+                <button key={y} onClick={()=>setFilterYear(y)}
+                  className={cn("px-2 py-0.5 rounded text-xs font-bold transition-colors",
+                    filterYear===y?"bg-primary text-white":"bg-secondary text-muted-foreground hover:text-foreground")}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Months */}
+          <div className="px-3 pt-2 pb-3">
+            <div className="grid grid-cols-3 gap-1">
+              {ACT_MONTHS_SHORT.slice(1).map((m,i)=>{
+                const val=String(i+1);
+                const isSel=filterMonth===val;
+                return(
+                  <button key={val} onClick={()=>{setFilterMonth(val);setPeriodOpen(false);}}
+                    className={cn("py-1.5 px-1.5 rounded-lg text-xs font-semibold transition-colors text-center",
+                      isSel?"bg-primary text-white":"hover:bg-secondary text-foreground")}>
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+
+  // ─── Query ──────────────────────────────────────────────────────────────
   const queryUrl = useMemo(()=>{
     const p=new URLSearchParams({year:filterYear,divisi:filterDivisi});
     if(filterMonth!=="all") p.set("month",filterMonth);
+    if(filterSnapId!=="all") p.set("import_id",filterSnapId);
     return `/api/activity?${p}`;
-  },[filterYear,filterMonth,filterDivisi]);
+  },[filterYear,filterMonth,filterDivisi,filterSnapId]);
 
   const {data,isLoading} = useQuery<any>({
     queryKey:["activity-slide",queryUrl],
@@ -1344,73 +1454,14 @@ function ActivitySlide() {
 
   const periodLabel = filterMonth==="all"?`Tahun ${filterYear}`:`${ACT_MONTHS_FULL[parseInt(filterMonth)]} ${filterYear}`;
 
-  // Period display for filter bar
-  const periodDisplay = filterMonth==="all"
-    ? `Semua Bulan ${filterYear}`
-    : `${ACT_MONTHS_SHORT[parseInt(filterMonth)]} ${filterYear}`;
-
-  // Inline period picker for filter bar
-  const [periodOpen, setPeriodOpen] = useState(false);
-  const periodRef = useRef<HTMLDivElement>(null);
-  useEffect(()=>{
-    const h=(e:MouseEvent)=>{
-      if(periodRef.current&&!periodRef.current.contains(e.target as Node)) setPeriodOpen(false);
-    };
-    document.addEventListener("mousedown",h);
-    return()=>document.removeEventListener("mousedown",h);
-  },[]);
-
-  const PeriodPicker = ()=>(
-    <div className="flex flex-col gap-1 relative shrink-0" ref={periodRef}>
-      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Periode</label>
-      <button type="button" onClick={()=>setPeriodOpen(o=>!o)}
-        className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 min-w-[160px] transition-colors text-left",
-          periodOpen&&"border-primary/50 ring-2 ring-primary/20")}>
-        <span className="flex-1 truncate font-medium text-foreground">{periodDisplay}</span>
-        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",periodOpen&&"rotate-180")}/>
-      </button>
-      {periodOpen&&(
-        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl w-[220px] overflow-hidden">
-          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-secondary/30">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide flex-1">TAHUN</span>
-            <div className="flex gap-1">
-              {["2026","2025","2024"].map(y=>(
-                <button key={y} onClick={()=>setFilterYear(y)}
-                  className={cn("px-2 py-0.5 rounded text-xs font-bold transition-colors",
-                    filterYear===y?"bg-primary text-white":"bg-secondary text-muted-foreground hover:text-foreground")}>
-                  {y}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="px-3 pt-2 pb-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">BULAN</span>
-              <button onClick={()=>{setFilterMonth("all");setPeriodOpen(false);}}
-                className="text-[10px] text-primary font-semibold hover:underline">Semua</button>
-            </div>
-            <div className="grid grid-cols-3 gap-1 pb-2">
-              {ACT_MONTHS_SHORT.slice(1).map((m,i)=>{
-                const val=String(i+1);
-                return(
-                  <button key={val} onClick={()=>{setFilterMonth(val);setPeriodOpen(false);}}
-                    className={cn("py-1 px-1.5 rounded-lg text-xs font-semibold transition-colors text-center",
-                      filterMonth===val?"bg-primary text-white":"hover:bg-secondary text-foreground")}>
-                    {m}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
+  // ─── Filter bar ─────────────────────────────────────────────────────────
   const filterBar = (
     <>
-      <PeriodPicker/>
-      <FSSelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi} options={divisiOptions} className="w-28 shrink-0"/>
+      <FSSelectDropdown label="Snapshot" value={filterSnapId} onChange={setFilterSnapId}
+        options={snapOptions} className="w-44 shrink-0"/>
+      {PeriodDropPortal}
+      <FSSelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi}
+        options={divisiOptions} className="w-28 shrink-0"/>
     </>
   );
 
@@ -1455,7 +1506,7 @@ function ActivitySlide() {
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
             {/* Header */}
             <div className="grid text-xs font-black uppercase tracking-wide text-white"
-              style={{background:"#B91C1C",gridTemplateColumns:"32px 1fr 200px 60px 60px 64px 110px",padding:"10px 16px"}}>
+              style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
               <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
               <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
             </div>
@@ -1464,9 +1515,10 @@ function ActivitySlide() {
               <div className="text-center py-12 text-sm text-muted-foreground">Tidak ada data untuk filter yang dipilih.</div>
             ):amList.map((am:any)=>{
               const kpiCount=am.kpiCount||0;
+              const nonKpiCount=(am.activities||[]).length-kpiCount;
               const pct=Math.min(Math.round(kpiCount/am.kpiTarget*100),100);
               const sisa=Math.max(am.kpiTarget-kpiCount,0);
-              const hasActs=am.activities.length>0;
+              const hasActs=(am.activities||[]).length>0;
               const isExpanded=expandedAm[am.fullname];
               const progressGrad=pct>=100?"from-emerald-500 to-emerald-400":pct>=70?"from-amber-500 to-amber-400":"from-red-600 to-red-500";
               const pctClr=pct>=100?"text-emerald-600 dark:text-emerald-400":pct>=70?"text-amber-600 dark:text-amber-400":"text-red-600 dark:text-red-400";
@@ -1476,32 +1528,41 @@ function ActivitySlide() {
                     onClick={()=>setExpandedAm(p=>({...p,[am.fullname]:!p[am.fullname]}))}
                     className={cn("grid items-center px-4 py-3 cursor-pointer transition-colors group",
                       isExpanded?"bg-primary/5 border-b border-primary/10":"hover:bg-secondary/40")}
-                    style={{gridTemplateColumns:"32px 1fr 200px 60px 60px 64px 110px"}}
+                    style={{gridTemplateColumns:ACT_GRID_COLS}}
                   >
+                    {/* Expand icon */}
                     <div className={cn("w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 transition-all",
                       isExpanded?"bg-primary border-primary text-white":"bg-secondary border-border text-muted-foreground group-hover:border-primary/40 group-hover:text-primary/70")}>
                       {isExpanded?"−":"+"}
                     </div>
+
+                    {/* Name + divisi */}
                     <div className="overflow-hidden pl-1">
                       <div className="text-sm font-bold text-foreground truncate">{am.fullname}</div>
-                      <div className="text-[11px] text-muted-foreground mt-px">
-                        {am.divisi}
-                        {!hasActs&&<span className="ml-1.5 text-[10px] italic text-muted-foreground/60">· tidak ada data</span>}
-                        {hasActs&&<span className="ml-1.5 text-[10px] text-muted-foreground/60">· {am.activities.length} aktivitas</span>}
+                      <div className="text-xs font-semibold text-foreground/70 mt-0.5 flex items-center gap-1">
+                        <span>{am.divisi}</span>
+                        {!hasActs&&<span className="text-foreground/40 font-normal italic text-[11px]">· tidak ada data</span>}
+                        {hasActs&&<span className="text-foreground/60 font-semibold">· {am.activities.length} aktivitas</span>}
                       </div>
                     </div>
-                    <div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden mb-1">
-                        <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700",progressGrad)} style={{width:`${pct}%`}}/>
+
+                    {/* Progress bar — bigger */}
+                    <div className="pr-2">
+                      <div className="h-3.5 bg-secondary rounded-full overflow-hidden mb-1.5">
+                        <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700",progressGrad)}
+                          style={{width:pct===0?"0%":`${Math.max(pct,3)}%`}}/>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className={cn("text-[12px] font-bold font-mono",pctClr)}>{pct}%</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{kpiCount}/{am.kpiTarget}</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={cn("text-sm font-black font-mono",pctClr)}>{pct}%</span>
+                        <span className={cn("text-xs font-bold font-mono",pct===0?"text-foreground/50":"text-foreground")}>
+                          {kpiCount}/{am.kpiTarget} aktivitas KPI
+                        </span>
                       </div>
                     </div>
-                    <div className="text-sm font-bold font-mono text-foreground text-center">{kpiCount}</div>
-                    <div className="text-sm font-bold font-mono text-muted-foreground text-center">{am.kpiTarget}</div>
-                    <div className={cn("text-sm font-bold font-mono text-center",sisa===0?"text-muted-foreground/30":"text-foreground")}>{sisa===0?"✓":sisa}</div>
+
+                    <div className="text-sm font-black font-mono text-foreground text-center">{kpiCount}</div>
+                    <div className="text-sm font-bold font-mono text-foreground/70 text-center">{am.kpiTarget}</div>
+                    <div className={cn("text-sm font-bold font-mono text-center",sisa===0?"text-emerald-600 dark:text-emerald-400":"text-foreground")}>{sisa===0?"✓":sisa}</div>
                     <div>
                       {pct>=100
                         ?<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">✓ Tercapai</span>
@@ -1511,48 +1572,64 @@ function ActivitySlide() {
                       }
                     </div>
                   </div>
+
                   {/* Expanded detail */}
                   {isExpanded&&(
                     <div className="border-t border-border/30 bg-secondary/20">
                       {!hasActs?(
-                        <div className="flex items-center gap-3 px-6 py-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-3 px-6 py-4 text-sm text-foreground/70">
                           <span className="text-amber-500">⚠</span>
                           AM ini tidak memiliki data aktivitas pada periode yang dipilih meski sudah dicari di data mentah.
                         </div>
                       ):(
                         <>
-                          <div className="grid text-[9px] font-bold uppercase tracking-[0.6px] text-muted-foreground bg-secondary/50 border-b border-border/30"
-                            style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"6px 14px 6px 52px"}}>
-                            <div>#</div><div>Tanggal</div><div>Pelanggan & Catatan</div>
-                            <div>Tipe</div><div>Kategori</div><div>KPI</div>
+                          {/* Sub-header */}
+                          <div className="grid text-[10px] font-bold uppercase tracking-[0.6px] text-foreground/60 bg-secondary/50 border-b border-border/30"
+                            style={{gridTemplateColumns:"28px 96px 1fr 140px 120px 60px",padding:"7px 14px 7px 52px"}}>
+                            <div>#</div><div>Tanggal</div><div>Pelanggan &amp; Catatan</div>
+                            <div>Tipe Aktivitas</div><div>Kategori</div><div>KPI</div>
                           </div>
+
+                          {/* Activity rows */}
                           {am.activities.map((act:any,i:number)=>{
                             const {short,day}=actFmtDate(act.activityEndDate);
                             const ts=actTypeSty(act.activityType);
                             const ls=actLabelSty(act.label);
                             return (
                               <div key={act.id} className="grid items-start border-b border-border/20 last:border-b-0 hover:bg-secondary/30 transition-colors"
-                                style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"8px 14px 8px 52px"}}>
-                                <div className="text-[10px] text-muted-foreground font-mono pt-0.5">{i+1}</div>
+                                style={{gridTemplateColumns:"28px 96px 1fr 140px 120px 60px",padding:"9px 14px 9px 52px"}}>
+                                <div className="text-xs font-bold text-foreground/50 font-mono pt-0.5">{i+1}</div>
                                 <div>
-                                  <div className="text-xs font-semibold font-mono text-foreground">{short}</div>
-                                  <div className="text-[10px] text-muted-foreground">{day}</div>
+                                  <div className="text-sm font-bold text-foreground font-mono">{short}</div>
+                                  <div className="text-[11px] font-medium text-foreground/60 mt-px">{day}</div>
                                 </div>
                                 <div>
-                                  <div className="text-xs font-semibold text-foreground">{act.caName||"–"}</div>
-                                  {act.activityNotes&&<div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{act.activityNotes}</div>}
+                                  <div className="text-sm font-bold text-foreground">{act.caName||"–"}</div>
+                                  {act.activityNotes&&<div className="text-xs font-medium text-foreground/60 mt-0.5 line-clamp-2">{act.activityNotes}</div>}
                                 </div>
-                                <div><span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold" style={{background:ts.bg,color:ts.text}}>{act.activityType||"–"}</span></div>
-                                <div><span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-semibold",ls.cls)}>{ls.short}</span></div>
-                                <div>
+                                <div className="pt-0.5">
+                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold" style={{background:ts.bg,color:ts.text}}>{act.activityType||"–"}</span>
+                                </div>
+                                <div className="pt-0.5">
+                                  <span className={cn("inline-flex px-2 py-0.5 rounded text-xs font-semibold",ls.cls)}>{ls.short}</span>
+                                </div>
+                                <div className="pt-0.5">
                                   {act.isKpi
-                                    ?<span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">✓ Ya</span>
-                                    :<span className="text-[10px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">✗ Tidak</span>
+                                    ?<span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">✓ Ya</span>
+                                    :<span className="text-xs font-bold text-foreground/50 bg-secondary px-2 py-0.5 rounded">✗ Tidak</span>
                                   }
                                 </div>
                               </div>
                             );
                           })}
+
+                          {/* Summary footer */}
+                          <div className="flex items-center gap-5 px-6 py-3 border-t-2 border-primary/20 bg-primary/5">
+                            <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-wide">Ringkasan:</span>
+                            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">✓ {kpiCount} aktivitas memenuhi KPI</span>
+                            {nonKpiCount>0&&<span className="text-sm font-bold text-foreground/60">✗ {nonKpiCount} tidak memenuhi KPI</span>}
+                            <span className="ml-auto text-sm font-black text-foreground">{am.activities.length} aktivitas total</span>
+                          </div>
                         </>
                       )}
                     </div>

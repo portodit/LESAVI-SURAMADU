@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, salesActivityTable, accountManagersTable } from "@workspace/db";
+import { db, salesActivityTable, accountManagersTable, dataImportsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
+import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -9,8 +10,27 @@ function isKpiLabel(label: string | null | undefined): boolean {
   return !label.toLowerCase().includes("tanpa");
 }
 
+// ── GET /api/activity/snapshots ────────────────────────────────────────────────
+router.get("/activity/snapshots", requireAuth, async (req, res): Promise<void> => {
+  const snaps = await db
+    .select()
+    .from(dataImportsTable)
+    .where(eq(dataImportsTable.type, "activity"))
+    .orderBy(desc(dataImportsTable.id));
+
+  res.json(snaps.map(s => ({
+    id: s.id,
+    period: s.period,
+    rowsImported: s.rowsImported,
+    snapshotDate: s.snapshotDate,
+    createdAt: s.createdAt?.toISOString?.() ?? null,
+    sourceUrl: s.sourceUrl,
+  })));
+});
+
+// ── GET /api/activity ──────────────────────────────────────────────────────────
 router.get("/activity", requireAuth, async (req, res): Promise<void> => {
-  const { year, month, divisi } = req.query;
+  const { year, month, divisi, import_id } = req.query;
 
   const [allActs, ams] = await Promise.all([
     db.select().from(salesActivityTable),
@@ -20,6 +40,13 @@ router.get("/activity", requireAuth, async (req, res): Promise<void> => {
   const amMap = Object.fromEntries(ams.map(a => [a.nik, a]));
 
   let acts = allActs;
+
+  // Filter by import_id (snapshot)
+  if (import_id && String(import_id) !== "" && String(import_id) !== "all") {
+    const impId = parseInt(String(import_id), 10);
+    if (!isNaN(impId)) acts = acts.filter(a => a.importId === impId);
+  }
+
   if (divisi && String(divisi) !== "all") {
     acts = acts.filter(a => a.divisi === String(divisi));
   }
@@ -33,7 +60,7 @@ router.get("/activity", requireAuth, async (req, res): Promise<void> => {
   const masterAms = ams.map(a => ({ nik: a.nik, nama: a.nama, divisi: a.divisi ?? "" }));
 
   const byAmMap: Record<string, {
-    nik: string; fullname: string; divisi: string;
+    nik: string; fullname: string | null; divisi: string;
     kpiCount: number; totalCount: number; kpiTarget: number;
     activities: any[];
   }> = {};
@@ -115,7 +142,8 @@ router.get("/activity/:nik", requireAuth, async (req, res): Promise<void> => {
     acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
   }
 
-  const [am] = await db.select().from(accountManagersTable);
+  const allAms = await db.select().from(accountManagersTable);
+  const am = allAms.find(a => a.nik === raw);
   const kpiTarget = am?.kpiActivity ?? 20;
   const fullname = acts[0]?.fullname || am?.nama || "";
   const divisi = acts[0]?.divisi || am?.divisi || "";
