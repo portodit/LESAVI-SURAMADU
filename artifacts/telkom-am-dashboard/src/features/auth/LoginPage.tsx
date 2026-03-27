@@ -129,18 +129,48 @@ export default function Login() {
         </p>
       </div>
 
-      {/* ── Right panel — image + overlay only ─────────────────── */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+      {/* ── Right panel — image + overlay + copy ───────────────── */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between">
         <img
           src={`${import.meta.env.BASE_URL}telkom-building.webp`}
           alt="Telkom Building"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[#8B0000]/80 via-[#cc0000]/60 to-[#1a0000]/90" />
-        <div className="absolute top-6 left-6">
-          <span className="text-xs font-bold text-white/70 tracking-[0.2em] uppercase bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full">
+
+        {/* Top badge */}
+        <div className="relative z-10 p-8">
+          <span className="text-xs font-bold text-white/80 tracking-[0.2em] uppercase bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
             TELKOM INDONESIA · TREG 3
           </span>
+        </div>
+
+        {/* Center copy */}
+        <div className="relative z-10 px-10 pb-12">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-6 h-0.5 bg-red-300"/>
+            <span className="text-xs font-bold text-red-200 tracking-[0.15em] uppercase">WITEL SURAMADU · LESA VI</span>
+          </div>
+          <h2 className="text-4xl font-display font-black text-white leading-tight mb-4">
+            Pantau Performa.<br/>Raih Target.
+          </h2>
+          <p className="text-sm text-white/70 leading-relaxed mb-8 max-w-sm">
+            Dashboard terpadu untuk monitoring Account Manager — revenue, funneling, activity, dan reminder otomatis via Telegram.
+          </p>
+          <div className="flex items-end gap-8">
+            <div>
+              <p className="text-2xl font-black text-white">30+</p>
+              <p className="text-xs text-white/60 mt-0.5">Account Manager</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-white">4</p>
+              <p className="text-xs text-white/60 mt-0.5">Divisi Aktif</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-white">✓</p>
+              <p className="text-xs text-white/60 mt-0.5">Update Real-time</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
