@@ -1311,11 +1311,6 @@ function ActivitySlide() {
     return ()=>clearTimeout(t);
   },[]);
 
-  const yearOptions = [{value:"2026",label:"2026"},{value:"2025",label:"2025"}];
-  const monthOptions = [
-    {value:"all",label:"Semua Bulan"},
-    ...Array.from({length:12},(_,i)=>({value:String(i+1),label:ACT_MONTHS_FULL[i+1]})),
-  ];
   const divisiOptions = [{value:"all",label:"Semua"},{value:"DPS",label:"DPS"},{value:"DSS",label:"DSS"}];
 
   const queryUrl = useMemo(()=>{
@@ -1347,13 +1342,75 @@ function ActivitySlide() {
     return {totalKpi,reach,below:amList.length-reach};
   },[amList]);
 
+  const ACT_MONTHS_SHORT = ["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Okt","Nov","Des"];
   const periodLabel = filterMonth==="all"?`Tahun ${filterYear}`:`${ACT_MONTHS_FULL[parseInt(filterMonth)]} ${filterYear}`;
+
+  // Period display for filter bar
+  const periodDisplay = filterMonth==="all"
+    ? `Semua Bulan ${filterYear}`
+    : `${ACT_MONTHS_SHORT[parseInt(filterMonth)]} ${filterYear}`;
+
+  // Inline period picker for filter bar
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const periodRef = useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{
+      if(periodRef.current&&!periodRef.current.contains(e.target as Node)) setPeriodOpen(false);
+    };
+    document.addEventListener("mousedown",h);
+    return()=>document.removeEventListener("mousedown",h);
+  },[]);
+
+  const PeriodPicker = ()=>(
+    <div className="flex flex-col gap-1 relative shrink-0" ref={periodRef}>
+      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Periode</label>
+      <button type="button" onClick={()=>setPeriodOpen(o=>!o)}
+        className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 min-w-[160px] transition-colors text-left",
+          periodOpen&&"border-primary/50 ring-2 ring-primary/20")}>
+        <span className="flex-1 truncate font-medium text-foreground">{periodDisplay}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",periodOpen&&"rotate-180")}/>
+      </button>
+      {periodOpen&&(
+        <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl w-[220px] overflow-hidden">
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-secondary/30">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide flex-1">TAHUN</span>
+            <div className="flex gap-1">
+              {["2026","2025","2024"].map(y=>(
+                <button key={y} onClick={()=>setFilterYear(y)}
+                  className={cn("px-2 py-0.5 rounded text-xs font-bold transition-colors",
+                    filterYear===y?"bg-primary text-white":"bg-secondary text-muted-foreground hover:text-foreground")}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-3 pt-2 pb-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">BULAN</span>
+              <button onClick={()=>{setFilterMonth("all");setPeriodOpen(false);}}
+                className="text-[10px] text-primary font-semibold hover:underline">Semua</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1 pb-2">
+              {ACT_MONTHS_SHORT.slice(1).map((m,i)=>{
+                const val=String(i+1);
+                return(
+                  <button key={val} onClick={()=>{setFilterMonth(val);setPeriodOpen(false);}}
+                    className={cn("py-1 px-1.5 rounded-lg text-xs font-semibold transition-colors text-center",
+                      filterMonth===val?"bg-primary text-white":"hover:bg-secondary text-foreground")}>
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const filterBar = (
     <>
-      <FSSelectDropdown label="Tahun" value={filterYear} onChange={setFilterYear} options={yearOptions} className="w-24 shrink-0"/>
-      <FSSelectDropdown label="Bulan" value={filterMonth} onChange={setFilterMonth} options={monthOptions} className="w-36 shrink-0"/>
-      <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
+      <PeriodPicker/>
       <FSSelectDropdown label="Divisi" value={filterDivisi} onChange={setFilterDivisi} options={divisiOptions} className="w-28 shrink-0"/>
     </>
   );
@@ -1372,118 +1429,133 @@ function ActivitySlide() {
           {/* ─── Overview Cards ─── */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              {color:"#1565C0",bar:"bg-blue-600",icon:"bg-blue-50",val:"text-blue-700",emoji:"📊",label:"Total Aktivitas (KPI)",value:stats.totalKpi,sub:<>dari <b>{amList.length}</b> AM · {periodLabel}</>},
-              {color:"#00897B",bar:"bg-teal-600",icon:"bg-teal-50",val:"text-teal-700",emoji:"✅",label:"AM Capai KPI",value:stats.reach,sub:<>target <b>≥{amList[0]?.kpiTarget??20}</b> aktivitas / bulan</>},
-              {color:"#E8192C",bar:"bg-red-500",icon:"bg-red-50",val:"text-red-600",emoji:"⚠️",label:"AM Di Bawah KPI",value:stats.below,sub:stats.below===0?"Semua AM mencapai target 🎉":`${stats.below} AM perlu perhatian lebih`},
-            ].map(({bar,icon,val,emoji,label,value,sub},i)=>(
-              <div key={i} className="bg-card border border-border rounded-xl p-4 relative overflow-hidden">
-                <div className={cn("absolute top-0 inset-x-0 h-[3px] rounded-t-xl",bar)}/>
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-sm mb-2.5",icon)}>{emoji}</div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{label}</div>
-                <div className={cn("text-3xl font-extrabold font-mono leading-none mb-1",val)}>{value}</div>
-                <div className="text-[11px] text-muted-foreground">{sub}</div>
+              {accent:"bg-primary/10 text-primary",emoji:"🎯",label:"Total Aktivitas KPI",value:stats.totalKpi,sub:<>dari <strong className="text-foreground">{amList.length}</strong> AM · {periodLabel}</>},
+              {accent:"bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30",emoji:"✅",label:"AM Capai KPI",value:stats.reach,sub:<>target <strong className="text-foreground">≥{amList[0]?.kpiTarget??20}</strong> aktivitas / bulan</>},
+              {accent:"bg-red-50 text-red-500 dark:bg-red-950/30",emoji:"⚠️",label:"AM Di Bawah KPI",value:stats.below,sub:stats.below===0?"Semua AM mencapai target 🎉":`${stats.below} AM perlu perhatian`},
+            ].map(({accent,emoji,label,value,sub},i)=>(
+              <div key={i} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-start gap-3">
+                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0",accent)}>{emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
+                  <div className="text-3xl font-black tabular-nums leading-tight text-foreground">{value}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
+                </div>
               </div>
             ))}
           </div>
 
           {/* ─── Info note ─── */}
-          <div className="text-[10px] text-muted-foreground bg-secondary/50 border-l-[3px] border-primary/30 rounded-md px-3 py-1.5 leading-relaxed">
-            📌 Progress KPI dihitung dari aktivitas <span className="font-semibold text-foreground">Dengan Pelanggan</span> dan <span className="font-semibold text-foreground">Pelanggan dengan Proyek</span>. Kategori <span className="font-semibold">Tanpa Pelanggan</span> tidak terhitung dalam KPI.
+          <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border/60 rounded-xl px-4 py-3">
+            <span className="mt-0.5 shrink-0">📌</span>
+            <span>
+              Progress KPI dihitung dari aktivitas <strong className="text-foreground">Dengan Pelanggan</strong> dan <strong className="text-foreground">Pelanggan dengan Proyek</strong> saja. Kategori <strong>Tanpa Pelanggan</strong> tidak terhitung dalam KPI.
+            </span>
           </div>
 
           {/* ─── Table ─── */}
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
             {/* Header */}
-            <div className="grid gap-2 px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.6px] text-white/70 bg-[#0D1B2A]"
-              style={{gridTemplateColumns:"28px 1fr 200px 56px 56px 56px 96px"}}>
-              <div/><div>Nama AM</div><div>Progress KPI</div>
-              <div>Aktivitas</div><div>Target</div><div>Sisa</div><div>Status</div>
+            <div className="grid text-xs font-black uppercase tracking-wide text-white"
+              style={{background:"#B91C1C",gridTemplateColumns:"32px 1fr 200px 60px 60px 64px 110px",padding:"10px 16px"}}>
+              <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
+              <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
             </div>
+
             {amList.length===0?(
-              <div className="text-center py-10 text-sm text-muted-foreground">Tidak ada data untuk filter yang dipilih.</div>
+              <div className="text-center py-12 text-sm text-muted-foreground">Tidak ada data untuk filter yang dipilih.</div>
             ):amList.map((am:any)=>{
-              const pct=Math.min(Math.round(am.kpiCount/am.kpiTarget*100),100);
-              const sisa=Math.max(am.kpiTarget-am.kpiCount,0);
-              const pctColor=pct>=100?"#00897B":pct>=70?"#F57F17":"#E8192C";
-              const barGrad=pct>=100?"linear-gradient(90deg,#00897B,#26c6b9)":pct>=70?"linear-gradient(90deg,#F57F17,#ffb300)":"linear-gradient(90deg,#E8192C,#ef5350)";
+              const kpiCount=am.kpiCount||0;
+              const pct=Math.min(Math.round(kpiCount/am.kpiTarget*100),100);
+              const sisa=Math.max(am.kpiTarget-kpiCount,0);
+              const hasActs=am.activities.length>0;
               const isExpanded=expandedAm[am.fullname];
+              const progressGrad=pct>=100?"from-emerald-500 to-emerald-400":pct>=70?"from-amber-500 to-amber-400":"from-red-600 to-red-500";
+              const pctClr=pct>=100?"text-emerald-600 dark:text-emerald-400":pct>=70?"text-amber-600 dark:text-amber-400":"text-red-600 dark:text-red-400";
               return (
-                <div key={am.nik+am.fullname} className="border-b border-border last:border-b-0">
+                <div key={am.nik+am.fullname} className="border-b border-border/50 last:border-b-0">
                   <div
-                    onClick={()=>am.activities.length>0&&setExpandedAm(p=>({...p,[am.fullname]:!p[am.fullname]}))}
-                    className={cn("grid gap-2 px-3.5 py-2.5 items-center transition-colors",
-                      am.activities.length>0?"cursor-pointer":"cursor-default",
-                      isExpanded?"bg-blue-50/70":"hover:bg-secondary/50"
-                    )}
-                    style={{gridTemplateColumns:"28px 1fr 200px 56px 56px 56px 96px"}}
+                    onClick={()=>setExpandedAm(p=>({...p,[am.fullname]:!p[am.fullname]}))}
+                    className={cn("grid items-center px-4 py-3 cursor-pointer transition-colors group",
+                      isExpanded?"bg-primary/5 border-b border-primary/10":"hover:bg-secondary/40")}
+                    style={{gridTemplateColumns:"32px 1fr 200px 60px 60px 64px 110px"}}
                   >
-                    <div className={cn("w-[22px] h-[22px] rounded-[6px] border flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all select-none",
-                      am.activities.length===0?"bg-secondary border-border text-muted-foreground/30"
-                        :isExpanded?"bg-blue-600 border-blue-600 text-white"
-                        :"bg-card border-border text-muted-foreground"
-                    )}>
-                      {am.activities.length===0?"•":isExpanded?"−":"+"}
+                    <div className={cn("w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 transition-all",
+                      isExpanded?"bg-primary border-primary text-white":"bg-secondary border-border text-muted-foreground group-hover:border-primary/40 group-hover:text-primary/70")}>
+                      {isExpanded?"−":"+"}
                     </div>
-                    <div className="overflow-hidden">
-                      <div className="text-xs font-bold text-foreground truncate">{am.fullname}</div>
-                      <div className="text-[10px] text-muted-foreground mt-px">{am.divisi} · {am.activities.length} total aktivitas</div>
+                    <div className="overflow-hidden pl-1">
+                      <div className="text-sm font-bold text-foreground truncate">{am.fullname}</div>
+                      <div className="text-[11px] text-muted-foreground mt-px">
+                        {am.divisi}
+                        {!hasActs&&<span className="ml-1.5 text-[10px] italic text-muted-foreground/60">· tidak ada data</span>}
+                        {hasActs&&<span className="ml-1.5 text-[10px] text-muted-foreground/60">· {am.activities.length} aktivitas</span>}
+                      </div>
                     </div>
                     <div>
-                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-1">
-                        <div className="h-full rounded-full transition-all duration-700" style={{width:`${pct}%`,background:barGrad}}/>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden mb-1">
+                        <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700",progressGrad)} style={{width:`${pct}%`}}/>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-bold font-mono" style={{color:pctColor}}>{pct}%</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{am.kpiCount}/{am.kpiTarget}</span>
+                        <span className={cn("text-[12px] font-bold font-mono",pctClr)}>{pct}%</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{kpiCount}/{am.kpiTarget}</span>
                       </div>
                     </div>
-                    <div className="text-sm font-semibold font-mono">{am.kpiCount}</div>
-                    <div className="text-sm font-semibold font-mono">{am.kpiTarget}</div>
-                    <div className={cn("text-sm font-semibold font-mono",sisa===0?"text-muted-foreground/30":"")}>{sisa===0?"✓":sisa}</div>
+                    <div className="text-sm font-bold font-mono text-foreground text-center">{kpiCount}</div>
+                    <div className="text-sm font-bold font-mono text-muted-foreground text-center">{am.kpiTarget}</div>
+                    <div className={cn("text-sm font-bold font-mono text-center",sisa===0?"text-muted-foreground/30":"text-foreground")}>{sisa===0?"✓":sisa}</div>
                     <div>
                       {pct>=100
-                        ?<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700">✓ Tercapai</span>
+                        ?<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">✓ Tercapai</span>
                         :pct>=70
-                        ?<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Mendekati</span>
-                        :<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600">Di Bawah KPI</span>
+                        ?<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">Mendekati</span>
+                        :<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400">Di Bawah KPI</span>
                       }
                     </div>
                   </div>
-                  {/* Expanded activity detail */}
-                  {isExpanded&&am.activities.length>0&&(
-                    <div className="border-t border-blue-100 bg-secondary/30">
-                      <div className="grid gap-2 text-[9px] font-bold uppercase tracking-[0.6px] text-muted-foreground bg-secondary border-b border-border"
-                        style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"6px 14px 6px 52px"}}>
-                        <div>#</div><div>Tanggal</div><div>Pelanggan & Catatan</div>
-                        <div>Tipe</div><div>Kategori</div><div>KPI</div>
-                      </div>
-                      {am.activities.map((act:any,i:number)=>{
-                        const {short,day}=actFmtDate(act.activityEndDate);
-                        const ts=actTypeSty(act.activityType);
-                        const ls=actLabelSty(act.label);
-                        return (
-                          <div key={act.id} className="grid gap-2 items-start border-b border-border last:border-b-0 hover:bg-card transition-colors"
-                            style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"7px 14px 7px 52px"}}>
-                            <div className="text-[10px] text-muted-foreground font-mono pt-px">{i+1}</div>
-                            <div>
-                              <div className="text-[11px] font-semibold font-mono">{short}</div>
-                              <div className="text-[10px] text-muted-foreground">{day}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-foreground">{act.caName||"–"}</div>
-                              {act.activityNotes&&<div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{act.activityNotes}</div>}
-                            </div>
-                            <div><span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold" style={{background:ts.bg,color:ts.text}}>{act.activityType||"–"}</span></div>
-                            <div><span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-semibold",ls.cls)}>{ls.short}</span></div>
-                            <div>
-                              {act.isKpi
-                                ?<span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">✓ Ya</span>
-                                :<span className="text-[10px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">✗ Tidak</span>
-                              }
-                            </div>
+                  {/* Expanded detail */}
+                  {isExpanded&&(
+                    <div className="border-t border-border/30 bg-secondary/20">
+                      {!hasActs?(
+                        <div className="flex items-center gap-3 px-6 py-4 text-sm text-muted-foreground">
+                          <span className="text-amber-500">⚠</span>
+                          AM ini tidak memiliki data aktivitas pada periode yang dipilih meski sudah dicari di data mentah.
+                        </div>
+                      ):(
+                        <>
+                          <div className="grid text-[9px] font-bold uppercase tracking-[0.6px] text-muted-foreground bg-secondary/50 border-b border-border/30"
+                            style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"6px 14px 6px 52px"}}>
+                            <div>#</div><div>Tanggal</div><div>Pelanggan & Catatan</div>
+                            <div>Tipe</div><div>Kategori</div><div>KPI</div>
                           </div>
-                        );
-                      })}
+                          {am.activities.map((act:any,i:number)=>{
+                            const {short,day}=actFmtDate(act.activityEndDate);
+                            const ts=actTypeSty(act.activityType);
+                            const ls=actLabelSty(act.label);
+                            return (
+                              <div key={act.id} className="grid items-start border-b border-border/20 last:border-b-0 hover:bg-secondary/30 transition-colors"
+                                style={{gridTemplateColumns:"24px 80px 1fr 130px 110px 56px",padding:"8px 14px 8px 52px"}}>
+                                <div className="text-[10px] text-muted-foreground font-mono pt-0.5">{i+1}</div>
+                                <div>
+                                  <div className="text-xs font-semibold font-mono text-foreground">{short}</div>
+                                  <div className="text-[10px] text-muted-foreground">{day}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs font-semibold text-foreground">{act.caName||"–"}</div>
+                                  {act.activityNotes&&<div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{act.activityNotes}</div>}
+                                </div>
+                                <div><span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold" style={{background:ts.bg,color:ts.text}}>{act.activityType||"–"}</span></div>
+                                <div><span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-semibold",ls.cls)}>{ls.short}</span></div>
+                                <div>
+                                  {act.isKpi
+                                    ?<span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">✓ Ya</span>
+                                    :<span className="text-[10px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">✗ Tidak</span>
+                                  }
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/utils";
-import { Search, ChevronDownIcon } from "lucide-react";
+import { Search, ChevronDown, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, Expand, Minimize2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,8 +41,9 @@ interface ActivityData {
 const MONTHS_FULL = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 const MONTHS_SHORT = ["","Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Okt","Nov","Des"];
 const DAYS_ID = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+const MONTH_NUMS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
-const ACTIVITY_TYPE_STYLE: Record<string, { bg: string; text: string }> = {
+const ACTIVITY_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   "Kunjungan":    { bg: "#e3f2fd", text: "#1565C0" },
   "Administrasi": { bg: "#f3e5f5", text: "#6a1b9a" },
   "Follow-up":    { bg: "#e8f5e9", text: "#2e7d32" },
@@ -51,16 +53,16 @@ const ACTIVITY_TYPE_STYLE: Record<string, { bg: string; text: string }> = {
 };
 
 function getLabelStyle(label: string | null) {
-  if (!label) return { cls: "bg-slate-100 text-slate-500", short: "—" };
+  if (!label) return { cls: "bg-secondary text-muted-foreground", short: "—" };
   const l = label.toLowerCase();
-  if (l.includes("tanpa")) return { cls: "bg-slate-100 text-slate-500", short: "Tanpa Pelanggan" };
-  if (l.includes("proyek")) return { cls: "bg-teal-50 text-teal-700", short: "Dg Proyek" };
-  return { cls: "bg-blue-50 text-blue-700", short: "Dg Pelanggan" };
+  if (l.includes("tanpa")) return { cls: "bg-secondary text-muted-foreground", short: "Tanpa Pelanggan" };
+  if (l.includes("proyek")) return { cls: "bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400", short: "Dg Proyek" };
+  return { cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400", short: "Dg Pelanggan" };
 }
 
 function getActivityTypeStyle(type: string | null) {
-  if (!type) return { bg: "#f1f5f9", text: "#475569" };
-  return ACTIVITY_TYPE_STYLE[type] || { bg: "#f1f5f9", text: "#475569" };
+  if (!type) return { bg: "hsl(var(--secondary))", text: "hsl(var(--muted-foreground))" };
+  return ACTIVITY_TYPE_COLORS[type] || { bg: "hsl(var(--secondary))", text: "hsl(var(--muted-foreground))" };
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -72,167 +74,307 @@ async function apiFetch<T>(path: string): Promise<T> {
   return r.json();
 }
 
-// ─── MultiSelect Dropdown ─────────────────────────────────────────────────────
+// ─── SelectDropdown ───────────────────────────────────────────────────────────
 
-interface MultiSelectProps {
-  label: string;
-  allLabel: string;
-  options: { value: string; label: string; sub?: string }[];
-  value: Set<string>;
-  onChange: (v: Set<string>) => void;
-  searchable?: boolean;
-  kpiBadge?: boolean;
-}
-
-function MultiSelect({ label, allLabel, options, value, onChange, searchable, kpiBadge }: MultiSelectProps) {
+function SelectDropdown({ label, value, onChange, options, className }: {
+  label?: string; value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[]; className?: string;
+}) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, minW: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    const h = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+          dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
-  const filtered = options.filter(o => !search || o.label.toLowerCase().includes(search.toLowerCase()));
-  const allSelected = value.size === options.length;
+  const toggle = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, minW: r.width });
+    }
+    setOpen(o => !o);
+  };
 
-  const triggerLabel = useMemo(() => {
-    if (value.size === 0) return "Tidak ada";
-    if (value.size === options.length) return allLabel;
-    if (value.size === 1) return [...value][0].split(" ")[0];
-    return `${value.size} dipilih`;
-  }, [value, options.length, allLabel]);
-
+  const current = options.find(o => o.value === value);
   return (
-    <div className="relative" ref={wrapRef}>
+    <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
+      {label && <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>}
       <button
-        onClick={() => setOpen(p => !p)}
+        type="button"
+        onClick={toggle}
         className={cn(
-          "flex items-center gap-1.5 text-xs font-medium rounded-[7px] px-2.5 py-1.5 transition-all whitespace-nowrap",
-          "bg-white/10 border border-white/15 text-white hover:bg-white/15 hover:border-white/25",
-          open && "bg-white/15 border-white/40"
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left",
+          open && "border-primary/50 ring-2 ring-primary/20"
         )}
-        style={{ minWidth: 120 }}
       >
-        <span>{triggerLabel}</span>
-        {!allSelected && value.size > 0 && (
-          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full ml-auto">{value.size}</span>
-        )}
-        <ChevronDownIcon className={cn("w-3 h-3 text-slate-400 ml-1 transition-transform", open && "rotate-180")} />
+        <span className="flex-1 truncate font-medium text-foreground">{current?.label ?? value}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
       </button>
-      {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-white border border-slate-200 rounded-[9px] shadow-xl z-[300] overflow-hidden min-w-[200px] animate-in fade-in slide-in-from-top-1 duration-150">
-          {searchable && (
-            <div className="p-2 border-b border-slate-100">
-              <input
-                autoFocus
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Cari..."
-                className="w-full border border-slate-200 rounded-md px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
-              />
-            </div>
-          )}
-          <div className="flex border-b border-slate-100">
-            <button onClick={() => { onChange(new Set(options.map(o => o.value))); }}
-              className="flex-1 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors">Pilih Semua</button>
-            <div className="w-px bg-slate-100" />
-            <button onClick={() => { onChange(new Set()); }}
-              className="flex-1 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors">Hapus Semua</button>
-          </div>
-          <div className="max-h-[220px] overflow-y-auto py-1">
-            {filtered.map(o => (
-              <label key={o.value} className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-slate-50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={value.has(o.value)}
-                  onChange={e => {
-                    const next = new Set(value);
-                    if (e.target.checked) next.add(o.value); else next.delete(o.value);
-                    onChange(next);
-                  }}
-                  className="w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0"
-                />
-                <div>
-                  <span className="text-xs font-medium text-slate-800">{o.label}</span>
-                  {kpiBadge && !o.label.toLowerCase().includes("tanpa") && (
-                    <span className="ml-1.5 bg-blue-50 text-blue-600 text-[9px] font-bold px-1 py-px rounded">KPI</span>
-                  )}
-                  {o.sub && <div className="text-[10px] text-slate-400">{o.sub}</div>}
-                </div>
-              </label>
-            ))}
-          </div>
-          {kpiBadge && (
-            <div className="px-3 py-2 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-400 leading-relaxed">
-              <span className="inline bg-blue-50 text-blue-600 text-[9px] font-bold px-1 rounded mr-1">KPI</span>
-              = dihitung untuk capaian KPI aktivitas bulanan
-            </div>
-          )}
-        </div>
+      {open && createPortal(
+        <div ref={dropRef} style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.minW, zIndex: 9999 }}
+          className="bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto py-1">
+          {options.map(opt => (
+            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2",
+                opt.value === value ? "font-semibold text-primary bg-primary/5" : "text-foreground")}>
+              {opt.value === value && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+              {opt.value !== value && <span className="w-1.5 shrink-0" />}
+              {opt.label}
+            </button>
+          ))}
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
-// ─── Select ───────────────────────────────────────────────────────────────────
+// ─── PeriodeDropdown ── year select + month checkboxes combined ────────────────
 
-function NavSelect({ value, onChange, options, minWidth = 80 }: {
-  value: string; onChange: (v: string) => void;
-  options: { value: string; label: string }[]; minWidth?: number;
+function PeriodeDropdown({ year, month, onYearChange, onMonthChange, className }: {
+  year: string; month: string;
+  onYearChange: (y: string) => void; onMonthChange: (m: string) => void;
+  className?: string;
 }) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="appearance-none bg-white/10 border border-white/15 rounded-[7px] px-2.5 py-1.5 pr-6 text-xs font-medium text-white cursor-pointer transition-all hover:bg-white/15 hover:border-white/25 focus:outline-none focus:border-white/40 focus:bg-white/15"
-      style={{
-        minWidth,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "right 8px center",
-      }}
-    >
-      {options.map(o => (
-        <option key={o.value} value={o.value} style={{ background: "#1a2d42", color: "white" }}>{o.label}</option>
-      ))}
-    </select>
-  );
-}
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
-// ─── Overview Card ─────────────────────────────────────────────────────────────
+  const years = ["2026", "2025", "2024"];
 
-function OvCard({ color, icon, label, value, sub }: {
-  color: "blue" | "teal" | "red"; icon: string; label: string; value: number | string; sub: React.ReactNode;
-}) {
-  const cfg = {
-    blue: { border: "border-blue-600", bar: "bg-blue-600", icon: "bg-blue-50", val: "text-blue-700" },
-    teal: { border: "border-teal-600", bar: "bg-teal-600", icon: "bg-teal-50", val: "text-teal-700" },
-    red:  { border: "border-red-500",  bar: "bg-red-500",  icon: "bg-red-50",  val: "text-red-600" },
-  }[color];
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+          dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const toggle = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen(o => !o);
+  };
+
+  const displayText = month === "all"
+    ? `Semua Bulan ${year}`
+    : `${MONTHS_SHORT[parseInt(month)]} ${year}`;
+
   return (
-    <div className={cn("bg-white rounded-[10px] border border-slate-200 shadow-sm p-4 relative overflow-hidden")}>
-      <div className={cn("absolute top-0 left-0 right-0 h-[3px] rounded-t-[10px]", cfg.bar)} />
-      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-sm mb-2.5", cfg.icon)}>{icon}</div>
-      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.7px] mb-1">{label}</div>
-      <div className={cn("text-3xl font-extrabold font-mono leading-none mb-1", cfg.val)}>{value}</div>
-      <div className="text-[11px] text-slate-400">{sub}</div>
+    <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
+      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Periode</label>
+      <button
+        type="button" onClick={toggle}
+        className={cn(
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left min-w-[170px]",
+          open && "border-primary/50 ring-2 ring-primary/20"
+        )}
+      >
+        <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && createPortal(
+        <div ref={dropRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="bg-card border border-border rounded-xl shadow-xl w-[240px] overflow-hidden">
+
+          {/* Year row */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-secondary/30">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide flex-1">TAHUN</span>
+            <div className="flex gap-1">
+              {years.map(y => (
+                <button key={y} onClick={() => onYearChange(y)}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs font-bold transition-colors",
+                    year === y ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
+                  )}>{y}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Month checkboxes */}
+          <div className="px-3 pt-2 pb-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">BULAN</span>
+              <button onClick={() => { onMonthChange("all"); setOpen(false); }}
+                className="text-[10px] text-primary font-semibold hover:underline">Semua</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1 pb-2">
+              {MONTHS_SHORT.slice(1).map((m, i) => {
+                const val = String(i + 1);
+                const isSelected = month === val;
+                return (
+                  <button key={val}
+                    onClick={() => { onMonthChange(val); setOpen(false); }}
+                    className={cn(
+                      "py-1 px-1.5 rounded-lg text-xs font-semibold transition-colors text-center",
+                      isSelected ? "bg-primary text-white" : "hover:bg-secondary text-foreground"
+                    )}
+                  >{m}</button>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
 
+// ─── CheckboxDropdown ─────────────────────────────────────────────────────────
+
+function CheckboxDropdown({ label, options, selected, onChange, placeholder, labelFn, summaryLabel, className, kpiBadge }: {
+  label: string; options: string[]; selected: Set<string>; onChange: (next: Set<string>) => void;
+  placeholder?: string; labelFn?: (v: string) => string; summaryLabel?: string; className?: string; kpiBadge?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const getLabel = (v: string) => labelFn ? labelFn(v) : v;
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+          dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const toggle = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen(o => !o);
+  };
+
+  const toggleItem = (item: string) => {
+    const next = new Set(selected);
+    if (next.has(item)) next.delete(item); else next.add(item);
+    onChange(next);
+  };
+
+  const filtered = options.filter(o => !search || getLabel(o).toLowerCase().includes(search.toLowerCase()));
+  const unit = summaryLabel ?? "item";
+  const displayText = selected.size === 0 ? (placeholder ?? "Semua")
+    : selected.size === options.length ? `Semua ${unit}`
+    : selected.size === 1 ? getLabel([...selected][0])
+    : `${selected.size} ${unit} dipilih`;
+
+  return (
+    <div className={cn("flex flex-col gap-1", className)} ref={triggerRef}>
+      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
+      <button
+        type="button" onClick={toggle}
+        disabled={options.length === 0}
+        className={cn(
+          "h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full disabled:opacity-40 transition-colors text-left",
+          open && "border-primary/50 ring-2 ring-primary/20"
+        )}
+      >
+        <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
+        {selected.size > 0 && selected.size < options.length && (
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{selected.size}</span>
+        )}
+        <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && createPortal(
+        <div ref={dropRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="bg-card border border-border rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+            <div className="flex gap-1.5">
+              <button onClick={() => onChange(new Set(options))} className="text-[11px] text-primary font-semibold hover:underline">Semua</button>
+              <span className="text-muted-foreground text-[11px]">·</span>
+              <button onClick={() => onChange(new Set())} className="text-[11px] text-muted-foreground font-semibold hover:text-foreground hover:underline">Kosongkan</button>
+            </div>
+          </div>
+          {options.length > 6 && (
+            <div className="p-2 border-b border-border">
+              <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Cari..." className="w-full border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/50 bg-background" />
+            </div>
+          )}
+          <div className="max-h-56 overflow-y-auto py-1">
+            {filtered.map(opt => (
+              <button key={opt} onClick={() => toggleItem(opt)}
+                className={cn("w-full text-left px-3 py-2 text-sm hover:bg-secondary flex items-center gap-2 transition-colors",
+                  selected.has(opt) ? "font-semibold text-primary bg-primary/5" : "text-foreground")}>
+                <span className={cn("w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center",
+                  selected.has(opt) ? "bg-primary border-primary" : "border-border")}>
+                  {selected.has(opt) && <span className="text-white text-[8px] font-black">✓</span>}
+                </span>
+                <span className="flex-1">{getLabel(opt)}</span>
+                {kpiBadge && !getLabel(opt).toLowerCase().includes("tanpa") && (
+                  <span className="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 text-[9px] font-bold px-1 py-px rounded shrink-0">KPI</span>
+                )}
+              </button>
+            ))}
+          </div>
+          {kpiBadge && (
+            <div className="px-3 py-2 border-t border-border bg-secondary/30 text-[10px] text-muted-foreground">
+              <span className="inline bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 text-[9px] font-bold px-1 rounded mr-1">KPI</span>
+              = dihitung untuk capaian KPI aktivitas bulanan
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── Overview Card ────────────────────────────────────────────────────────────
+
+function OverviewCard({ icon, label, value, sub, accent }: {
+  icon: React.ReactNode; label: string; value: number | string; sub: React.ReactNode; accent: string;
+}) {
+  return (
+    <div className="bg-secondary/50 border border-border rounded-xl p-4 flex items-start gap-4 overflow-hidden relative">
+      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", accent)}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
+        <div className="text-3xl font-black tabular-nums leading-tight tracking-tight text-foreground">{value}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ pct }: { pct: number }) {
-  if (pct >= 100) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700">✓ Tercapai</span>;
-  if (pct >= 70)  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Mendekati</span>;
-  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600">Di Bawah KPI</span>;
+  if (pct >= 100) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+      <CheckCircle2 className="w-3 h-3" /> Tercapai
+    </span>
+  );
+  if (pct >= 70) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+      Mendekati
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400">
+      Di Bawah KPI
+    </span>
+  );
 }
 
 // ─── Format date helpers ──────────────────────────────────────────────────────
@@ -249,305 +391,7 @@ function fmtDate(d: string | null): { short: string; day: string } {
   } catch { return { short: d.slice(5, 10).replace("-", "/"), day: "" }; }
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-export default function ActivityPage() {
-  const now = new Date();
-  const [year,  setYear]  = useState(String(now.getFullYear()));
-  const [month, setMonth] = useState(String(now.getMonth() + 1));
-  const [divisi, setDivisi] = useState("all");
-  const [search, setSearch] = useState("");
-  const [selectedAms, setSelectedAms] = useState<Set<string> | null>(null);
-  const [selectedLabels, setSelectedLabels] = useState<Set<string> | null>(null);
-  const [expandAll, setExpandAll] = useState<boolean | null>(null);
-
-  const yearOpts = [{ value: "2026", label: "2026" }, { value: "2025", label: "2025" }];
-  const monthOpts = [
-    { value: "all", label: "Semua Bulan" },
-    ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS_FULL[i + 1] })),
-  ];
-  const divisiOpts = [
-    { value: "all", label: "Semua" },
-    { value: "DPS", label: "DPS" },
-    { value: "DSS", label: "DSS" },
-  ];
-
-  const queryKey = useMemo(() => {
-    const p = new URLSearchParams({ year, divisi });
-    if (month !== "all") p.set("month", month);
-    return `/api/activity?${p}`;
-  }, [year, month, divisi]);
-
-  const { data, isLoading, isError } = useQuery<ActivityData>({
-    queryKey: [queryKey],
-    queryFn: () => apiFetch<ActivityData>(queryKey),
-    staleTime: 60_000,
-  });
-
-  // ─── Sync multi-select defaults from data ────
-  const amOptions = useMemo(() =>
-    (data?.masterAms ?? [])
-      .filter(a => divisi === "all" || a.divisi === divisi)
-      .map(a => ({ value: a.nama, label: a.nama, sub: a.divisi }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-    [data?.masterAms, divisi]
-  );
-
-  const labelOptions = useMemo(() =>
-    (data?.distinctLabels ?? []).map(l => ({ value: l, label: l })),
-    [data?.distinctLabels]
-  );
-
-  useEffect(() => {
-    if (data && selectedAms === null) setSelectedAms(new Set(amOptions.map(o => o.value)));
-  }, [data, amOptions, selectedAms]);
-
-  useEffect(() => {
-    if (data && selectedLabels === null) {
-      const kpiOnly = new Set(
-        (data.distinctLabels ?? []).filter(l => !l.toLowerCase().includes("tanpa"))
-      );
-      setSelectedLabels(kpiOnly);
-    }
-  }, [data, selectedLabels]);
-
-  // ─── Filtered AM list ────
-  const filteredAms = useMemo(() => {
-    if (!data) return [];
-    const byAmMap = Object.fromEntries(data.byAm.map(a => [a.fullname, a]));
-    const masterFiltered = (data.masterAms ?? [])
-      .filter(a => divisi === "all" || a.divisi === divisi)
-      .filter(a => selectedAms === null || selectedAms.has(a.nama))
-      .filter(a => !search || a.nama.toLowerCase().includes(search.toLowerCase()));
-
-    return masterFiltered.map(ma => {
-      const existing = byAmMap[ma.nama];
-      if (existing) return existing;
-      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: 20, activities: [] };
-    });
-  }, [data, divisi, selectedAms, search]);
-
-  // ─── KPI label set for counting ────
-  const kpiLabels = useMemo(() =>
-    selectedLabels ?? new Set<string>(),
-    [selectedLabels]
-  );
-
-  // ─── Overview stats ────
-  const stats = useMemo(() => {
-    const totalKpi = filteredAms.reduce((s, a) => {
-      const cnt = kpiLabels.size > 0
-        ? a.activities.filter(act => act.label ? kpiLabels.has(act.label) : act.isKpi).length
-        : a.activities.filter(act => act.isKpi).length;
-      return s + cnt;
-    }, 0);
-    const reach = filteredAms.filter(a => {
-      const cnt = kpiLabels.size > 0
-        ? a.activities.filter(act => act.label ? kpiLabels.has(act.label) : act.isKpi).length
-        : a.activities.filter(act => act.isKpi).length;
-      return cnt >= a.kpiTarget;
-    }).length;
-    return { totalKpi, reach, below: filteredAms.length - reach };
-  }, [filteredAms, kpiLabels]);
-
-  // ─── Category options for filter (with KPI badge) ────
-  const categoryOptions = useMemo(() =>
-    labelOptions.map(o => ({
-      value: o.value,
-      label: o.label,
-      sub: o.label.toLowerCase().includes("tanpa") ? "Tidak mempengaruhi KPI" : "Dihitung dalam progres KPI",
-    })),
-    [labelOptions]
-  );
-
-  const selectedCatSet = useMemo(
-    () => selectedLabels ?? new Set(labelOptions.map(o => o.value)),
-    [selectedLabels, labelOptions]
-  );
-
-  const selectedAmSet = useMemo(
-    () => selectedAms ?? new Set(amOptions.map(o => o.value)),
-    [selectedAms, amOptions]
-  );
-
-  // ─── Period label ────
-  const periodLabel = month === "all"
-    ? `Tahun ${year}`
-    : `${MONTHS_FULL[parseInt(month)]} ${year}`;
-
-  if (isLoading) return (
-    <div className="flex items-center justify-center min-h-screen text-sm text-slate-500">Memuat data aktivitas...</div>
-  );
-  if (isError || !data) return (
-    <div className="flex items-center justify-center min-h-screen text-sm text-red-500">Gagal memuat data. Coba muat ulang halaman.</div>
-  );
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800" style={{ fontSize: 13 }}>
-
-      {/* ─── Toolbar ─── */}
-      <div
-        className="sticky top-0 z-50 flex items-center gap-3 px-5 h-[54px] shadow-[0_2px_8px_rgba(0,0,0,0.25)] overflow-x-auto"
-        style={{ background: "#0D1B2A" }}
-      >
-        {/* Logo */}
-        <div className="w-[30px] h-[30px] bg-red-600 rounded-[6px] flex items-center justify-center font-black text-white text-sm flex-shrink-0">T</div>
-        <div className="w-px h-[22px] bg-white/12 flex-shrink-0" />
-
-        {/* Title */}
-        <div className="flex-shrink-0">
-          <div className="text-[10px] font-bold text-white/50 uppercase tracking-[0.4px]">LESA VI WITEL SURAMADU</div>
-          <div className="text-[13px] font-bold text-white tracking-[0.2px]">AM SALES ACTIVITY REPORT</div>
-        </div>
-        <div className="w-px h-[22px] bg-white/12 flex-shrink-0" />
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.7px]">Tahun</span>
-            <NavSelect value={year} onChange={setYear} options={yearOpts} minWidth={70} />
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.7px]">Bulan</span>
-            <NavSelect value={month} onChange={setMonth} options={monthOpts} minWidth={110} />
-          </div>
-
-          <div className="w-px h-[22px] bg-white/12 flex-shrink-0" />
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.7px]">Divisi</span>
-            <NavSelect value={divisi} onChange={v => { setDivisi(v); setSelectedAms(null); }} options={divisiOpts} minWidth={80} />
-          </div>
-
-          <div className="w-px h-[22px] bg-white/12 flex-shrink-0" />
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.7px]">Nama AM</span>
-            <MultiSelect
-              label="Nama AM" allLabel="Semua AM"
-              options={amOptions}
-              value={selectedAmSet}
-              onChange={setSelectedAms}
-              searchable
-            />
-          </div>
-
-          <div className="w-px h-[22px] bg-white/12 flex-shrink-0" />
-
-          {categoryOptions.length > 0 && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[10px] font-bold text-white/45 uppercase tracking-[0.7px]">Kategori</span>
-              <MultiSelect
-                label="Kategori" allLabel="Semua Kategori"
-                options={categoryOptions}
-                value={selectedCatSet}
-                onChange={setSelectedLabels}
-                kpiBadge
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ─── Main Content ─── */}
-      <div className="px-6 py-4 pb-10 max-w-screen-2xl mx-auto">
-
-        {/* ─── Overview Cards ─── */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <OvCard
-            color="blue" icon="📊"
-            label="Total Aktivitas (KPI)"
-            value={stats.totalKpi}
-            sub={<>dari <b className="text-slate-600">{filteredAms.length}</b> Account Manager · {periodLabel}</>}
-          />
-          <OvCard
-            color="teal" icon="✅"
-            label="AM Capai KPI"
-            value={stats.reach}
-            sub={<>target <b className="text-slate-600">≥{filteredAms[0]?.kpiTarget ?? 20} aktivitas</b> / bulan</>}
-          />
-          <OvCard
-            color="red" icon="⚠️"
-            label="AM Di Bawah KPI"
-            value={stats.below}
-            sub={stats.below === 0 ? "Semua AM mencapai target 🎉" : `${stats.below} AM perlu perhatian lebih`}
-          />
-        </div>
-
-        {/* ─── Table Header ─── */}
-        <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              Monitoring KPI Aktivitas
-              <span className="bg-slate-100 text-slate-500 text-[11px] font-semibold px-2 py-0.5 rounded-full">{filteredAms.length} AM</span>
-            </div>
-            <div className="mt-2 text-[10px] text-slate-400 leading-relaxed bg-slate-100 rounded-[6px] px-3 py-1.5 border-l-[3px] border-blue-200 max-w-xl">
-              📌 Progress KPI dihitung dari aktivitas kategori{" "}
-              <span className="font-bold text-blue-600">Dengan Pelanggan</span> dan{" "}
-              <span className="font-bold text-blue-600">Pelanggan dengan Proyek</span> saja.
-              Kategori <span className="font-bold">Tanpa Pelanggan</span> tidak terhitung dalam capaian KPI.
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-[7px] px-2.5 py-1.5 focus-within:border-blue-500 transition-colors">
-              <Search className="w-3 h-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama AM..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="border-none outline-none text-xs text-slate-800 placeholder:text-slate-400 bg-transparent w-40"
-              />
-            </div>
-            <button
-              className="px-3 py-1.5 rounded-[7px] text-[11px] font-semibold text-slate-600 border border-slate-200 bg-white hover:border-blue-500 hover:text-blue-600 transition-all whitespace-nowrap"
-              onClick={() => setExpandAll(true)}
-            >Expand Semua</button>
-            <button
-              className="px-3 py-1.5 rounded-[7px] text-[11px] font-semibold text-slate-600 border border-slate-200 bg-white hover:border-blue-500 hover:text-blue-600 transition-all whitespace-nowrap"
-              onClick={() => setExpandAll(false)}
-            >Collapse Semua</button>
-          </div>
-        </div>
-
-        {/* ─── Table ─── */}
-        <div className="bg-white rounded-[10px] border border-slate-200 shadow-sm overflow-hidden">
-          {/* Header */}
-          <div
-            className="grid gap-2 px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.6px] text-white/60"
-            style={{ background: "#0D1B2A", gridTemplateColumns: "28px 1fr 200px 56px 56px 56px 96px" }}
-          >
-            <div />
-            <div>Nama AM</div>
-            <div>Progress KPI</div>
-            <div>Aktivitas</div>
-            <div>Target</div>
-            <div>Sisa</div>
-            <div>Status</div>
-          </div>
-
-          {/* Body */}
-          {filteredAms.length === 0 ? (
-            <div className="text-center py-10 text-sm text-slate-400">Tidak ada data untuk filter yang dipilih.</div>
-          ) : (
-            filteredAms.map(am => (
-              <AmRowControlled
-                key={am.nik + am.fullname}
-                am={am}
-                kpiLabels={kpiLabels}
-                forceExpand={expandAll}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── AmRowControlled (handles forceExpand) ────────────────────────────────────
+// ─── AmRowControlled ──────────────────────────────────────────────────────────
 
 function AmRowControlled({ am, kpiLabels, forceExpand }: {
   am: AmActivity; kpiLabels: Set<string>; forceExpand: boolean | null;
@@ -564,111 +408,419 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
     ).length,
     [am.activities, kpiLabels]
   );
-  const pct = Math.min(Math.round(kpiCount / am.kpiTarget * 100), 100);
+
+  const pct = am.activities.length === 0 ? 0 : Math.min(Math.round(kpiCount / am.kpiTarget * 100), 100);
   const sisa = Math.max(am.kpiTarget - kpiCount, 0);
-  const pctColor = pct >= 100 ? "#00897B" : pct >= 70 ? "#F57F17" : "#E8192C";
   const hasActs = am.activities.length > 0;
 
+  const progressColor = pct >= 100
+    ? "from-emerald-500 to-emerald-400"
+    : pct >= 70
+    ? "from-amber-500 to-amber-400"
+    : "from-red-600 to-red-500";
+
+  const progressTextColor = pct >= 100 ? "text-emerald-600 dark:text-emerald-400"
+    : pct >= 70 ? "text-amber-600 dark:text-amber-400"
+    : "text-red-600 dark:text-red-400";
+
   return (
-    <div className="border-b border-slate-100 last:border-b-0">
+    <div className="border-b border-border/50 last:border-b-0">
+      {/* Summary row — always clickable */}
       <div
-        onClick={() => hasActs && setExpanded(p => !p)}
+        onClick={() => setExpanded(p => !p)}
         className={cn(
-          "grid gap-2 px-3.5 py-2.5 items-center transition-colors",
-          hasActs ? "cursor-pointer" : "cursor-default",
-          expanded ? "bg-blue-50/70 border-b border-blue-100" : "hover:bg-slate-50/80"
+          "grid items-center px-4 py-3 cursor-pointer transition-colors group",
+          expanded ? "bg-primary/5 border-b border-primary/10" : "hover:bg-secondary/40"
         )}
-        style={{ gridTemplateColumns: "28px 1fr 200px 56px 56px 56px 96px" }}
+        style={{ gridTemplateColumns: "32px 1fr 220px 60px 60px 64px 110px" }}
       >
+        {/* Expand icon */}
         <div className={cn(
-          "w-[22px] h-[22px] rounded-[6px] border flex items-center justify-center text-xs font-bold flex-shrink-0 select-none transition-all",
-          !hasActs ? "bg-slate-50 border-slate-200 text-slate-300"
-            : expanded ? "bg-blue-600 border-blue-600 text-white"
-            : "bg-white border-slate-300 text-slate-400"
+          "w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 transition-all",
+          expanded
+            ? "bg-primary border-primary text-white"
+            : "bg-secondary border-border text-muted-foreground group-hover:border-primary/40 group-hover:text-primary/70"
         )}>
-          {!hasActs ? "•" : expanded ? "−" : "+"}
+          {expanded ? "−" : "+"}
         </div>
 
-        <div className="overflow-hidden">
-          <div className="text-xs font-bold text-slate-900 truncate">{am.fullname}</div>
-          <div className="text-[10px] text-slate-400 mt-px">{am.divisi} · {am.activities.length} total aktivitas</div>
+        {/* Nama + divisi */}
+        <div className="overflow-hidden pl-1">
+          <div className="text-sm font-bold text-foreground truncate">{am.fullname}</div>
+          <div className="text-[11px] text-muted-foreground mt-px">
+            {am.divisi}
+            {!hasActs && <span className="ml-1.5 text-[10px] italic text-muted-foreground/60">· tidak ada data</span>}
+            {hasActs && <span className="ml-1.5 text-[10px] text-muted-foreground/60">· {am.activities.length} aktivitas</span>}
+          </div>
         </div>
 
+        {/* Progress bar */}
         <div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
-            <div className="h-full rounded-full transition-all duration-700" style={{
-              width: `${pct}%`,
-              background: pct >= 100 ? "linear-gradient(90deg,#00897B,#26c6b9)" : pct >= 70 ? "linear-gradient(90deg,#F57F17,#ffb300)" : "linear-gradient(90deg,#E8192C,#ef5350)",
-            }} />
+          <div className="h-2 bg-secondary rounded-full overflow-hidden mb-1">
+            <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700", progressColor)}
+              style={{ width: `${pct}%` }} />
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-[11px] font-bold font-mono" style={{ color: pctColor }}>{pct}%</span>
-            <span className="text-[10px] text-slate-400 font-mono">{kpiCount}/{am.kpiTarget}</span>
+            <span className={cn("text-[12px] font-bold font-mono", progressTextColor)}>{pct}%</span>
+            <span className="text-[10px] text-muted-foreground font-mono">{kpiCount}/{am.kpiTarget}</span>
           </div>
         </div>
 
-        <div className="text-sm font-semibold font-mono text-slate-800">{kpiCount}</div>
-        <div className="text-sm font-semibold font-mono text-slate-800">{am.kpiTarget}</div>
-        <div className={cn("text-sm font-semibold font-mono", sisa === 0 ? "text-slate-300" : "text-slate-800")}>
+        <div className="text-sm font-bold font-mono text-foreground text-center">{kpiCount}</div>
+        <div className="text-sm font-bold font-mono text-muted-foreground text-center">{am.kpiTarget}</div>
+        <div className={cn("text-sm font-bold font-mono text-center", sisa === 0 ? "text-muted-foreground/30" : "text-foreground")}>
           {sisa === 0 ? "✓" : sisa}
         </div>
         <div><StatusBadge pct={pct} /></div>
       </div>
 
-      {expanded && hasActs && (
-        <div className="border-t border-blue-100 bg-slate-50/80">
-          <div
-            className="grid gap-2 text-[9px] font-bold uppercase tracking-[0.6px] text-slate-400 bg-slate-100 border-b border-slate-200"
-            style={{ gridTemplateColumns: "24px 80px 1fr 140px 110px 64px", padding: "6px 14px 6px 52px" }}
-          >
-            <div>#</div><div>Tanggal</div><div>Pelanggan & Catatan</div>
-            <div>Tipe Aktivitas</div><div>Kategori</div><div>KPI</div>
-          </div>
-          {am.activities.map((act, i) => {
-            const { short, day } = fmtDate(act.activityEndDate);
-            const typeSty = getActivityTypeStyle(act.activityType);
-            const labSty = getLabelStyle(act.label);
-            const isKpiRow = kpiLabels.size > 0
-              ? (act.label ? kpiLabels.has(act.label) : false)
-              : act.isKpi;
-            return (
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border/30 bg-secondary/20">
+          {!hasActs ? (
+            <div className="flex items-center gap-3 px-6 py-5 text-sm text-muted-foreground">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>AM ini tidak memiliki data aktivitas pada periode yang dipilih meski sudah dicari di data mentah.</span>
+            </div>
+          ) : (
+            <>
+              {/* Sub-header */}
               <div
-                key={act.id}
-                className="grid gap-2 items-start border-b border-slate-100 last:border-b-0 hover:bg-white transition-colors"
-                style={{ gridTemplateColumns: "24px 80px 1fr 140px 110px 64px", padding: "8px 14px 8px 52px" }}
+                className="grid text-[10px] font-bold uppercase tracking-[0.6px] text-muted-foreground bg-secondary/50 border-b border-border/30"
+                style={{ gridTemplateColumns: "28px 88px 1fr 150px 130px 72px", padding: "6px 16px 6px 56px" }}
               >
-                <div className="text-[10px] text-slate-400 font-mono pt-px">{i + 1}</div>
-                <div>
-                  <div className="text-[11px] font-semibold text-slate-800 font-mono">{short}</div>
-                  <div className="text-[10px] text-slate-400 mt-px">{day}</div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">{act.caName || "–"}</div>
-                  {act.activityNotes && (
-                    <div className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-2">{act.activityNotes}</div>
-                  )}
-                </div>
-                <div>
-                  <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold" style={{ background: typeSty.bg, color: typeSty.text }}>
-                    {act.activityType || "–"}
-                  </span>
-                </div>
-                <div>
-                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold", labSty.cls)}>
-                    {labSty.short}
-                  </span>
-                </div>
-                <div>
-                  {isKpiRow
-                    ? <span className="inline-flex text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">✓ Ya</span>
-                    : <span className="inline-flex text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">✗ Tidak</span>
-                  }
-                </div>
+                <div>#</div><div>Tanggal</div><div>Pelanggan & Catatan</div>
+                <div>Tipe Aktivitas</div><div>Kategori</div><div>KPI</div>
               </div>
-            );
-          })}
+              {am.activities.map((act, i) => {
+                const { short, day } = fmtDate(act.activityEndDate);
+                const typeSty = getActivityTypeStyle(act.activityType);
+                const labSty = getLabelStyle(act.label);
+                const isKpiRow = kpiLabels.size > 0
+                  ? (act.label ? kpiLabels.has(act.label) : false)
+                  : act.isKpi;
+                return (
+                  <div key={act.id}
+                    className="grid items-start border-b border-border/20 last:border-b-0 hover:bg-secondary/30 transition-colors"
+                    style={{ gridTemplateColumns: "28px 88px 1fr 150px 130px 72px", padding: "8px 16px 8px 56px" }}
+                  >
+                    <div className="text-[10px] text-muted-foreground font-mono pt-0.5">{i + 1}</div>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground font-mono">{short}</div>
+                      <div className="text-[10px] text-muted-foreground mt-px">{day}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">{act.caName || "–"}</div>
+                      {act.activityNotes && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{act.activityNotes}</div>
+                      )}
+                    </div>
+                    <div>
+                      <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-semibold"
+                        style={{ background: typeSty.bg, color: typeSty.text }}>
+                        {act.activityType || "–"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold", labSty.cls)}>
+                        {labSty.short}
+                      </span>
+                    </div>
+                    <div>
+                      {isKpiRow
+                        ? <span className="inline-flex text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">✓ Ya</span>
+                        : <span className="inline-flex text-[11px] font-bold text-muted-foreground/60 bg-secondary px-2 py-0.5 rounded">✗ Tidak</span>
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function ActivityPage() {
+  const now = new Date();
+  const [year, setYear] = useState(String(now.getFullYear()));
+  const [month, setMonth] = useState(String(now.getMonth() + 1));
+  const [divisi, setDivisi] = useState("all");
+  const [search, setSearch] = useState("");
+  const [selectedAms, setSelectedAms] = useState<Set<string> | null>(null);
+  const [selectedLabels, setSelectedLabels] = useState<Set<string> | null>(null);
+  const [expandAll, setExpandAll] = useState<boolean | null>(null);
+
+  const queryKey = useMemo(() => {
+    const p = new URLSearchParams({ year, divisi });
+    if (month !== "all") p.set("month", month);
+    return `/api/activity?${p}`;
+  }, [year, month, divisi]);
+
+  const { data, isLoading, isError } = useQuery<ActivityData>({
+    queryKey: [queryKey],
+    queryFn: () => apiFetch<ActivityData>(queryKey),
+    staleTime: 60_000,
+  });
+
+  const amOptions = useMemo(() =>
+    (data?.masterAms ?? [])
+      .filter(a => divisi === "all" || a.divisi === divisi)
+      .map(a => a.nama)
+      .sort((a, b) => a.localeCompare(b)),
+    [data?.masterAms, divisi]
+  );
+
+  const labelOptions = useMemo(() =>
+    (data?.distinctLabels ?? []),
+    [data?.distinctLabels]
+  );
+
+  useEffect(() => {
+    if (data && selectedAms === null) setSelectedAms(new Set(amOptions));
+  }, [data, amOptions, selectedAms]);
+
+  useEffect(() => {
+    if (data && selectedLabels === null) {
+      setSelectedLabels(new Set(
+        (data.distinctLabels ?? []).filter(l => !l.toLowerCase().includes("tanpa"))
+      ));
+    }
+  }, [data, selectedLabels]);
+
+  const filteredAms = useMemo(() => {
+    if (!data) return [];
+    const byAmMap = Object.fromEntries(data.byAm.map(a => [a.fullname, a]));
+    const masterFiltered = (data.masterAms ?? [])
+      .filter(a => divisi === "all" || a.divisi === divisi)
+      .filter(a => selectedAms === null || selectedAms.has(a.nama))
+      .filter(a => !search || a.nama.toLowerCase().includes(search.toLowerCase()));
+
+    return masterFiltered.map(ma => {
+      const existing = byAmMap[ma.nama];
+      if (existing) return existing;
+      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: 20, activities: [] };
+    });
+  }, [data, divisi, selectedAms, search]);
+
+  const kpiLabels = useMemo(() => selectedLabels ?? new Set<string>(), [selectedLabels]);
+
+  const stats = useMemo(() => {
+    const totalKpi = filteredAms.reduce((s, a) => {
+      return s + a.activities.filter(act =>
+        kpiLabels.size > 0 ? (act.label ? kpiLabels.has(act.label) : false) : act.isKpi
+      ).length;
+    }, 0);
+    const reach = filteredAms.filter(a => {
+      const cnt = a.activities.filter(act =>
+        kpiLabels.size > 0 ? (act.label ? kpiLabels.has(act.label) : false) : act.isKpi
+      ).length;
+      return cnt >= a.kpiTarget;
+    }).length;
+    return { totalKpi, reach, below: filteredAms.length - reach };
+  }, [filteredAms, kpiLabels]);
+
+  const periodLabel = month === "all"
+    ? `Tahun ${year}`
+    : `${MONTHS_FULL[parseInt(month)]} ${year}`;
+
+  const selectedAmSet = useMemo(
+    () => selectedAms ?? new Set(amOptions),
+    [selectedAms, amOptions]
+  );
+  const selectedLabelSet = useMemo(
+    () => selectedLabels ?? new Set(labelOptions),
+    [selectedLabels, labelOptions]
+  );
+
+  return (
+    <div className="space-y-5">
+
+      {/* ─── Filter Bar ─── */}
+      <div className="bg-card border border-border rounded-xl shadow-sm p-4">
+        <div className="flex items-end gap-3 flex-wrap">
+          <PeriodeDropdown
+            year={year} month={month}
+            onYearChange={y => { setYear(y); setSelectedAms(null); }}
+            onMonthChange={m => { setMonth(m); }}
+            className="min-w-[170px]"
+          />
+
+          <SelectDropdown
+            label="Divisi"
+            value={divisi}
+            onChange={v => { setDivisi(v); setSelectedAms(null); }}
+            options={[
+              { value: "all", label: "Semua Divisi" },
+              { value: "DPS", label: "DPS" },
+              { value: "DSS", label: "DSS" },
+            ]}
+            className="min-w-[140px]"
+          />
+
+          <CheckboxDropdown
+            label="Nama AM"
+            options={amOptions}
+            selected={selectedAmSet}
+            onChange={setSelectedAms}
+            summaryLabel="AM"
+            placeholder="Semua AM"
+            className="min-w-[160px] flex-1"
+          />
+
+          {labelOptions.length > 0 && (
+            <CheckboxDropdown
+              label="Kategori Aktivitas"
+              options={labelOptions}
+              selected={selectedLabelSet}
+              onChange={setSelectedLabels}
+              summaryLabel="kategori"
+              placeholder="Semua Kategori"
+              kpiBadge
+              className="min-w-[180px]"
+            />
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide opacity-0 select-none">Cari</label>
+            <div className="h-9 flex items-center gap-2 bg-secondary/50 border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text" placeholder="Cari nama AM…"
+                value={search} onChange={e => setSearch(e.target.value)}
+                className="border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Overview Cards ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <OverviewCard
+          icon={<Target className="w-5 h-5 text-primary" />}
+          label="Total Aktivitas KPI"
+          value={isLoading ? "—" : stats.totalKpi}
+          sub={<>dari <strong className="text-foreground">{filteredAms.length}</strong> AM · {periodLabel}</>}
+          accent="bg-primary/10"
+        />
+        <OverviewCard
+          icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+          label="AM Capai KPI"
+          value={isLoading ? "—" : stats.reach}
+          sub={<>target <strong className="text-foreground">≥{filteredAms[0]?.kpiTarget ?? 20} aktivitas</strong> / bulan</>}
+          accent="bg-emerald-100 dark:bg-emerald-950/30"
+        />
+        <OverviewCard
+          icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
+          label="AM Di Bawah KPI"
+          value={isLoading ? "—" : stats.below}
+          sub={stats.below === 0 ? "Semua AM mencapai target 🎉" : `${stats.below} AM perlu perhatian lebih`}
+          accent="bg-red-50 dark:bg-red-950/30"
+        />
+      </div>
+
+      {/* ─── KPI Info note ─── */}
+      {labelOptions.length > 0 && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border/60 rounded-xl px-4 py-3">
+          <span className="mt-0.5">📌</span>
+          <span>
+            Progress KPI dihitung dari aktivitas kategori{" "}
+            <strong className="text-blue-600 dark:text-blue-400">Dengan Pelanggan</strong> dan{" "}
+            <strong className="text-blue-600 dark:text-blue-400">Pelanggan dengan Proyek</strong> saja.
+            Kategori <strong>Tanpa Pelanggan</strong> tidak terhitung dalam capaian KPI.
+          </span>
+        </div>
+      )}
+
+      {/* ─── Table Section ─── */}
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+
+        {/* Table toolbar */}
+        <div className="px-4 py-3 border-b border-border bg-secondary/20 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-bold text-foreground">Monitoring KPI Aktivitas</span>
+            <span className="bg-secondary text-muted-foreground text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0">
+              {filteredAms.length} AM
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setExpandAll(true)}
+              className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5"
+            >
+              <Expand className="w-3 h-3" /> Expand Semua
+            </button>
+            <button
+              onClick={() => setExpandAll(false)}
+              className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5"
+            >
+              <Minimize2 className="w-3 h-3" /> Collapse
+            </button>
+          </div>
+        </div>
+
+        {/* Table header */}
+        <div
+          className="grid text-xs font-black uppercase tracking-wide text-white"
+          style={{ background: "#B91C1C", gridTemplateColumns: "32px 1fr 220px 60px 60px 64px 110px", padding: "10px 16px" }}
+        >
+          <div />
+          <div className="pl-1">Nama AM</div>
+          <div>Progress KPI</div>
+          <div className="text-center">Aktivitas</div>
+          <div className="text-center">Target</div>
+          <div className="text-center">Sisa</div>
+          <div>Status</div>
+        </div>
+
+        {/* Table body */}
+        {isLoading ? (
+          <div className="divide-y divide-border/50">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="grid items-center px-4 py-3"
+                style={{ gridTemplateColumns: "32px 1fr 220px 60px 60px 64px 110px" }}>
+                <div className="w-6 h-6 bg-secondary rounded-lg animate-pulse" />
+                <div className="pl-1 space-y-1.5">
+                  <div className="h-3.5 bg-secondary rounded animate-pulse w-48" />
+                  <div className="h-2.5 bg-secondary/60 rounded animate-pulse w-20" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2 bg-secondary rounded-full animate-pulse" />
+                  <div className="h-2.5 bg-secondary/60 rounded animate-pulse w-16" />
+                </div>
+                {[...Array(4)].map((_, j) => (
+                  <div key={j} className="h-4 bg-secondary rounded animate-pulse mx-1" />
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+            <AlertTriangle className="w-7 h-7 text-destructive" />
+            <p className="text-sm font-medium">Gagal memuat data aktivitas</p>
+          </div>
+        ) : filteredAms.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+            <Users className="w-10 h-10 opacity-20" />
+            <p className="text-sm font-medium">Tidak ada AM untuk filter yang dipilih</p>
+          </div>
+        ) : (
+          filteredAms.map(am => (
+            <AmRowControlled
+              key={am.nik + am.fullname}
+              am={am}
+              kpiLabels={kpiLabels}
+              forceExpand={expandAll}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
