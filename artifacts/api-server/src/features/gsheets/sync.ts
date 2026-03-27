@@ -132,7 +132,7 @@ export async function syncSelectedSheets(
     const funnelSpreadsheetId = extractSpreadsheetId(settings.gSheetsFunnelSpreadsheetId || settings.gSheetsSpreadsheetId);
     const spreadsheetId = extractSpreadsheetId(settings.gSheetsSpreadsheetId);
     const apiKey = settings.gSheetsApiKey;
-    const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl }).from(dataImportsTable);
+    const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl, snapshotDate: dataImportsTable.snapshotDate }).from(dataImportsTable);
     const results: SyncSheetResult[] = [];
 
     for (const sel of selections) {
@@ -145,6 +145,12 @@ export async function syncSelectedSheets(
       const alreadyFromThisSheet = existingImports.some(i => i.type === sel.type && i.period === dateInfo.period && i.sourceUrl?.includes(sel.title));
       if (alreadyFromThisSheet) {
         results.push({ sheetName: sel.title, date: dateInfo.date, period: dateInfo.period, type: sel.type, status: "skipped", message: "Snapshot ini sudah pernah diimport" });
+        continue;
+      }
+      // Also skip if same snapshot_date already imported from any source
+      const alreadySameSnapshot = existingImports.some(i => i.type === sel.type && i.snapshotDate === dateInfo.date);
+      if (alreadySameSnapshot) {
+        results.push({ sheetName: sel.title, date: dateInfo.date, period: dateInfo.period, type: sel.type, status: "skipped", message: `Snapshot tanggal ${dateInfo.date} sudah ada dari sumber lain, dilewati` });
         continue;
       }
       logger.info({ sheet: sel.title, type: sel.type }, "GSheets sync-selected: importing sheet");
@@ -470,7 +476,7 @@ export async function runGSheetsSync(): Promise<SyncResult> {
     }
 
     // Load existing imports for all 3 types for dedup check
-    const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl })
+    const existingImports = await db.select({ type: dataImportsTable.type, period: dataImportsTable.period, sourceUrl: dataImportsTable.sourceUrl, snapshotDate: dataImportsTable.snapshotDate })
       .from(dataImportsTable);
 
     const existingByType: Record<string, Set<string>> = { funnel: new Set(), activity: new Set(), performance: new Set() };
@@ -496,6 +502,13 @@ export async function runGSheetsSync(): Promise<SyncResult> {
       );
       if (alreadyFromThisSheet) {
         results.push({ sheetName: sheet.title, date, period, type, status: "skipped", message: "Snapshot dengan nama sheet ini sudah ada, dilewati" });
+        continue;
+      }
+
+      // Also skip if same snapshot_date already imported from any source (prevents Drive+GSheets duplicate)
+      const alreadySameSnapshot = existingImports.some(i => i.type === type && i.snapshotDate === date);
+      if (alreadySameSnapshot) {
+        results.push({ sheetName: sheet.title, date, period, type, status: "skipped", message: `Snapshot tanggal ${date} sudah ada dari sumber lain (import sebelumnya), dilewati` });
         continue;
       }
 

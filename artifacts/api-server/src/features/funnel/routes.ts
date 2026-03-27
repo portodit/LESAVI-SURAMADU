@@ -82,6 +82,18 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   });
 
   if (import_id) allLops = allLops.filter(l => l.importId === Number(import_id));
+
+  // Deduplicate by lopid — same LOP may appear in multiple imports (e.g. Drive upload + GSheets sync).
+  // Keep the row with the highest importId (= most recent import). Only when no specific import_id requested.
+  if (!import_id) {
+    const lopMap = new Map<string, typeof allLops[0]>();
+    for (const l of allLops) {
+      const existing = lopMap.get(l.lopid);
+      if (!existing || (l.importId || 0) > (existing.importId || 0)) lopMap.set(l.lopid, l);
+    }
+    allLops = [...lopMap.values()];
+  }
+
   // Filter by report_date year — this matches Power BI's Date filter behaviour
   if (tahun) {
     const yr = Number(tahun);

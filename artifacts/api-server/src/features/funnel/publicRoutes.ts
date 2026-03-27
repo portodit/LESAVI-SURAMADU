@@ -47,6 +47,17 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   });
 
   if (import_id) allLops = allLops.filter(l => l.importId === Number(import_id));
+
+  // Deduplicate by lopid — same LOP may appear in multiple imports; keep highest importId.
+  if (!import_id) {
+    const lopMap = new Map<string, typeof allLops[0]>();
+    for (const l of allLops) {
+      const existing = lopMap.get(l.lopid);
+      if (!existing || (l.importId || 0) > (existing.importId || 0)) lopMap.set(l.lopid, l);
+    }
+    allLops = [...lopMap.values()];
+  }
+
   if (tahun) {
     const yr = Number(tahun);
     allLops = allLops.filter(l => l.reportDate && new Date(l.reportDate as string).getFullYear() === yr);
