@@ -84,12 +84,8 @@ const queryClient = new QueryClient({
 });
 
 function PresentationGuard() {
-  const [, setLocation] = useLocation();
   const session = getPresentationSession();
-  useEffect(() => {
-    if (!session) setLocation("/presentation/login");
-  }, [session, setLocation]);
-  if (!session) return null;
+  if (!session) return <Redirect to="/presentation/login" />;
   return <EmbedPerforma />;
 }
 

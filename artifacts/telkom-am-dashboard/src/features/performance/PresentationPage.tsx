@@ -1879,7 +1879,7 @@ export default function EmbedPerforma() {
                         <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
                       </td>
-                      <td className="px-3 py-2.5 text-center tabular-nums text-muted-foreground font-semibold text-sm">
+                      <td className="px-3 py-2.5 text-center tabular-nums text-foreground font-semibold text-sm">
                         {filteredAmData.reduce((s, r) => s + (r.customers || []).length, 0)}
                       </td>
                       <td />

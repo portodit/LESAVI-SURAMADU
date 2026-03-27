@@ -17,7 +17,7 @@ function EmbedModal({ onClose }: { onClose: () => void }) {
     ? `${window.location.protocol}//${window.location.host}`
     : "";
   const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-  const embedUrl = `${baseUrl}${basePath}/embed/performa`;
+  const embedUrl = `${baseUrl}${basePath}/presentation`;
   const iframeCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  allowfullscreen\n  style="border:none; border-radius:12px;"\n></iframe>`;
 
   function handleCopy() {
