@@ -1258,6 +1258,18 @@ export default function EmbedPerforma() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [funnelSubtitle, setFunnelSubtitle] = useState("HO / FULL HO");
 
+  // Ukur tinggi toolbar tabel Performa AM secara dinamis
+  const perfToolbarRef = useRef<HTMLDivElement>(null);
+  const [perfToolbarH, setPerfToolbarH] = useState(52);
+  useEffect(() => {
+    const el = perfToolbarRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPerfToolbarH(el.offsetHeight));
+    ro.observe(el);
+    setPerfToolbarH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
@@ -1706,7 +1718,7 @@ export default function EmbedPerforma() {
 
             {/* Table */}
             <div className="bg-card border border-border rounded-xl">
-              <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
+              <div ref={perfToolbarRef} className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="text-sm font-bold text-foreground">AM Performance Report</h3>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
@@ -1725,10 +1737,10 @@ export default function EmbedPerforma() {
                 </div>
               </div>
               <div className="p-3">
-                <div className="border border-border rounded-lg overflow-visible">
-                <div className="[overflow-x:clip]">
+                <div className="border border-border rounded-lg overflow-hidden">
+                <div className="overflow-auto" style={{maxHeight:`calc(100dvh - ${perfToolbarH + 120}px)`}}>
                 <table className="w-full text-xs text-left">
-                  <thead>
+                  <thead className="sticky top-0 z-10">
                     <tr className="bg-red-700 text-white">
                       <th className="px-3 py-3 w-5 rounded-tl-lg"></th>
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide">Nama AM</th>
