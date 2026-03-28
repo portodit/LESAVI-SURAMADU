@@ -1122,6 +1122,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           </div>
         </div>
         {/* Tabel punya scroll container sendiri — sticky thead top-0 bekerja di dalam sini */}
+        <div className="p-3">
+        <div className="border border-border overflow-hidden">
         <div className="overflow-auto" style={{maxHeight:`clamp(280px, calc(100svh - ${fsDetailToolbarH + 200}px), 800px)`}}>
           <table className="w-full text-left text-sm border-collapse" style={{minWidth:"820px"}}>
             <thead className="sticky top-0 z-10">
@@ -1137,6 +1139,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               {renderAmTbodyContentFS(groupedByAm, search||hasActiveFilter?"Tidak ada data yang cocok dengan filter":"Belum ada data funnel")}
             </tbody>
           </table>
+        </div>
+        </div>
         </div>
       </div>}
 
@@ -1213,7 +1217,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
             const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
             return (
-              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col ${borderTop}`}>
+              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm flex flex-col ${borderTop}`}>
                 {/* Table Toolbar */}
                 <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0">
                   <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
@@ -1230,7 +1234,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </button>
                   </div>
                 </div>
-                {/* AM Tree Table — overflow-x luar supaya scrollbar gampang diklik */}
+                {/* AM Tree Table — p-3 + inner border, overflow-x luar */}
+                <div className="p-3">
+                <div className="border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                   <div className="overflow-y-auto" style={{maxHeight:"clamp(200px,45vh,560px)"}}>
                     <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
@@ -1248,6 +1254,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                       </tbody>
                     </table>
                   </div>
+                </div>
+                </div>
                 </div>
               </div>
             );
@@ -1583,7 +1591,7 @@ function ActivitySlide() {
 
           {/* ─── Table ─── */}
           <div className="mx-2">
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-card border border-border rounded-xl shadow-sm">
             {/* Toolbar */}
             <div className="px-4 py-3 border-b border-border bg-secondary/20 flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1605,10 +1613,13 @@ function ActivitySlide() {
                 </button>
               </div>
             </div>
+            <div className="p-3">
+            <div className="border border-border overflow-hidden">
             <div className="overflow-x-auto">
             <div style={{minWidth:"780px"}}>
-            {/* Header */}
-            <div className="grid text-xs font-black uppercase tracking-wide text-white"
+            <div className="overflow-y-auto" style={{maxHeight:"clamp(300px, calc(100svh - 360px), 700px)"}}>
+            {/* Header — sticky */}
+            <div className="sticky top-0 z-10 grid text-xs font-black uppercase tracking-wide text-white"
               style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
               <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
               <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
@@ -1743,8 +1754,11 @@ function ActivitySlide() {
                 </div>
               );
             })}
+            </div>{/* end overflow-y-auto */}
             </div>{/* end minWidth wrapper */}
             </div>{/* end overflow-x-auto */}
+            </div>{/* end inner border */}
+            </div>{/* end p-3 */}
           </div>
           </div>{/* end mx-2 */}
         </>
@@ -2265,19 +2279,21 @@ export default function EmbedPerforma() {
                   </div>
                 </div>
               </div>
+              <div className="p-3">
+              <div className="border border-border overflow-hidden">
               <div className="overflow-auto" style={{maxHeight:"clamp(400px, 65vh, 1000px)"}}>
                 <div className="min-w-[600px]">
                 <table className="w-full text-xs text-left">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-red-700 text-white">
-                      <th className="px-3 py-3 w-5 rounded-tl-lg"></th>
+                      <th className="px-3 py-3 w-5"></th>
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide">Nama AM</th>
                       <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
                       <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
                       <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach CM" && "underline underline-offset-2")}>CM %</th>
                       <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "YTD" && "underline underline-offset-2")}>YTD %</th>
                       <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-wide">Customer</th>
-                      <th className={cn("px-3 py-3 text-center text-xs font-black uppercase tracking-wide rounded-tr-lg", "underline underline-offset-2")}>
+                      <th className={cn("px-3 py-3 text-center text-xs font-black uppercase tracking-wide", "underline underline-offset-2")}>
                         {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "YTD" ? "RANK YTD" : "RANK REV"}
                       </th>
                     </tr>
@@ -2405,6 +2421,8 @@ export default function EmbedPerforma() {
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+              </div>
               </div>
               </div>
             </div>
