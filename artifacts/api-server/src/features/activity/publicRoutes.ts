@@ -36,7 +36,9 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     db.select().from(accountManagersTable),
   ]);
 
-  const amMap = Object.fromEntries(ams.map(a => [a.nik, a]));
+  // Hanya AM terdaftar (role=AM, aktif=true) — bukan officer/manager
+  const registeredAms = ams.filter(a => a.aktif && a.role === "AM");
+  const registeredNikSet = new Set(registeredAms.map(a => a.nik));
 
   let acts = allActs;
 
@@ -59,7 +61,7 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     acts = acts.filter(a => a.activityEndDate?.startsWith(String(year)));
   }
 
-  const masterAms = ams.map(a => ({ nik: a.nik, nama: a.nama, divisi: a.divisi ?? "" }));
+  const masterAms = registeredAms.map(a => ({ nik: a.nik, nama: a.nama, divisi: a.divisi ?? "" }));
 
   const byAmMap: Record<string, {
     nik: string; fullname: string | null; divisi: string;
@@ -67,7 +69,9 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     activities: any[];
   }> = {};
 
-  for (const am of ams) {
+  // Inisialisasi hanya dari AM terdaftar
+  for (const am of registeredAms) {
+    if (!am.nik) continue;
     byAmMap[am.nik] = {
       nik: am.nik,
       fullname: am.nama,
@@ -83,18 +87,9 @@ router.get("/public/activity", async (req, res): Promise<void> => {
 
   for (const act of acts) {
     const nik = act.nik;
-    if (!byAmMap[nik]) {
-      const amData = amMap[nik];
-      byAmMap[nik] = {
-        nik,
-        fullname: act.fullname,
-        divisi: act.divisi ?? "",
-        kpiCount: 0,
-        totalCount: 0,
-        kpiTarget: amData?.kpiActivity ?? 20,
-        activities: [],
-      };
-    }
+    // Skip AM yang tidak terdaftar di manajemen akun
+    if (!nik || !registeredNikSet.has(nik)) continue;
+    if (!byAmMap[nik]) continue;
     byAmMap[nik].totalCount++;
     if (isKpiLabel(act.label)) byAmMap[nik].kpiCount++;
     if (act.label) distinctLabels.add(act.label);

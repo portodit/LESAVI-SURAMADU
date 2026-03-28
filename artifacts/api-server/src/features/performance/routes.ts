@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, performanceDataTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, performanceDataTable, accountManagersTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 
 const router: IRouter = Router();
@@ -9,7 +9,14 @@ router.get("/performance", requireAuth, async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   const { year, month, divisi, importId } = req.query;
 
+  // Hanya tampilkan performance untuk AM terdaftar (role=AM, aktif=true)
+  const allAms = await db.select().from(accountManagersTable);
+  const registeredNiks = allAms
+    .filter(a => a.aktif && a.role === "AM" && a.nik)
+    .map(a => a.nik as string);
+
   const conditions = [];
+  if (registeredNiks.length > 0) conditions.push(inArray(performanceDataTable.nik, registeredNiks));
   if (year) conditions.push(eq(performanceDataTable.tahun, parseInt(String(year))));
   if (month) conditions.push(eq(performanceDataTable.bulan, parseInt(String(month))));
   if (divisi) conditions.push(eq(performanceDataTable.divisi, String(divisi)));

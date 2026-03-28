@@ -29,11 +29,18 @@ export async function ensureDefaultAdmin(): Promise<void> {
       divisi: "DPS",
       witel: "SURAMADU",
     });
-  } else if (existing[0].role !== "OFFICER") {
-    await db
-      .update(accountManagersTable)
-      .set({ role: "OFFICER", tipe: "LESA" })
-      .where(eq(accountManagersTable.email, "bliaditdev@gmail.com"));
+  } else {
+    // Pastikan role, tipe, dan passwordHash selalu benar
+    const needsUpdate =
+      existing[0].role !== "OFFICER" ||
+      !existing[0].passwordHash;
+    if (needsUpdate) {
+      const hash = existing[0].passwordHash ?? await hashPassword("admin123");
+      await db
+        .update(accountManagersTable)
+        .set({ role: "OFFICER", tipe: "LESA", passwordHash: hash })
+        .where(eq(accountManagersTable.email, "bliaditdev@gmail.com"));
+    }
   }
 }
 

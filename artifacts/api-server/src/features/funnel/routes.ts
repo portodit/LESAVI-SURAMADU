@@ -68,7 +68,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   // Load account_managers for name resolution and AM group filtering
   const masterAms = await db.select().from(accountManagersTable);
   const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
-  const activeNikSet = new Set(masterAms.filter(m => m.aktif).map(m => m.nik));
+  const activeNikSet = new Set(masterAms.filter(m => m.aktif && m.role === "AM" && m.nik).map(m => m.nik));
 
   let allLops = await db.select().from(salesFunnelTable);
 
@@ -194,7 +194,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     unidentifiedLops: unidentifiedCount,
     byStatus: statusGroups,
     byAm: amGroups,
-    masterAms: masterAms.filter(m => m.aktif).map(m => ({ nik: m.nik, nama: m.nama, divisi: m.divisi })),
+    masterAms: masterAms.filter(m => m.aktif && m.role === "AM" && m.nik).map(m => ({ nik: m.nik, nama: m.nama, divisi: m.divisi })),
     lops: allLops.map(l => ({
       id: l.id,
       lopid: l.lopid,
