@@ -382,6 +382,14 @@ export default function ImportData() {
       setDriveSyncResult(p => ({ ...p, [type]: result }));
       refetch();
       toast({ title: "Sync Berhasil", description: `${result.imported} baris diimport dari "${result.fileName}"` });
+      if ((result.newAmDiscovered ?? 0) > 0) {
+        setTimeout(() => {
+          toast({
+            title: `🔔 ${result.newAmDiscovered} AM Baru Terdeteksi`,
+            description: `NIK baru ditemukan dari data import. Buka halaman Manajemen Akun untuk menyetujui penambahan AM.`,
+          });
+        }, 600);
+      }
     } catch (e: any) {
       stopDriveProgress(type, false);
       toast({ title: "Sync Gagal", description: e.message, variant: "destructive" });
@@ -681,6 +689,15 @@ export default function ImportData() {
       title: "Import Berhasil",
       description: `Data ${tabData.label} berhasil diimport${extraInfo}. Periode: ${res.period}`,
     });
+    const discovered = (res as any).newAmDiscovered ?? 0;
+    if (discovered > 0) {
+      setTimeout(() => {
+        toast({
+          title: `🔔 ${discovered} AM Baru Terdeteksi`,
+          description: `NIK baru ditemukan dari data import. Buka halaman Manajemen Akun untuk melihat dan menyetujui penambahan AM.`,
+        });
+      }, 600);
+    }
     setConflictInfo(null);
     refetch();
   };
