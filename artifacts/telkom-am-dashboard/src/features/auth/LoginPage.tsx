@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Loader2, Eye, EyeOff, Lock, User } from "lucide-react";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, user, isLoading: isAuthLoading } = useAuth();
@@ -23,9 +23,9 @@ export default function Login() {
     setError("");
     setIsLoading(true);
     try {
-      await login({ email, password });
+      await login({ email: identifier, password });
     } catch {
-      setError("Email atau password salah. Silakan coba lagi.");
+      setError("Email/NIK atau password salah. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -108,21 +108,21 @@ export default function Login() {
                 </div>
               )}
 
-              {/* Email */}
+              {/* Email / NIK */}
               <div className="flex flex-col gap-[2.5px] pt-[5.5px]">
                 <label className="text-[12px] font-semibold text-[#4a5565] uppercase tracking-[0.6px]"
                   style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Email
+                  Email atau NIK
                 </label>
                 <div className="relative">
                   <User className="absolute left-[14px] top-1/2 -translate-y-1/2 h-4 w-4 text-[#99a1af]" />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    autoComplete="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@telkom.co.id"
+                    autoComplete="username"
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    placeholder="admin@telkom.co.id atau NIK"
                     className="w-full bg-[#f9fafb] border border-[#e5e7eb] rounded-2xl py-[14px] pl-[42px] pr-4 text-sm text-[#101828] placeholder:text-[#99a1af] outline-none focus:border-[#cc0000] focus:ring-4 focus:ring-red-50 transition-all"
                     style={{ fontFamily: "'Inter', sans-serif" }}
                   />

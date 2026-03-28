@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, accountManagersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { comparePassword, requireAuth } from "../../shared/auth";
 
 const router: IRouter = Router();
@@ -8,23 +8,28 @@ const router: IRouter = Router();
 router.post("/auth/login", async (req, res): Promise<void> => {
   const { email, password } = req.body;
   if (!email || !password) {
-    res.status(400).json({ error: "Email dan password wajib diisi" });
+    res.status(400).json({ error: "Email/NIK dan password wajib diisi" });
     return;
   }
+
+  const identifier = String(email).trim();
 
   const [user] = await db
     .select()
     .from(accountManagersTable)
-    .where(eq(accountManagersTable.email, email));
+    .where(or(
+      eq(accountManagersTable.email, identifier),
+      eq(accountManagersTable.nik, identifier),
+    ));
 
   if (!user || !user.passwordHash) {
-    res.status(401).json({ error: "Email atau password salah" });
+    res.status(401).json({ error: "Email/NIK atau password salah" });
     return;
   }
 
   const valid = await comparePassword(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: "Email atau password salah" });
+    res.status(401).json({ error: "Email/NIK atau password salah" });
     return;
   }
 
