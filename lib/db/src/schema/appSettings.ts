@@ -25,6 +25,11 @@ export const appSettingsTable = pgTable("app_settings", {
   gDriveFolderFunnel: text("g_drive_folder_funnel"),
   gDriveFolderActivity: text("g_drive_folder_activity"),
   gDriveFolderTarget: text("g_drive_folder_target"),
+  // Google Drive auto-scheduler
+  gDriveSyncEnabled: boolean("g_drive_sync_enabled").notNull().default(false),
+  gDriveSyncHourWib: integer("g_drive_sync_hour_wib").notNull().default(7),
+  gDriveSyncIntervalDays: integer("g_drive_sync_interval_days").notNull().default(1),
+  gDriveLastCheckAt: timestamp("g_drive_last_check_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

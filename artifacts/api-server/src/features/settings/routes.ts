@@ -2,8 +2,38 @@ import { Router, type IRouter } from "express";
 import { db, appSettingsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
 import { rescheduleGSheets } from "../gsheets/scheduler";
+import { rescheduleGDrive } from "../gdrive/scheduler";
 
 const router: IRouter = Router();
+
+function buildSettingsResponse(settings: typeof appSettingsTable.$inferSelect) {
+  return {
+    telegramBotToken: settings.telegramBotToken ? "***" + settings.telegramBotToken.slice(-6) : null,
+    sharepointPerformanceUrl: settings.sharepointPerformanceUrl,
+    sharepointFunnelUrl: settings.sharepointFunnelUrl,
+    sharepointActivityUrl: settings.sharepointActivityUrl,
+    autoSendOnImport: settings.autoSendOnImport,
+    kpiActivityDefault: settings.kpiActivityDefault,
+    // Google Sheets
+    gSheetsSpreadsheetId: settings.gSheetsSpreadsheetId,
+    gSheetsApiKey: settings.gSheetsApiKey ? "***" + settings.gSheetsApiKey.slice(-6) : null,
+    gSheetsFunnelPattern: settings.gSheetsFunnelPattern ?? "TREG3_SALES_FUNNEL_",
+    gSheetsSyncEnabled: settings.gSheetsSyncEnabled,
+    gSheetsSyncHourWib: settings.gSheetsSyncHourWib,
+    gSheetsSyncIntervalDays: settings.gSheetsSyncIntervalDays,
+    gSheetsLastSyncAt: settings.gSheetsLastSyncAt?.toISOString() ?? null,
+    // Google Drive folders
+    gDriveFolderPerformance: settings.gDriveFolderPerformance,
+    gDriveFolderFunnel: settings.gDriveFolderFunnel,
+    gDriveFolderActivity: settings.gDriveFolderActivity,
+    gDriveFolderTarget: settings.gDriveFolderTarget,
+    // Google Drive scheduler
+    gDriveSyncEnabled: settings.gDriveSyncEnabled,
+    gDriveSyncHourWib: settings.gDriveSyncHourWib,
+    gDriveSyncIntervalDays: settings.gDriveSyncIntervalDays,
+    gDriveLastCheckAt: settings.gDriveLastCheckAt?.toISOString() ?? null,
+  };
+}
 
 router.get("/settings", requireAuth, async (req, res): Promise<void> => {
   let [settings] = await db.select().from(appSettingsTable);
@@ -13,25 +43,7 @@ router.get("/settings", requireAuth, async (req, res): Promise<void> => {
       kpiActivityDefault: 30,
     }).returning();
   }
-  res.json({
-    telegramBotToken: settings.telegramBotToken ? "***" + settings.telegramBotToken.slice(-6) : null,
-    sharepointPerformanceUrl: settings.sharepointPerformanceUrl,
-    sharepointFunnelUrl: settings.sharepointFunnelUrl,
-    sharepointActivityUrl: settings.sharepointActivityUrl,
-    autoSendOnImport: settings.autoSendOnImport,
-    kpiActivityDefault: settings.kpiActivityDefault,
-    gSheetsSpreadsheetId: settings.gSheetsSpreadsheetId,
-    gSheetsApiKey: settings.gSheetsApiKey ? "***" + settings.gSheetsApiKey.slice(-6) : null,
-    gSheetsFunnelPattern: settings.gSheetsFunnelPattern ?? "TREG3_SALES_FUNNEL_",
-    gSheetsSyncEnabled: settings.gSheetsSyncEnabled,
-    gSheetsSyncHourWib: settings.gSheetsSyncHourWib,
-    gSheetsSyncIntervalDays: settings.gSheetsSyncIntervalDays,
-    gSheetsLastSyncAt: settings.gSheetsLastSyncAt?.toISOString() ?? null,
-    gDriveFolderPerformance: settings.gDriveFolderPerformance,
-    gDriveFolderFunnel: settings.gDriveFolderFunnel,
-    gDriveFolderActivity: settings.gDriveFolderActivity,
-    gDriveFolderTarget: settings.gDriveFolderTarget,
-  });
+  res.json(buildSettingsResponse(settings));
 });
 
 router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
@@ -41,6 +53,7 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
     gSheetsSpreadsheetId, gSheetsApiKey, gSheetsFunnelPattern,
     gSheetsSyncEnabled, gSheetsSyncHourWib, gSheetsSyncIntervalDays,
     gDriveFolderPerformance, gDriveFolderFunnel, gDriveFolderActivity, gDriveFolderTarget,
+    gDriveSyncEnabled, gDriveSyncHourWib, gDriveSyncIntervalDays,
   } = req.body;
 
   const [existing] = await db.select().from(appSettingsTable);
@@ -52,17 +65,23 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
   if (sharepointActivityUrl !== undefined) updates.sharepointActivityUrl = sharepointActivityUrl;
   if (autoSendOnImport !== undefined) updates.autoSendOnImport = autoSendOnImport;
   if (kpiActivityDefault !== undefined) updates.kpiActivityDefault = kpiActivityDefault;
-  // Google Sheets fields
+  // Google Sheets
   if (gSheetsSpreadsheetId !== undefined) updates.gSheetsSpreadsheetId = gSheetsSpreadsheetId || null;
   if (gSheetsApiKey !== undefined && !String(gSheetsApiKey).startsWith("***")) updates.gSheetsApiKey = gSheetsApiKey || null;
   if (gSheetsFunnelPattern !== undefined) updates.gSheetsFunnelPattern = gSheetsFunnelPattern || "TREG3_SALES_FUNNEL_";
   if (gSheetsSyncEnabled !== undefined) updates.gSheetsSyncEnabled = Boolean(gSheetsSyncEnabled);
   if (gSheetsSyncHourWib !== undefined) updates.gSheetsSyncHourWib = Number(gSheetsSyncHourWib) || 6;
   if (gSheetsSyncIntervalDays !== undefined) updates.gSheetsSyncIntervalDays = Number(gSheetsSyncIntervalDays) || 1;
+  // Google Drive folders
   if (gDriveFolderPerformance !== undefined) updates.gDriveFolderPerformance = gDriveFolderPerformance || null;
   if (gDriveFolderFunnel !== undefined) updates.gDriveFolderFunnel = gDriveFolderFunnel || null;
   if (gDriveFolderActivity !== undefined) updates.gDriveFolderActivity = gDriveFolderActivity || null;
   if (gDriveFolderTarget !== undefined) updates.gDriveFolderTarget = gDriveFolderTarget || null;
+  // Google Drive scheduler
+  if (gDriveSyncEnabled !== undefined) updates.gDriveSyncEnabled = Boolean(gDriveSyncEnabled);
+  if (gDriveSyncHourWib !== undefined) updates.gDriveSyncHourWib = Number(gDriveSyncHourWib) || 7;
+  if (gDriveSyncIntervalDays !== undefined) updates.gDriveSyncIntervalDays = Number(gDriveSyncIntervalDays) || 1;
+
   updates.updatedAt = new Date();
 
   let settings;
@@ -76,28 +95,10 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
     }).returning();
   }
 
-  // Reschedule GSheets sync with new settings
   rescheduleGSheets();
+  rescheduleGDrive();
 
-  res.json({
-    telegramBotToken: settings.telegramBotToken ? "***" + settings.telegramBotToken.slice(-6) : null,
-    sharepointPerformanceUrl: settings.sharepointPerformanceUrl,
-    sharepointFunnelUrl: settings.sharepointFunnelUrl,
-    sharepointActivityUrl: settings.sharepointActivityUrl,
-    autoSendOnImport: settings.autoSendOnImport,
-    kpiActivityDefault: settings.kpiActivityDefault,
-    gSheetsSpreadsheetId: settings.gSheetsSpreadsheetId,
-    gSheetsApiKey: settings.gSheetsApiKey ? "***" + settings.gSheetsApiKey.slice(-6) : null,
-    gSheetsFunnelPattern: settings.gSheetsFunnelPattern ?? "TREG3_SALES_FUNNEL_",
-    gSheetsSyncEnabled: settings.gSheetsSyncEnabled,
-    gSheetsSyncHourWib: settings.gSheetsSyncHourWib,
-    gSheetsSyncIntervalDays: settings.gSheetsSyncIntervalDays,
-    gSheetsLastSyncAt: settings.gSheetsLastSyncAt?.toISOString() ?? null,
-    gDriveFolderPerformance: settings.gDriveFolderPerformance,
-    gDriveFolderFunnel: settings.gDriveFolderFunnel,
-    gDriveFolderActivity: settings.gDriveFolderActivity,
-    gDriveFolderTarget: settings.gDriveFolderTarget,
-  });
+  res.json(buildSettingsResponse(settings));
 });
 
 export default router;

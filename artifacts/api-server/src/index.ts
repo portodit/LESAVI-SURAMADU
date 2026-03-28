@@ -4,6 +4,7 @@ import { ensureDefaultAdmin } from "./shared/auth";
 import { ensureDefaultSeed } from "./shared/seed";
 import { startTelegramPoller } from "./features/telegram/poller";
 import { startGSheetsScheduler } from "./features/gsheets/scheduler";
+import { startGDriveScheduler } from "./features/gdrive/scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -36,4 +37,5 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   startTelegramPoller(15000);
   startGSheetsScheduler();
+  startGDriveScheduler();
 });
