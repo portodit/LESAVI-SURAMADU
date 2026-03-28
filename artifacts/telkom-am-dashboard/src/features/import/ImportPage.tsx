@@ -15,6 +15,7 @@ import {
   ListChecks, CheckSquare2, Square, Terminal
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { RowActions } from "@/shared/ui/row-actions";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -1516,13 +1517,11 @@ export default function ImportData() {
                         <Button size="sm" variant="outline" onClick={() => setDeleteConfirmId(null)} disabled={isDeleting}>Batal</Button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => navigate(`/import/detail/${h.id}`)} className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50">
-                          <Eye className="w-3 h-3 mr-1" /> Lihat Data
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeleteConfirmId(h.id)} className="text-muted-foreground hover:text-red-600 hover:bg-red-50">
-                          <Trash2 className="w-3 h-3 mr-1" /> Hapus
-                        </Button>
+                      <div className="flex items-center justify-end">
+                        <RowActions actions={[
+                          { type: "view", onClick: () => navigate(`/import/detail/${h.id}`), label: "Lihat Data" },
+                          { type: "delete", onClick: () => setDeleteConfirmId(h.id) },
+                        ]} />
                       </div>
                     )}
                   </td>

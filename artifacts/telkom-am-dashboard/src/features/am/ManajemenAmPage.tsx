@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Badge } from "@/shared/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
@@ -461,24 +462,10 @@ function UserRow({ user, onEdit, onDelete }: { user: User; onEdit: () => void; o
 
       {/* Aksi — always visible */}
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline" size="sm"
-            onClick={onEdit}
-            className="h-7 px-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
-          >
-            <Pencil className="w-3 h-3 mr-1" />
-            Edit
-          </Button>
-          <Button
-            variant="outline" size="sm"
-            onClick={onDelete}
-            className="h-7 px-2.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-          >
-            <Trash2 className="w-3 h-3 mr-1" />
-            Hapus
-          </Button>
-        </div>
+        <RowActions actions={[
+          { type: "edit", onClick: onEdit },
+          { type: "delete", onClick: onDelete },
+        ]} />
       </td>
     </tr>
   );
