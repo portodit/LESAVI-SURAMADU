@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await loginMutation.mutateAsync({ data });
       await refetch();
-      toast({ title: "Login berhasil", description: "Selamat datang kembali." });
+      toast({ title: "Login berhasil", description: "Selamat datang kembali.", variant: "success" });
       setLocation("/dashboard");
     } catch (err: any) {
       toast({ 

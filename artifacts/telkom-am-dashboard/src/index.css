@@ -195,3 +195,9 @@
   color: hsl(var(--sidebar-foreground));
   border-color: hsl(var(--sidebar-border));
 }
+
+/* Toast progress bar animation */
+@keyframes toast-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
