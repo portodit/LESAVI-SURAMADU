@@ -66,7 +66,17 @@ echo "💬 Commit: $COMMIT_MSG"
 git commit -m "$COMMIT_MSG"
 
 echo "🚀 Push ke github.com/${GITHUB_REPO} (branch: ${BRANCH})..."
-git push origin "$BRANCH" 2>&1 | grep -v "$TOKEN" || true
+git remote set-url origin "$REMOTE_URL"
+PUSH_OUT=$(git push origin "$BRANCH" 2>&1)
+PUSH_STATUS=$?
+echo "$PUSH_OUT" | grep -v "$TOKEN"
+
+if [ $PUSH_STATUS -ne 0 ]; then
+  echo ""
+  echo "❌ Push gagal! Cek pesan error di atas."
+  rm -rf "$TMP_DIR"
+  exit 1
+fi
 
 echo ""
 echo "✅ Berhasil push ke https://github.com/${GITHUB_REPO}"
