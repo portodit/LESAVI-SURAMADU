@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { DIVISI_OPTIONS_WITH_ALL } from "@/shared/lib/divisi";
 import { useQuery } from "@tanstack/react-query";
@@ -815,26 +815,16 @@ export default function FunnelPage() {
     setExpandedAm({}); setExpandedPhase({}); setAllExpanded(false);
   }, [groupedByAm, importId]);
 
-  // Ukur tinggi toolbar detail secara dinamis agar sticky thead pas di bawahnya
-  const detailToolbarRef = useRef<HTMLDivElement>(null);
-  const [detailToolbarH, setDetailToolbarH] = useState(80);
+  // Ref untuk thead table — dipakai menghitung offset sticky AM/phase rows
+  const funnelTheadRef = useRef<HTMLTableSectionElement>(null);
+  const [funnelTheadH, setFunnelTheadH] = useState(40);
   useEffect(() => {
-    const el = detailToolbarRef.current;
+    const el = funnelTheadRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setDetailToolbarH(el.offsetHeight));
+    const ro = new ResizeObserver(() => setFunnelTheadH(el.offsetHeight));
     ro.observe(el);
-    setDetailToolbarH(el.offsetHeight);
+    setFunnelTheadH(el.offsetHeight);
     return () => ro.disconnect();
-  }, []);
-
-  // Scroll-sync refs for sticky table header (horizontal sync between header and body)
-  const funnelTableHeaderRef = useRef<HTMLDivElement>(null);
-  const funnelTableBodyRef = useRef<HTMLDivElement>(null);
-  const onFunnelHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (funnelTableBodyRef.current) funnelTableBodyRef.current.scrollLeft = e.currentTarget.scrollLeft;
-  }, []);
-  const onFunnelBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (funnelTableHeaderRef.current) funnelTableHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
   }, []);
 
   function toggleAmRow(key: string) {
@@ -895,7 +885,10 @@ export default function FunnelPage() {
       return (
         <React.Fragment key={amKey}>
           <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors"
-            style={ring ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` } : { borderTop: "2px solid transparent" }}
+            style={{
+              ...(ring ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` } : { borderTop: "2px solid transparent" }),
+              ...(amExpanded ? { position: "sticky" as const, top: funnelTheadH, zIndex: 15, boxShadow: "0 2px 8px rgba(0,0,0,0.13)" } : {})
+            }}
             onClick={() => toggleAmRow(amKey)}>
             <td className="px-4 py-3">
               <div className="flex items-center gap-2">
@@ -944,7 +937,12 @@ export default function FunnelPage() {
               <React.Fragment key={phaseKey}>
                 <tr
                   className={cn("select-none transition-all", hasLops ? "cursor-pointer hover:brightness-95" : "opacity-50 cursor-default")}
-                  style={{ background: "rgba(253,242,248,0.75)", borderLeft: `4px solid ${c?.bar || "#94a3b8"}`, ...ringStyle({}) }}
+                  style={{
+                    background: phaseExpanded ? "rgb(253,242,248)" : "rgba(253,242,248,0.75)",
+                    borderLeft: `4px solid ${c?.bar || "#94a3b8"}`,
+                    ...ringStyle({}),
+                    ...(phaseExpanded ? { position: "sticky" as const, top: funnelTheadH + 49, zIndex: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.09)" } : {})
+                  }}
                   onClick={() => hasLops && togglePhaseRow(phaseKey)}>
                   <td className="px-4 py-2.5 pl-10">
                     <div className="flex items-center gap-2">
@@ -1181,7 +1179,7 @@ export default function FunnelPage() {
       {/* Detail Table — hanya di "all" mode */}
       {viewMode !== "split" && <div className="bg-card border border-border rounded-xl shadow-sm">
         {/* Sticky toolbar — tanpa rounded agar mulus saat floating */}
-        <div ref={detailToolbarRef} className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-base font-display font-bold text-foreground flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Funnel per AM
@@ -1209,41 +1207,27 @@ export default function FunnelPage() {
             </button>
           </div>
         </div>
-        {/* Scroll-sync table: sticky red header + content-height body */}
-        <div className="p-3">
-          <div className="border border-border rounded">
-            {/* Sticky header row — synced horizontally with body, sticks below section toolbar */}
-            <div ref={funnelTableHeaderRef} onScroll={onFunnelHeaderScroll}
-              className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 rounded-t"
-              style={{top:`${detailToolbarH}px`}}>
-              <table className="border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
-                <colgroup>
-                  <col style={{width:"33%"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
-                  <col/><col style={{width:"200px"}}/>
-                </colgroup>
-                <thead>
-                  <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                    <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
-                    <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
-                    <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
-                    <th className="px-3 py-3 text-left">Pelanggan</th>
-                    <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
-                  </tr>
-                </thead>
-              </table>
-            </div>
-            {/* Scrollable body — expands to full content height */}
-            <div ref={funnelTableBodyRef} onScroll={onFunnelBodyScroll} className="overflow-x-auto">
-              <table className="text-left text-sm border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
-                <colgroup>
-                  <col style={{width:"33%"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
-                  <col/><col style={{width:"200px"}}/>
-                </colgroup>
-                <tbody className="divide-y divide-border/50">
-                  {renderAmTbodyContent(groupedByAm, search || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel")}
-                </tbody>
-              </table>
-            </div>
+        {/* Unified scroll-container table: thead sticky at top-0, expanded AM/phase rows also sticky */}
+        <div className="px-3 pb-3">
+          <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
+            <table className="text-left text-sm border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
+              <colgroup>
+                <col style={{width:"33%"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
+                <col/><col style={{width:"200px"}}/>
+              </colgroup>
+              <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
+                <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
+                  <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
+                  <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
+                  <th className="px-3 py-3 text-left">Pelanggan</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {renderAmTbodyContent(groupedByAm, search || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel")}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>}
