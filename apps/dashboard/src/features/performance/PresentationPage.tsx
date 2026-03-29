@@ -1113,45 +1113,47 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {navbarPortalEl && createPortal(navbarFilterBar, navbarPortalEl)}
       {mobilePortalEl && createPortal(navbarFilterBar, mobilePortalEl)}
 
-      {/* ── Active filter chips — always visible since Periode chip is always present ── */}
-      {hasActiveFilter && (
-        <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
-          {/* Periode chip — always shows */}
-          <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
-            Periode: {filterMonths.size === 0
-              ? `${filterYear} (semua bulan)`
-              : filterMonths.size === 1
-                ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
-                : `${filterMonths.size} bulan`}
-            {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+      {/* ── Active filter chips — always visible ── */}
+      <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+        {/* Periode — always shows */}
+        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+          Periode: {filterMonths.size === 0
+            ? `${filterYear} (semua bulan)`
+            : filterMonths.size === 1
+              ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
+              : `${filterMonths.size} bulan`}
+          {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+        </span>
+        {/* Target mode — always shows */}
+        <span className="inline-flex items-center gap-1 bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
+          Target: {filterMode === "ho" ? "HO" : "Full HO"}
+        </span>
+        {filterKontrak.size > 0 && (
+          <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+            Kontrak: {filterKontrak.size === 1 ? [...filterKontrak][0] : `${filterKontrak.size} terpilih`}
+            <button onClick={() => setFilterKontrak(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
-          {filterKontrak.size > 0 && (
-            <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
-              Kontrak: {filterKontrak.size === 1 ? [...filterKontrak][0] : `${filterKontrak.size} terpilih`}
-              <button onClick={() => setFilterKontrak(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
-          {filterStatus.size > 0 && (
-            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-              Status: {filterStatus.size === 1 ? [...filterStatus][0] : `${filterStatus.size} status`}
-              <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
-          {filterAm.size > 0 && (
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-              AM: {filterAm.size === 1 ? [...filterAm][0] : `${filterAm.size} AM`}
-              <button onClick={() => setFilterAm(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
-          {(filterStatus.size > 0 || filterKontrak.size > 0 || filterMonths.size > 0 || filterAm.size > 0) && (
-            <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterMonths(new Set()); setFilterAm(new Set()); }}
-              className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
-              <X className="w-3 h-3"/> Reset filter
-            </button>
-          )}
-        </div>
-      )}
+        )}
+        {filterStatus.size > 0 && (
+          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+            Status: {filterStatus.size === 1 ? [...filterStatus][0] : `${filterStatus.size} status`}
+            <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+          </span>
+        )}
+        {filterAm.size > 0 && (
+          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+            AM: {filterAm.size === 1 ? [...filterAm][0] : `${filterAm.size} AM`}
+            <button onClick={() => setFilterAm(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+          </span>
+        )}
+        {(filterStatus.size > 0 || filterKontrak.size > 0 || filterMonths.size > 0 || filterAm.size > 0) && (
+          <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterMonths(new Set()); setFilterAm(new Set()); }}
+            className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+            <X className="w-3 h-3"/> Reset filter
+          </button>
+        )}
+      </div>
 
       {/* ── All mode: overview cards ───────────────────────────────────────── */}
       {viewMode!=="split"&&(isLoading?(
@@ -1688,36 +1690,38 @@ function ActivitySlide() {
       {navbarPortalEl && createPortal(filterBar, navbarPortalEl)}
       {mobilePortalEl && createPortal(filterBar, mobilePortalEl)}
 
-      {/* ── Active filter chips ─────────────────────────────────────────── */}
-      {actHasActiveFilter && (
-        <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
-          {isActPeriodFiltered && (
-            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
-              Periode: {filterMonths.size === 1
-                ? `${ACT_MONTHS_FULL[parseInt([...filterMonths][0])]} ${filterYear}`
-                : `${filterMonths.size} bulan`}
-              <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
-          {isActDivisiFiltered && (
-            <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
-              Divisi: {filterDivisi}
-              <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
-          {isActKategoriFiltered && (
-            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-              Kategori: {filterKategori.size === 1 ? [...filterKategori][0] : `${filterKategori.size} kategori`}
-              <button onClick={() => { kategoriInitialized.current = false; setFilterKategori(new Set()); }} className="hover:opacity-70"><X className="w-3 h-3"/></button>
-            </span>
-          )}
+      {/* ── Active filter chips — always visible ── */}
+      <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+        {/* Periode — always shows */}
+        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+          isActPeriodFiltered ? "bg-primary/10 text-primary border-primary/20" : "bg-secondary text-muted-foreground border-border")}>
+          Periode: {filterMonths.size === 0
+            ? `${filterYear} (semua bulan)`
+            : filterMonths.size === 1
+              ? `${ACT_MONTHS_FULL[parseInt([...filterMonths][0])]} ${filterYear}`
+              : `${filterMonths.size} bulan`}
+          {isActPeriodFiltered && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+        </span>
+        {/* Divisi — always shows */}
+        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+          isActDivisiFiltered ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" : "bg-secondary text-muted-foreground border-border")}>
+          Divisi: {filterDivisi === "all" ? "Semua" : filterDivisi}
+          {isActDivisiFiltered && <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+        </span>
+        {/* Kategori — always shows */}
+        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+          isActKategoriFiltered ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800" : "bg-secondary text-muted-foreground border-border")}>
+          Kategori: {filterKategori.size === 0 ? "Semua" : filterKategori.size === allLabels.length ? `Semua (${allLabels.length})` : filterKategori.size === 1 ? [...filterKategori][0] : `${filterKategori.size} kategori`}
+          {isActKategoriFiltered && <button onClick={() => { kategoriInitialized.current = false; setFilterKategori(new Set()); }} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+        </span>
+        {actHasActiveFilter && (
           <button onClick={resetActFilters}
             className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
             <X className="w-3 h-3"/> Reset filter
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Memuat data aktivitas...</div>

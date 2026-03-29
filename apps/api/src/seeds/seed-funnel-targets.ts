@@ -1,4 +1,5 @@
 import { db, salesFunnelTargetTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 
 const FUNNEL_TARGETS = [
   { divisi: "DPS", tahun: 2026, targetFullHo: 97076000000, targetHo: 70257000000 },
@@ -16,6 +17,12 @@ export async function seedFunnelTargets(opts: { truncate?: boolean } = {}) {
     const existing = await db
       .select({ id: salesFunnelTargetTable.id })
       .from(salesFunnelTargetTable)
+      .where(
+        and(
+          eq(salesFunnelTargetTable.divisi, t.divisi),
+          eq(salesFunnelTargetTable.tahun, t.tahun)
+        )
+      )
       .limit(1);
 
     if (existing.length === 0 || opts.truncate) {

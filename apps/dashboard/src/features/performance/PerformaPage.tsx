@@ -690,46 +690,46 @@ export default function PerformaVis() {
 
         </div>
 
-        {/* Active filter chips */}
-        {hasPerformaActiveFilter && (
-          <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
+        {/* Active filter chips — always visible */}
+        <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
-            {isPeriodeFiltered && (
-              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
-                Periode: {filterPeriodes.size === 1 ? periodeLabel([...filterPeriodes][0]) : `${filterPeriodes.size} periode`}
-                <button onClick={() => setFilterPeriodes(new Set(availablePeriodes))} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-              </span>
-            )}
-            {isDivisiFiltered && (
-              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
-                Divisi: {filterDivisi}
-                <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-              </span>
-            )}
-            {isAmFiltered && (
-              <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
-                AM: {filterNamaAms.size === 1 ? [...filterNamaAms][0] : `${filterNamaAms.size} AM`}
-                <button onClick={() => setFilterNamaAms(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-              </span>
-            )}
-            {isRankFiltered && (
-              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                Rank: {filterTipeRank}
-                <button onClick={() => setFilterTipeRank("Ach CM")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-              </span>
-            )}
-            {isRevenueFiltered && (
-              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                Revenue: {filterTipeRevenue}
-                <button onClick={() => setFilterTipeRevenue("Reguler")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-              </span>
-            )}
-            <button onClick={resetPerformaFilters}
+            {/* Periode */}
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+              isPeriodeFiltered ? "bg-primary/10 text-primary border-primary/20" : "bg-secondary text-muted-foreground border-border")}>
+              Periode: {filterPeriodes.size === 0 || filterPeriodes.size === availablePeriodes.length
+                ? `Semua (${availablePeriodes.length})`
+                : filterPeriodes.size === 1 ? periodeLabel([...filterPeriodes][0]) : `${filterPeriodes.size} dari ${availablePeriodes.length}`}
+              {isPeriodeFiltered && <button onClick={() => setFilterPeriodes(new Set(availablePeriodes))} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {/* Divisi */}
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+              isDivisiFiltered ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" : "bg-secondary text-muted-foreground border-border")}>
+              Divisi: {filterDivisi === "all" ? "Semua" : filterDivisi}
+              {isDivisiFiltered && <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {/* AM */}
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+              isAmFiltered ? "bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 border-violet-200 dark:border-violet-800" : "bg-secondary text-muted-foreground border-border")}>
+              AM: {filterNamaAms.size === 0 ? "Semua" : filterNamaAms.size === 1 ? [...filterNamaAms][0] : `${filterNamaAms.size} AM`}
+              {isAmFiltered && <button onClick={() => setFilterNamaAms(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {/* Rank */}
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+              isRankFiltered ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800" : "bg-secondary text-muted-foreground border-border")}>
+              Rank: {filterTipeRank}
+              {isRankFiltered && <button onClick={() => setFilterTipeRank("Ach CM")} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {/* Revenue */}
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+              isRevenueFiltered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" : "bg-secondary text-muted-foreground border-border")}>
+              Revenue: {filterTipeRevenue}
+              {isRevenueFiltered && <button onClick={() => setFilterTipeRevenue("Reguler")} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {hasPerformaActiveFilter && <button onClick={resetPerformaFilters}
               className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
               <X className="w-3 h-3" /> Reset filter
-            </button>
+            </button>}
           </div>
-        )}
       </div>
 
       {noDataAtAll ? (
