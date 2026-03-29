@@ -8,7 +8,7 @@ import {
   ToastTitle,
   ToastViewport,
   TOAST_ICONS,
-  TOAST_ICON_COLORS,
+  TOAST_ICON_BG,
   TOAST_PROGRESS_COLORS,
 } from "@/shared/ui/toast"
 
@@ -17,9 +17,9 @@ const DEFAULT_DURATION = 3000
 function ProgressBar({ duration, variant }: { duration: number; variant: string }) {
   const barColor = TOAST_PROGRESS_COLORS[variant] ?? TOAST_PROGRESS_COLORS.default
   return (
-    <div className="h-0.5 w-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+    <div className="h-1 w-full bg-black/5 dark:bg-white/5 overflow-hidden">
       <div
-        className={`h-full ${barColor} origin-left`}
+        className={`h-full ${barColor} origin-left opacity-60`}
         style={{
           animation: `toast-shrink ${duration}ms linear forwards`,
         }}
@@ -50,7 +50,7 @@ function ToastItem({
   const v = variant ?? "default"
   const isError = v === "error" || v === "destructive"
   const Icon = TOAST_ICONS[v] ?? TOAST_ICONS.default
-  const iconColor = TOAST_ICON_COLORS[v] ?? TOAST_ICON_COLORS.default
+  const iconBg = TOAST_ICON_BG[v] ?? TOAST_ICON_BG.default
 
   const lastClickRef = React.useRef<number>(0)
   const [copied, setCopied] = React.useState(false)
@@ -79,27 +79,29 @@ function ToastItem({
       className={isError ? "cursor-pointer select-none" : ""}
       {...props}
     >
-      <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
-        <div className="mt-0.5 shrink-0">
-          <Icon className={`h-[18px] w-[18px] ${iconColor}`} strokeWidth={2.2} />
+      <div className="flex items-center gap-4 px-4 py-4">
+        <div
+          className={`shrink-0 flex items-center justify-center rounded-xl w-11 h-11 ${iconBg} shadow-sm`}
+        >
+          <Icon className="h-5 w-5 text-white" strokeWidth={2.5} />
         </div>
 
         <div className="flex-1 min-w-0">
           {title && <ToastTitle>{title}</ToastTitle>}
           {description && <ToastDescription>{description}</ToastDescription>}
           {isError && !copied && (
-            <p className="text-[10px] text-zinc-400 mt-1.5 select-none">
+            <p className="text-xs text-zinc-400 mt-1 select-none">
               Klik 2× untuk menyalin detail error
             </p>
           )}
           {copied && (
-            <p className="text-[10px] text-emerald-500 mt-1.5 font-medium">
+            <p className="text-xs text-emerald-600 mt-1 font-medium">
               ✓ Detail error disalin ke clipboard
             </p>
           )}
         </div>
 
-        <div className="shrink-0 -mt-0.5 -mr-1">
+        <div className="shrink-0 self-start mt-0.5">
           <ToastClose />
         </div>
       </div>

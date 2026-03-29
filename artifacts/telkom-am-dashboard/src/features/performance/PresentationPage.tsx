@@ -588,8 +588,8 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact }: { pct:num
     </div>
   );
   return (
-    <div className="flex items-center gap-4">
-      <div className="shrink-0">
+    <div className="flex flex-col sm:flex-row items-center gap-4">
+      <div className="shrink-0 mx-auto">
         <svg width="180" height="130" viewBox="0 0 160 115">
           <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
           {hasTarget&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
@@ -608,7 +608,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact }: { pct:num
           <text x={endX} y={endY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
         </svg>
       </div>
-      <div className="flex-1 space-y-2 text-sm">
+      <div className="flex-1 space-y-2 text-sm w-full">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground text-xs">Real Pipeline</span>
           <span className="font-bold text-foreground tabular-nums">{fmtRupiahFS(real)}</span>
@@ -769,34 +769,61 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     staleTime:30_000,
   });
 
+  // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
+  const periodFilteredLops = useMemo(()=>{
+    if(!data) return [];
+    return (data.lops||[]).filter((l:any)=>{
+      if(!l.reportDate) return false;
+      const rd=String(l.reportDate).slice(0,10);
+      const yr=rd.slice(0,4);
+      if(yr!==filterYear) return false;
+      if(filterMonths.size>0&&!filterMonths.has(rd.slice(5,7))) return false;
+      return true;
+    });
+  },[data,filterYear,filterMonths]);
+
+  const periodStats = useMemo(()=>{
+    const lops=periodFilteredLops;
+    const byStatusMap: Record<string,{status:string;count:number;totalNilai:number}>={};
+    for(const l of lops){
+      const s=l.statusF||"Unknown";
+      if(!byStatusMap[s]) byStatusMap[s]={status:s,count:0,totalNilai:0};
+      byStatusMap[s].count++;
+      byStatusMap[s].totalNilai+=(l.nilaiProyek||0);
+    }
+    return {
+      totalLop:lops.length,
+      totalNilai:lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
+      pelangganCount:new Set(lops.map((l:any)=>l.pelanggan).filter(Boolean)).size,
+      realFullHo:lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
+      byStatus:Object.values(byStatusMap),
+    };
+  },[periodFilteredLops]);
+
   const amOptions = useMemo(()=>{
-    if(!data) return [];
     const map=new Map<string,string>();
-    for(const l of (data.lops||[])){if(l.nikAm&&l.namaAm&&l.namaAm.trim()!=="")map.set(l.nikAm,l.namaAm);}
+    for(const l of periodFilteredLops){if(l.nikAm&&l.namaAm&&l.namaAm.trim()!=="")map.set(l.nikAm,l.namaAm);}
     return Array.from(map.keys()).sort((a,b)=>(map.get(a)||"").localeCompare(map.get(b)||""));
-  },[data]);
+  },[periodFilteredLops]);
   const amLabelFn = useMemo(()=>{
-    if(!data) return (v:string)=>v;
     const map=new Map<string,string>();
-    for(const l of (data.lops||[])){if(l.nikAm&&l.namaAm)map.set(l.nikAm,l.namaAm);}
+    for(const l of periodFilteredLops){if(l.nikAm&&l.namaAm)map.set(l.nikAm,l.namaAm);}
     return (nik:string)=>map.get(nik)||nik;
-  },[data]);
+  },[periodFilteredLops]);
   const kontrakOptions = useMemo(()=>{
-    if(!data) return [];
-    return [...new Set((data.lops||[]).map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[])].sort();
-  },[data]);
+    return [...new Set(periodFilteredLops.map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[])].sort();
+  },[periodFilteredLops]);
 
   const filteredLops = useMemo(()=>{
-    if(!data) return [];
     const q=search.toLowerCase();
-    return (data.lops||[]).filter((l:any)=>{
+    return periodFilteredLops.filter((l:any)=>{
       if(filterAm.size>0&&(!l.nikAm||!filterAm.has(l.nikAm))) return false;
       if(filterStatus.size>0&&(!l.statusF||!filterStatus.has(l.statusF))) return false;
       if(filterKontrak.size>0&&(!l.kategoriKontrak||!filterKontrak.has(l.kategoriKontrak))) return false;
       if(q){const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm}`.toLowerCase();if(!hay.includes(q))return false;}
       return true;
     });
-  },[data,filterAm,filterStatus,filterKontrak,search]);
+  },[periodFilteredLops,filterAm,filterStatus,filterKontrak,search]);
 
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
@@ -894,6 +921,16 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return () => ro.disconnect();
   },[]);
 
+  // Scroll-sync refs for sticky table header (all-mode funnel table)
+  const fsFunnelHeaderRef = useRef<HTMLDivElement>(null);
+  const fsFunnelBodyRef = useRef<HTMLDivElement>(null);
+  const onFsFunnelHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (fsFunnelBodyRef.current) fsFunnelBodyRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onFsFunnelBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (fsFunnelHeaderRef.current) fsFunnelHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+
   function handleToggleAll(){
     const next=!allExpanded;
     setAllExpanded(next);
@@ -930,8 +967,20 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const effectiveTargetHo=targetHoOverride?parseFloat(targetHoOverride)*1e9:(data?.targetHo||0);
   const effectiveTargetFullHo=targetFullHoOverride?parseFloat(targetFullHoOverride)*1e9:(data?.targetFullHo||0);
   const activeTarget=filterMode==="ho"?effectiveTargetHo:effectiveTargetFullHo;
-  const pct=activeTarget?((data?.realFullHo||0)/activeTarget)*100:0;
-  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0;
+  const pct=activeTarget?(periodStats.realFullHo/activeTarget)*100:0;
+
+  // ── Per-divisi targets for DPS | DSS split gauges ─────────────────────────
+  const tbd=(data as any)?.targetByDivisi??{};
+  const dpsTgtHo=tbd["DPS"]?.targetHo||0;
+  const dpsTgtFullHo=tbd["DPS"]?.targetFullHo||0;
+  const dssTgtHo=tbd["DSS"]?.targetHo||0;
+  const dssTgtFullHo=tbd["DSS"]?.targetFullHo||0;
+  const dpsTgt=filterMode==="ho"?dpsTgtHo:dpsTgtFullHo;
+  const dssTgt=filterMode==="ho"?dssTgtHo:dssTgtFullHo;
+  const dpsPct=dpsTgt?(dpsStats.totalNilai/dpsTgt)*100:0;
+  const dssPct=dssTgt?(dssStats.totalNilai/dssTgt)*100:0;
+
+  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterMonths.size>0||filterYear!=="";
   const lopBadge=filteredLops.length!==(data?.totalLop||0)?`${filteredLops.length} / ${data?.totalLop||0}`:filteredLops.length.toLocaleString("id-ID");
 
 
@@ -1056,15 +1105,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       )}
       <FSCheckboxDropdown label="Status Funnel" options={FS_PHASES} selected={filterStatus} onChange={setFilterStatus}
         placeholder="Semua status" labelFn={p=>`${p} – ${FS_PHASE_LABELS[p]}`} summaryLabel="status" className="w-36 shrink-0"/>
-      {hasActiveFilter&&(
-        <div className="flex flex-col gap-1 shrink-0">
-          <label className="text-xs font-bold text-transparent uppercase">.</label>
-          <button onClick={()=>{setFilterStatus(new Set());setFilterKontrak(new Set());}}
-            className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
-            <X className="w-3.5 h-3.5"/> Reset
-          </button>
-        </div>
-      )}
     </div>
   );
 
@@ -1073,9 +1113,50 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {navbarPortalEl && createPortal(navbarFilterBar, navbarPortalEl)}
       {mobilePortalEl && createPortal(navbarFilterBar, mobilePortalEl)}
 
+      {/* ── Active filter chips — always visible since Periode chip is always present ── */}
+      {hasActiveFilter && (
+        <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+          {/* Periode chip — always shows */}
+          <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+            Periode: {filterMonths.size === 0
+              ? `${filterYear} (semua bulan)`
+              : filterMonths.size === 1
+                ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
+                : `${filterMonths.size} bulan`}
+            {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+          </span>
+          {filterKontrak.size > 0 && (
+            <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+              Kontrak: {filterKontrak.size === 1 ? [...filterKontrak][0] : `${filterKontrak.size} terpilih`}
+              <button onClick={() => setFilterKontrak(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          {filterStatus.size > 0 && (
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+              Status: {filterStatus.size === 1 ? [...filterStatus][0] : `${filterStatus.size} status`}
+              <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          {filterAm.size > 0 && (
+            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+              AM: {filterAm.size === 1 ? [...filterAm][0] : `${filterAm.size} AM`}
+              <button onClick={() => setFilterAm(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          {(filterStatus.size > 0 || filterKontrak.size > 0 || filterMonths.size > 0 || filterAm.size > 0) && (
+            <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterMonths(new Set()); setFilterAm(new Set()); }}
+              className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+              <X className="w-3 h-3"/> Reset filter
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── All mode: overview cards ───────────────────────────────────────── */}
       {viewMode!=="split"&&(isLoading?(
         <div className="space-y-4">
+          <div className="bg-card border border-border rounded-xl h-44 animate-pulse"/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[0,1].map(i=><div key={i} className="bg-card border border-border rounded-xl h-52 animate-pulse"/>)}
           </div>
@@ -1083,19 +1164,36 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
       ):(
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          {/* LOP per Fase + DPS/DSS gauges — one row on desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr_2fr] gap-4">
+            {/* LOP per Fase */}
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
               <h3 className="text-sm font-display font-semibold text-foreground mb-3">LOP per Fase</h3>
-              <FSFaseBarChart data={data}/>
+              <FSFaseBarChart data={data?{...data,byStatus:periodStats.byStatus}:undefined}/>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-              <h3 className="text-sm font-display font-semibold text-foreground mb-2">Capaian Real vs Target {filterMode==="ho"?"HO":"Full HO"}</h3>
-              <FSGauge pct={pct} targetHo={effectiveTargetHo} targetFullHo={effectiveTargetFullHo} real={data?.realFullHo||0} mode={filterMode}/>
-            </div>
+            {/* DPS | DSS gauges */}
+            {(["DPS","DSS"] as const).map(div=>{
+              const tgtHo  =div==="DPS"?dpsTgtHo:dssTgtHo;
+              const tgtFull=div==="DPS"?dpsTgtFullHo:dssTgtFullHo;
+              const real   =div==="DPS"?dpsStats.totalNilai:dssStats.totalNilai;
+              const divPct =div==="DPS"?dpsPct:dssPct;
+              return (
+                <div key={div} className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
+                  <h3 className="text-sm font-display font-semibold text-foreground mb-2 flex items-center gap-2">
+                    Capaian Real vs Target
+                    <span className={cn("text-[11px] font-black px-2 py-0.5 rounded",
+                      div==="DPS"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"
+                    )}>{div}</span>
+                  </h3>
+                  <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode}/>
+                </div>
+              );
+            })}
           </div>
+          {/* KPI Ringkasan using period stats */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-display font-semibold text-foreground mb-3">Ringkasan</h3>
-            <FSKpiGrid data={data}/>
+            <FSKpiGrid data={data?{...data,totalLop:periodStats.totalLop,totalNilai:periodStats.totalNilai,pelangganCount:periodStats.pelangganCount}:undefined}/>
           </div>
         </div>
       ))}
@@ -1122,26 +1220,42 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             </button>
           </div>
         </div>
-        {/* Tabel punya scroll container sendiri — sticky thead top-0 bekerja di dalam sini */}
+        {/* Scroll-sync table: sticky red header + content-height body */}
         <div className="p-3">
-        <div className="border border-border overflow-hidden">
-        <div className="overflow-auto" style={{maxHeight:`clamp(280px, calc(100svh - ${fsDetailToolbarH + 200}px), 800px)`}}>
-          <table className="w-full text-left text-sm border-collapse" style={{minWidth:"820px"}}>
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 min-w-[320px]">AM / Fase / Proyek</th>
-                <th className="px-3 py-3 whitespace-nowrap w-28">KATEGORI</th>
-                <th className="px-3 py-3 font-mono whitespace-nowrap w-28">LOP ID</th>
-                <th className="px-3 py-3 min-w-[220px]">Pelanggan</th>
-                <th className="px-4 py-3 text-right whitespace-nowrap min-w-[200px]">Nilai Proyek</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {renderAmTbodyContentFS(groupedByAm, search||hasActiveFilter?"Tidak ada data yang cocok dengan filter":"Belum ada data funnel")}
-            </tbody>
-          </table>
-        </div>
-        </div>
+          <div className="border border-border rounded">
+            {/* Sticky header row — synced horizontally with body */}
+            <div ref={fsFunnelHeaderRef} onScroll={onFsFunnelHeaderScroll}
+              className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 rounded-t"
+              style={{top:`${fsDetailToolbarH}px`}}>
+              <table className="border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
+                <colgroup>
+                  <col style={{width:"33%"}}/><col style={{width:"116px"}}/><col style={{width:"116px"}}/>
+                  <col/><col style={{width:"200px"}}/>
+                </colgroup>
+                <thead>
+                  <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
+                    <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
+                    <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
+                    <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
+                    <th className="px-3 py-3 text-left">Pelanggan</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            {/* Scrollable body — expands to full content height */}
+            <div ref={fsFunnelBodyRef} onScroll={onFsFunnelBodyScroll} className="overflow-x-auto">
+              <table className="text-left text-sm border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
+                <colgroup>
+                  <col style={{width:"33%"}}/><col style={{width:"116px"}}/><col style={{width:"116px"}}/>
+                  <col/><col style={{width:"200px"}}/>
+                </colgroup>
+                <tbody className="divide-y divide-border/50">
+                  {renderAmTbodyContentFS(groupedByAm, search?"Tidak ada data yang cocok dengan filter":"Belum ada data funnel")}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>}
 
@@ -1149,7 +1263,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {viewMode==="split"&&(
         <div className="flex flex-col gap-4">
         {/* Row 1: Stats + Chart + Gauge (terpisah dari tabel) */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(["DPS","DSS"] as const).map(div=>{
             const st=div==="DPS"?dpsStats:dssStats;
             const isDps=div==="DPS";
@@ -1210,7 +1324,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
 
         {/* Row 2: Tabel AM (card terpisah) */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(["DPS","DSS"] as const).map(div=>{
             const st=div==="DPS"?dpsStats:dssStats;
             const grp=div==="DPS"?dpsGrouped:dssGrouped;
@@ -1235,26 +1349,24 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </button>
                   </div>
                 </div>
-                {/* AM Tree Table — p-3 + inner border, overflow-x luar */}
+                {/* AM Tree Table — horizontal scroll, full content height */}
                 <div className="p-3">
-                <div className="border border-border overflow-hidden">
+                <div className="border border-border rounded">
                 <div className="overflow-x-auto">
-                  <div className="overflow-y-auto" style={{maxHeight:"clamp(200px,45vh,560px)"}}>
-                    <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
-                      <thead className="sticky top-0 z-10">
-                        <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                          <th className="px-4 py-2.5 min-w-[280px]">AM / Fase / Proyek</th>
-                          <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
-                          <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
-                          <th className="px-3 py-2.5 min-w-[120px]">Pelanggan</th>
-                          <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[130px]">Nilai Proyek</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/50">
-                        {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`)}
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
+                    <thead>
+                      <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                        <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
+                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
+                        <th className="px-3 py-2.5 min-w-[120px] text-left">Pelanggan</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[130px]">Nilai Proyek</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`)}
+                    </tbody>
+                  </table>
                 </div>
                 </div>
                 </div>
@@ -1410,7 +1522,7 @@ function ActivitySlide() {
   const now = new Date();
   const [filterYear,  setFilterYear]  = useState(String(now.getFullYear()));
   const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth()+1)]));
-  const [filterDivisi, setFilterDivisi] = useState("LESA");
+  const [filterDivisi, setFilterDivisi] = useState("all");
   const [filterSnapId, setFilterSnapId] = useState<string>("all");
   const [filterKategori, setFilterKategori] = useState<Set<string>>(new Set());
   const snapInitialized = useRef(false);
@@ -1418,6 +1530,16 @@ function ActivitySlide() {
   const [expandedAm, setExpandedAm] = useState<Record<string,boolean>>({});
   const [actSearch, setActSearch] = useState("");
   const [actExpandAll, setActExpandAll] = useState<boolean|null>(null);
+
+  // Sync horizontal scroll between sticky header and scrollable body
+  const actHeaderScrollRef = useRef<HTMLDivElement>(null);
+  const actBodyScrollRef = useRef<HTMLDivElement>(null);
+  const onActBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (actHeaderScrollRef.current) actHeaderScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onActHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (actBodyScrollRef.current) actBodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
   const [mobilePortalEl, setMobilePortalEl] = useState<HTMLElement | null>(null);
@@ -1481,6 +1603,14 @@ function ActivitySlide() {
     staleTime:60_000,
   });
 
+  const {data:actSettingsData} = useQuery<any>({
+    queryKey:["settings-kpi-slide"],
+    queryFn:async()=>{const r=await fetch(`${BASE_PATH}/api/public/settings`).catch(()=>null);if(!r||!r.ok)return null;return r.json();},
+    staleTime:300_000,
+  });
+  const actSettingsKpi:number = actSettingsData?.kpiActivityDefault ?? 30;
+  const actEffectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
+
   const amList = useMemo(()=>{
     if(!data) return [];
     const byAmMap=Object.fromEntries((data.byAm||[]).map((a:any)=>[a.fullname,a]));
@@ -1489,11 +1619,14 @@ function ActivitySlide() {
       .filter((m:any)=>!actSearch||m.nama.toLowerCase().includes(actSearch.toLowerCase()))
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
-        const base=ex||{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:20,activities:[]};
+        const baseKpiTarget=(ex?.kpiTarget??actSettingsKpi)*actEffectiveMonths;
+        const base=ex
+          ?{...ex,kpiTarget:baseKpiTarget}
+          :{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:baseKpiTarget,activities:[]};
         const visibleActs=filterKategori.size===0?base.activities:base.activities.filter((a:any)=>filterKategori.has(a.label));
         return {...base,visibleActivities:visibleActs};
       });
-  },[data,filterDivisi,actSearch,filterKategori]);
+  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi,actEffectiveMonths]);
 
   const stats = useMemo(()=>{
     const totalKpi=amList.reduce((s:number,a:any)=>s+a.kpiCount,0);
@@ -1522,6 +1655,20 @@ function ActivitySlide() {
   },[data?.distinctLabels]);
 
   // ─── Filter bar ─────────────────────────────────────────────────────────
+  const isActPeriodFiltered = filterMonths.size > 0;
+  const isActDivisiFiltered = filterDivisi !== "all";
+  const isActKategoriFiltered = filterKategori.size > 0 && filterKategori.size < allLabels.length;
+  const actHasActiveFilter = isActPeriodFiltered || isActDivisiFiltered || isActKategoriFiltered;
+
+  const resetActFilters = () => {
+    const now2 = new Date();
+    setFilterMonths(new Set([String(now2.getMonth() + 1)]));
+    setFilterYear(String(now2.getFullYear()));
+    setFilterDivisi("all");
+    const kpiLabels2 = allLabels.filter((l: string) => !l.toLowerCase().includes("tanpa"));
+    setFilterKategori(new Set(kpiLabels2));
+  };
+
   const filterBar = (
     <>
       <FSSelectDropdown label="Snapshot" value={filterSnapId} onChange={setFilterSnapId}
@@ -1540,6 +1687,37 @@ function ActivitySlide() {
     <div className="p-4 space-y-4">
       {navbarPortalEl && createPortal(filterBar, navbarPortalEl)}
       {mobilePortalEl && createPortal(filterBar, mobilePortalEl)}
+
+      {/* ── Active filter chips ─────────────────────────────────────────── */}
+      {actHasActiveFilter && (
+        <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+          {isActPeriodFiltered && (
+            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+              Periode: {filterMonths.size === 1
+                ? `${ACT_MONTHS_FULL[parseInt([...filterMonths][0])]} ${filterYear}`
+                : `${filterMonths.size} bulan`}
+              <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          {isActDivisiFiltered && (
+            <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+              Divisi: {filterDivisi}
+              <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          {isActKategoriFiltered && (
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+              Kategori: {filterKategori.size === 1 ? [...filterKategori][0] : `${filterKategori.size} kategori`}
+              <button onClick={() => { kategoriInitialized.current = false; setFilterKategori(new Set()); }} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+            </span>
+          )}
+          <button onClick={resetActFilters}
+            className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+            <X className="w-3 h-3"/> Reset filter
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Memuat data aktivitas...</div>
@@ -1568,7 +1746,7 @@ function ActivitySlide() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-foreground uppercase tracking-wide mb-1">AM Capai KPI</div>
                 <div className="text-3xl font-black tabular-nums leading-tight text-foreground">{stats.reach}</div>
-                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??20} aktivitas</strong> / bulan</div>
+                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??(actSettingsKpi*actEffectiveMonths)} aktivitas</strong> / {actEffectiveMonths===1?"bulan":`${actEffectiveMonths} bulan`}</div>
               </div>
             </div>
             {/* Card 3: AM Di Bawah KPI */}
@@ -1593,37 +1771,50 @@ function ActivitySlide() {
           {/* ─── Table ─── */}
           <div className="mx-2">
           <div className="bg-card border border-border rounded-xl shadow-sm">
-            {/* Toolbar */}
-            <div className="px-4 py-3 border-b border-border bg-secondary/20 flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-sm font-bold text-foreground">Monitoring KPI Aktivitas</span>
-                <span className="bg-secondary border border-border text-foreground text-xs font-bold px-2 py-0.5 rounded-full shrink-0">{amList.length} AM</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[140px]">
-                  <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
-                  <input type="text" placeholder="Cari nama AM…" value={actSearch} onChange={e=>setActSearch(e.target.value)}
-                    className="border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"/>
+
+            {/* ── Sticky: Toolbar + Table Header ── */}
+            <div className="sticky top-0 z-10 rounded-t-xl overflow-hidden bg-card border-b border-border">
+              {/* Toolbar */}
+              <div className="px-4 py-3 border-b border-border bg-secondary/20 flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-sm font-bold text-foreground">Monitoring KPI Aktivitas</span>
+                  <span className="bg-secondary border border-border text-foreground text-xs font-bold px-2 py-0.5 rounded-full shrink-0">{amList.length} AM</span>
                 </div>
-                <button onClick={()=>setActExpandAll(prev=>prev===true?false:true)}
-                  className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5">
-                  {actExpandAll===true
-                    ?<><Minimize2 className="w-3 h-3"/> Collapse Semua</>
-                    :<><Expand className="w-3 h-3"/> Expand Semua</>
-                  }
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[140px]">
+                    <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
+                    <input type="text" placeholder="Cari nama AM…" value={actSearch} onChange={e=>setActSearch(e.target.value)}
+                      className="border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"/>
+                  </div>
+                  <button onClick={()=>setActExpandAll(prev=>prev===true?false:true)}
+                    className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5">
+                    {actExpandAll===true
+                      ?<><Minimize2 className="w-3 h-3"/> Collapse Semua</>
+                      :<><Expand className="w-3 h-3"/> Expand Semua</>
+                    }
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-3">
-            <div className="border border-border overflow-hidden">
-            <div className="overflow-x-auto">
+              {/* Table header row — syncs horizontally with body */}
+              <div
+                ref={actHeaderScrollRef}
+                onScroll={onActHeaderScroll}
+                className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
+                <div style={{minWidth:"780px"}}>
+                  <div className="grid text-xs font-black uppercase tracking-wide text-white"
+                    style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
+                    <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
+                    <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
+                  </div>
+                </div>
+              </div>
+            </div>{/* end sticky */}
+
+            {/* ── Scrollable body ── */}
+            <div className="overflow-x-auto" ref={actBodyScrollRef} onScroll={onActBodyScroll}>
             <div style={{minWidth:"780px"}}>
-            {/* Header */}
-            <div className="grid text-xs font-black uppercase tracking-wide text-white"
-              style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
-              <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
-              <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
-            </div>
+            {/* (header is now in sticky section above) */}
 
             {amList.length===0?(
               <div className="text-center py-12 text-sm text-muted-foreground">Tidak ada data untuk filter yang dipilih.</div>
@@ -1754,11 +1945,9 @@ function ActivitySlide() {
                 </div>
               );
             })}
-            </div>{/* end minWidth wrapper */}
-            </div>{/* end overflow-x-auto */}
-            </div>{/* end inner border */}
-            </div>{/* end p-3 */}
-          </div>
+            </div>{/* end body minWidth wrapper */}
+            </div>{/* end body overflow-x-auto */}
+          </div>{/* end .bg-card */}
           </div>{/* end mx-2 */}
         </>
       )}
@@ -1772,7 +1961,7 @@ export default function EmbedPerforma() {
   const [snapshotId, setSnapshotId] = useState<number | null>(null);
   const [allPerfs, setAllPerfs] = useState<any[]>([]);
   const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set());
-  const [filterDivisi, setFilterDivisi] = useState("LESA");
+  const [filterDivisi, setFilterDivisi] = useState("all");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach CM");
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
@@ -1794,6 +1983,16 @@ export default function EmbedPerforma() {
     ro.observe(el);
     setPerfToolbarH(el.offsetHeight);
     return () => ro.disconnect();
+  }, []);
+
+  // Scroll-sync refs for sticky table header in slide 0 performance table
+  const perfTableHeaderRef = useRef<HTMLDivElement>(null);
+  const perfTableBodyRef = useRef<HTMLDivElement>(null);
+  const onPerfHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (perfTableBodyRef.current) perfTableBodyRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onPerfBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (perfTableHeaderRef.current) perfTableHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
   }, []);
 
   useEffect(() => {
@@ -1848,7 +2047,7 @@ export default function EmbedPerforma() {
           );
         });
         setFilterPeriodes(new Set(psWithData.length > 0 ? psWithData : ps));
-        setFilterDivisi("LESA");
+        setFilterDivisi("all");
         setFilterNamaAms(new Set());
       })
       .catch(() => {})
@@ -1879,6 +2078,21 @@ export default function EmbedPerforma() {
     const range = fY === lY ? `${fM}–${lM} ${lY}` : `${fM} ${fY}–${lM} ${lY}`;
     return `${filterPeriodes.size} Periode (${range})`;
   }, [filterPeriodes, cmPeriode]);
+
+  // Active filter booleans for slide 0 filter chips
+  const isPeriodeFiltered = filterPeriodes.size > 0 && filterPeriodes.size < availablePeriodes.length;
+  const isDivisiFiltered = filterDivisi !== "all";
+  const isAmFiltered = filterNamaAms.size > 0;
+  const isRankFiltered = filterTipeRank !== "Ach CM";
+  const isRevenueFiltered = filterTipeRevenue !== "Reguler";
+  const hasPerformActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
+  const resetPerformFilters = useCallback(() => {
+    setFilterPeriodes(new Set());
+    setFilterDivisi("all");
+    setFilterNamaAms(new Set());
+    setFilterTipeRank("Ach CM");
+    setFilterTipeRevenue("Reguler");
+  }, []);
 
   // amTableData
   const amTableData = useMemo(() => {
@@ -2200,6 +2414,47 @@ export default function EmbedPerforma() {
           <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Belum ada data performa</div>
         ) : (
           <>
+            {/* Active filter chips */}
+            {hasPerformActiveFilter && (
+              <div className="flex items-center gap-2 flex-wrap bg-secondary/30 border border-border rounded-xl px-4 py-2.5">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+                {isPeriodeFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                    Periode: {filterPeriodes.size === 1 ? periodeLabel([...filterPeriodes][0]) : `${filterPeriodes.size} periode`}
+                    <button onClick={() => setFilterPeriodes(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isDivisiFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                    Divisi: {filterDivisi}
+                    <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isAmFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                    AM: {filterNamaAms.size === 1 ? [...filterNamaAms][0] : `${filterNamaAms.size} AM`}
+                    <button onClick={() => setFilterNamaAms(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isRankFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                    Rank: {filterTipeRank}
+                    <button onClick={() => setFilterTipeRank("Ach CM")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isRevenueFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    Revenue: {filterTipeRevenue}
+                    <button onClick={() => setFilterTipeRevenue("Reguler")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                <button onClick={resetPerformFilters}
+                  className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+                  <X className="w-3 h-3" /> Reset filter
+                </button>
+              </div>
+            )}
+
             {/* Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <TrophyCard colorScheme="gold"
@@ -2274,13 +2529,15 @@ export default function EmbedPerforma() {
                 </div>
               </div>
               <div className="p-3">
-              <div className="border border-border overflow-hidden">
-              <div className="overflow-auto" style={{maxHeight:"clamp(400px, 65vh, 1000px)"}}>
-                <div className="min-w-[600px]">
-                <table className="w-full text-xs text-left">
-                  <thead className="sticky top-0 z-10">
+              <div className="border border-border rounded">
+              {/* Sticky table header — synced horizontally with body */}
+              <div ref={perfTableHeaderRef} onScroll={onPerfHeaderScroll}
+                className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10"
+                style={{ top: `${perfToolbarH}px` }}>
+                <table className="border-collapse" style={{ minWidth: "600px", width: "100%" }}>
+                  <thead>
                     <tr className="bg-red-700 text-white">
-                      <th className="px-3 py-3 w-5"></th>
+                      <th className="px-3 py-3 w-5 text-left"></th>
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide">Nama AM</th>
                       <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
                       <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
@@ -2292,6 +2549,14 @@ export default function EmbedPerforma() {
                       </th>
                     </tr>
                   </thead>
+                </table>
+              </div>
+              {/* Scrollable body */}
+              <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll} className="overflow-x-auto">
+              <table className="w-full text-xs text-left" style={{ minWidth: "600px" }}>
+                <thead className="sr-only" aria-hidden>
+                  <tr><th className="w-5"></th><th>Nama AM</th><th>Target</th><th>Real</th><th>CM %</th><th>YTD %</th><th>Customer</th><th>Rank</th></tr>
+                </thead>
                   <tbody className="divide-y divide-border/50">
                     {filteredAmData.map(row => {
                       const isExpanded = effectiveExpandedRows.has(row.nik);
@@ -2415,7 +2680,6 @@ export default function EmbedPerforma() {
                     </tr>
                   </tfoot>
                 </table>
-              </div>
               </div>
               </div>
               </div>

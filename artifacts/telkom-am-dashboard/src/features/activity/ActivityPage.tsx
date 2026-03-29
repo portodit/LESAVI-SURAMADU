@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { matchesDivisi, DIVISI_OPTIONS_WITH_ALL, DEFAULT_DIVISI } from "@/shared/lib/divisi";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/utils";
-import { Search, ChevronDown, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, Expand, Minimize2 } from "lucide-react";
+import { Search, ChevronDown, X, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, Expand, Minimize2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -165,11 +165,11 @@ function SelectDropdown({ label, value, onChange, options, disabled, className }
   );
 }
 
-// ─── PeriodeDropdown ── year select + month buttons combined ──────────────────
+// ─── PeriodeTreeDropdown ── multi-select year + month checkboxes ──────────────
 
-function PeriodeDropdown({ year, month, onYearChange, onMonthChange, className }: {
-  year: string; month: string;
-  onYearChange: (y: string) => void; onMonthChange: (m: string) => void;
+function PeriodeTreeDropdown({ year, filterMonths, onYearChange, onMonthsChange, className }: {
+  year: string; filterMonths: Set<string>;
+  onYearChange: (y: string) => void; onMonthsChange: (m: Set<string>) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -187,21 +187,34 @@ function PeriodeDropdown({ year, month, onYearChange, onMonthChange, className }
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  const allSelected = filterMonths.size === 0;
+
+  const displayText = allSelected
+    ? `${year} (semua bulan)`
+    : filterMonths.size === 1
+      ? `${MONTHS_FULL[parseInt([...filterMonths][0])]} ${year}`
+      : `${year} · ${filterMonths.size} bulan`;
+
+  const toggleYearCheckbox = (y: string) => {
+    if (y !== year) { onYearChange(y); onMonthsChange(new Set()); return; }
+    if (allSelected) onMonthsChange(new Set([String(new Date().getMonth() + 1)]));
+    else onMonthsChange(new Set());
+  };
+
+  const toggleMonth = (m: string) => {
+    if (allSelected) { onMonthsChange(new Set([m])); return; }
+    const n = new Set(filterMonths);
+    if (n.has(m)) n.delete(m); else n.add(m);
+    if (n.size === 0 || n.size === 12) onMonthsChange(new Set());
+    else onMonthsChange(n);
+  };
+
   const toggle = () => {
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
       setPos({ top: r.bottom + 4, left: r.left });
     }
     setOpen(o => !o);
-  };
-
-  const displayText = month === "all"
-    ? `${year} (semua bulan)`
-    : `${MONTHS_FULL[parseInt(month)]} ${year}`;
-
-  const handleYearClick = (y: string) => {
-    if (y !== year) { onYearChange(y); onMonthChange("all"); }
-    else { onMonthChange(month === "all" ? String(new Date().getMonth() + 1) : "all"); }
   };
 
   return (
@@ -211,6 +224,9 @@ function PeriodeDropdown({ year, month, onYearChange, onMonthChange, className }
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left min-w-[180px]",
           open && "border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
+        {!allSelected && (
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{filterMonths.size}</span>
+        )}
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
       </button>
       {open && createPortal(
@@ -219,36 +235,36 @@ function PeriodeDropdown({ year, month, onYearChange, onMonthChange, className }
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">PERIODE</span>
             <div className="flex gap-1.5">
-              <button onClick={() => { onMonthChange("all"); }} className="text-[11px] text-primary font-semibold hover:underline">Semua</button>
+              <button onClick={() => onMonthsChange(new Set())} className="text-[11px] text-primary font-semibold hover:underline">Semua</button>
               <span className="text-muted-foreground text-[11px]">·</span>
-              <button onClick={() => { onYearChange(String(new Date().getFullYear())); onMonthChange(String(new Date().getMonth()+1)); setOpen(false); }}
+              <button onClick={() => { onYearChange(String(new Date().getFullYear())); onMonthsChange(new Set([String(new Date().getMonth() + 1)])); setOpen(false); }}
                 className="text-[11px] text-muted-foreground font-semibold hover:underline">Reset</button>
             </div>
           </div>
           <div className="max-h-72 overflow-y-auto py-1">
             {YEARS.map(y => {
               const isActive = y === year;
-              const yearAllSel = isActive && month === "all";
-              const yearPartial = isActive && month !== "all";
+              const yearAllSel = isActive && allSelected;
+              const yearPartial = isActive && !allSelected;
               return (
                 <React.Fragment key={y}>
                   <div className="flex items-center gap-2 px-3 py-2 hover:bg-secondary transition-colors cursor-pointer">
-                    <span onClick={() => handleYearClick(y)}
+                    <span onClick={() => toggleYearCheckbox(y)}
                       className={cn("w-4 h-4 rounded border shrink-0 flex items-center justify-center",
                         yearAllSel ? "bg-primary border-primary" : yearPartial ? "border-primary bg-primary/10" : "border-border")}>
                       {yearAllSel && <span className="text-white text-[9px] font-black">✓</span>}
                       {yearPartial && <span className="text-primary text-[9px] font-black leading-none">–</span>}
                     </span>
                     <span className={cn("flex-1 text-sm font-semibold", isActive ? "text-primary" : "text-foreground")}
-                      onClick={() => { if (!isActive) { onYearChange(y); onMonthChange("all"); } else handleYearClick(y); }}>
+                      onClick={() => { if (!isActive) { onYearChange(y); onMonthsChange(new Set()); } else toggleYearCheckbox(y); }}>
                       {y}
                     </span>
                   </div>
                   {isActive && MONTHS_FULL.slice(1).map((mName, idx) => {
                     const mNum = String(idx + 1);
-                    const checked = month === mNum;
+                    const checked = !allSelected && filterMonths.has(mNum);
                     return (
-                      <button key={mNum} onClick={() => { onMonthChange(mNum); setOpen(false); }}
+                      <button key={mNum} onClick={() => toggleMonth(mNum)}
                         className={cn("w-full text-left pl-9 pr-3 py-1.5 text-sm hover:bg-secondary flex items-center gap-2 transition-colors",
                           checked ? "font-medium text-primary bg-primary/5" : "text-foreground")}>
                         <span className={cn("w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center",
@@ -511,8 +527,8 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className={cn("text-sm font-black font-mono", progressTextColor)}>{pct}%</span>
-            <span className={cn("text-xs font-bold font-mono", pct === 0 ? "text-foreground/50" : "text-foreground")}>
+            <span className={cn("text-base font-black leading-none", progressTextColor)}>{pct}%</span>
+            <span className={cn("text-sm font-bold leading-none", pct === 0 ? "text-foreground/50" : "text-foreground")}>
               {kpiCount}/{am.kpiTarget} aktivitas KPI
             </span>
           </div>
@@ -629,7 +645,7 @@ export default function ActivityPage() {
   const now = new Date();
   const [snapshotId, setSnapshotId] = useState<string>("");
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [month, setMonth] = useState(String(now.getMonth() + 1));
+  const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth() + 1)]));
   const [divisi, setDivisi] = useState(DEFAULT_DIVISI);
   const [search, setSearch] = useState("");
   const [selectedAms, setSelectedAms] = useState<Set<string> | null>(null);
@@ -637,6 +653,14 @@ export default function ActivityPage() {
   const [expandAll, setExpandAll] = useState<boolean | null>(null);
   const snapInitialized = useRef(false);
   const labelsInitialized = useRef(false);
+  const tableHeaderScrollRef = useRef<HTMLDivElement>(null);
+  const tableBodyScrollRef = useRef<HTMLDivElement>(null);
+  const onTableBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (tableHeaderScrollRef.current) tableHeaderScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onTableHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (tableBodyScrollRef.current) tableBodyScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
 
   // ─── Snapshots ───────────────────────────────────────────────────────
   const { data: snapshots = [] } = useQuery<ActivitySnapshot[]>({
@@ -661,10 +685,9 @@ export default function ActivityPage() {
   // ─── Activity data ────────────────────────────────────────────────────
   const queryKey = useMemo(() => {
     const p = new URLSearchParams({ year, divisi });
-    if (month !== "all") p.set("month", month);
     if (snapshotId) p.set("import_id", snapshotId);
     return `/api/activity?${p}`;
-  }, [year, month, divisi, snapshotId]);
+  }, [year, divisi, snapshotId]);
 
   const { data, isLoading, isError } = useQuery<ActivityData>({
     queryKey: [queryKey],
@@ -672,6 +695,15 @@ export default function ActivityPage() {
     staleTime: 60_000,
     enabled: !!snapshotId,
   });
+
+  const { data: settingsData } = useQuery<{ kpiActivityDefault: number }>({
+    queryKey: ["settings-kpi"],
+    queryFn: () => apiFetch<{ kpiActivityDefault: number }>("/api/settings"),
+    staleTime: 300_000,
+  });
+  const settingsKpi = settingsData?.kpiActivityDefault ?? 30;
+
+  const effectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
 
   const amOptions = useMemo(() =>
     (data?.masterAms ?? [])
@@ -713,17 +745,45 @@ export default function ActivityPage() {
   const filteredAms = useMemo(() => {
     if (!data) return [];
     const byAmMap = Object.fromEntries(data.byAm.map(a => [a.fullname, a]));
+    const q = search.toLowerCase().trim();
+
     const masterFiltered = (data.masterAms ?? [])
       .filter(a => matchesDivisi(a.divisi, divisi))
       .filter(a => selectedAms === null || selectedAms.has(a.nama))
-      .filter(a => !search || a.nama.toLowerCase().includes(search.toLowerCase()));
+      .filter(a => {
+        if (!q) return true;
+        if (a.nama.toLowerCase().includes(q)) return true;
+        const existing = byAmMap[a.nama];
+        if (existing) {
+          return existing.activities.some(act =>
+            act.activityType?.toLowerCase().includes(q) ||
+            act.label?.toLowerCase().includes(q) ||
+            act.caName?.toLowerCase().includes(q) ||
+            act.activityNotes?.toLowerCase().includes(q) ||
+            act.picName?.toLowerCase().includes(q)
+          );
+        }
+        return false;
+      });
 
     return masterFiltered.map(ma => {
       const existing = byAmMap[ma.nama];
-      if (existing) return existing;
-      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: 20, activities: [] };
+      if (existing) {
+        let acts = existing.activities;
+        if (filterMonths.size > 0) {
+          acts = acts.filter(a => {
+            if (!a.activityEndDate) return false;
+            try {
+              const m = String(new Date(a.activityEndDate.replace(" ", "T")).getMonth() + 1);
+              return filterMonths.has(m);
+            } catch { return false; }
+          });
+        }
+        return { ...existing, activities: acts, kpiTarget: existing.kpiTarget * effectiveMonths };
+      }
+      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi * effectiveMonths, activities: [] };
     });
-  }, [data, divisi, selectedAms, search]);
+  }, [data, divisi, selectedAms, search, filterMonths, effectiveMonths, settingsKpi]);
 
   const kpiLabels = useMemo(() => selectedLabels ?? new Set<string>(), [selectedLabels]);
 
@@ -750,9 +810,11 @@ export default function ActivityPage() {
     return { totalKpi, reach, below: filteredAms.length - reach, dgPelanggan, dgProyek };
   }, [filteredAms, kpiLabels]);
 
-  const periodLabel = month === "all"
+  const periodLabel = filterMonths.size === 0
     ? `Tahun ${year}`
-    : `${MONTHS_FULL[parseInt(month)]} ${year}`;
+    : filterMonths.size === 1
+      ? `${MONTHS_FULL[parseInt([...filterMonths][0])]} ${year}`
+      : `${filterMonths.size} bulan, ${year}`;
 
   const selectedAmSet = useMemo(
     () => selectedAms ?? new Set(amOptions),
@@ -767,58 +829,126 @@ export default function ActivityPage() {
     <div className="space-y-5">
 
       {/* ─── Filter Bar ─── */}
-      <div className="bg-card border border-border rounded-xl shadow-sm p-4">
-        <div className="flex items-end gap-3 flex-wrap">
+      {(() => {
+        const isAmFiltered = selectedAms !== null && selectedAms.size < amOptions.length;
+        const isLabelFiltered = selectedLabels !== null && selectedLabels.size < labelOptions.length;
+        const isPeriodFiltered = filterMonths.size > 0;
+        const isDivisiFiltered = divisi !== DEFAULT_DIVISI;
+        const hasActiveFilter = isPeriodFiltered || isAmFiltered || isLabelFiltered || isDivisiFiltered || search !== "";
 
-          {/* Snapshot filter */}
-          <SelectDropdown
-            label="Snapshot"
-            value={snapshotId}
-            onChange={v => { setSnapshotId(v); setSelectedAms(null); labelsInitialized.current = false; setSelectedLabels(null); }}
-            options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Memuat..." }]}
-            disabled={snapshotOptions.length === 0}
-            className="w-44 shrink-0"
-          />
+        const resetAll = () => {
+          const now2 = new Date();
+          setFilterMonths(new Set([String(now2.getMonth() + 1)]));
+          setYear(String(now2.getFullYear()));
+          setDivisi(DEFAULT_DIVISI);
+          setSelectedAms(null);
+          labelsInitialized.current = false;
+          setSelectedLabels(null);
+          setSearch("");
+        };
 
-          <PeriodeDropdown
-            year={year} month={month}
-            onYearChange={y => { setYear(y); setSelectedAms(null); }}
-            onMonthChange={m => { setMonth(m); }}
-            className="min-w-[180px]"
-          />
+        return (
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4">
+            <div className="flex items-end gap-3 flex-wrap">
 
-          <SelectDropdown
-            label="Divisi"
-            value={divisi}
-            onChange={v => { setDivisi(v); setSelectedAms(null); }}
-            options={DIVISI_OPTIONS_WITH_ALL}
-            className="min-w-[130px]"
-          />
+              {/* Snapshot filter */}
+              <SelectDropdown
+                label="Snapshot"
+                value={snapshotId}
+                onChange={v => { setSnapshotId(v); setSelectedAms(null); labelsInitialized.current = false; setSelectedLabels(null); }}
+                options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Memuat..." }]}
+                disabled={snapshotOptions.length === 0}
+                className="w-44 shrink-0"
+              />
 
-          <CheckboxDropdown
-            label="Nama AM"
-            options={amOptions}
-            selected={selectedAmSet}
-            onChange={setSelectedAms}
-            summaryLabel="AM"
-            placeholder="Semua AM"
-            className="min-w-[160px] flex-1"
-          />
+              <PeriodeTreeDropdown
+                year={year}
+                filterMonths={filterMonths}
+                onYearChange={y => { setYear(y); setSelectedAms(null); }}
+                onMonthsChange={m => { setFilterMonths(m); }}
+                className="min-w-[180px]"
+              />
 
-          {labelOptions.length > 0 && (
-            <CheckboxDropdown
-              label="Kategori Aktivitas"
-              options={labelOptions}
-              selected={selectedLabelSet}
-              onChange={setSelectedLabels}
-              summaryLabel="kategori"
-              placeholder="Semua Kategori"
-              kpiBadge
-              className="min-w-[180px]"
-            />
-          )}
-        </div>
-      </div>
+              <SelectDropdown
+                label="Divisi"
+                value={divisi}
+                onChange={v => { setDivisi(v); setSelectedAms(null); }}
+                options={DIVISI_OPTIONS_WITH_ALL}
+                className="min-w-[130px]"
+              />
+
+              <CheckboxDropdown
+                label="Nama AM"
+                options={amOptions}
+                selected={selectedAmSet}
+                onChange={setSelectedAms}
+                summaryLabel="AM"
+                placeholder="Semua AM"
+                className="min-w-[160px] flex-1"
+              />
+
+              {labelOptions.length > 0 && (
+                <CheckboxDropdown
+                  label="Kategori Aktivitas"
+                  options={labelOptions}
+                  selected={selectedLabelSet}
+                  onChange={setSelectedLabels}
+                  summaryLabel="kategori"
+                  placeholder="Semua Kategori"
+                  kpiBadge
+                  className="min-w-[180px]"
+                />
+              )}
+
+            </div>
+
+            {/* Active filter chips */}
+            {hasActiveFilter && (
+              <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+                {isPeriodFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                    Periode: {filterMonths.size === 1
+                      ? `${MONTHS_FULL[parseInt([...filterMonths][0])]} ${year}`
+                      : `${filterMonths.size} bulan`}
+                    <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isDivisiFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                    Divisi: {divisi}
+                    <button onClick={() => setDivisi(DEFAULT_DIVISI)} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isAmFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                    AM: {selectedAms!.size === 1 ? [...selectedAms!][0] : `${selectedAms!.size} AM dipilih`}
+                    <button onClick={() => setSelectedAms(null)} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {isLabelFiltered && (
+                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                    Kategori: {selectedLabels!.size === 1 ? [...selectedLabels!][0] : `${selectedLabels!.size} kategori`}
+                    <button onClick={() => { labelsInitialized.current = false; setSelectedLabels(null); }} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {search !== "" && (
+                  <span className="inline-flex items-center gap-1 bg-secondary text-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
+                    Cari: "{search}"
+                    <button onClick={() => setSearch("")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                <button
+                  onClick={resetAll}
+                  className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0"
+                >
+                  <X className="w-3 h-3" /> Reset filter
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ─── Overview Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -841,7 +971,7 @@ export default function ActivityPage() {
           icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           label="AM Capai KPI"
           value={isLoading ? "—" : stats.reach}
-          sub={<>target <strong className="text-foreground">≥{filteredAms[0]?.kpiTarget ?? 20} aktivitas</strong> / bulan</>}
+          sub={<>target <strong className="text-foreground">≥{filteredAms[0]?.kpiTarget ?? settingsKpi * effectiveMonths} aktivitas</strong> / {effectiveMonths === 1 ? "bulan" : `${effectiveMonths} bulan`}</>}
           accent="bg-emerald-100 dark:bg-emerald-950/30"
         />
         <OverviewCard
@@ -862,31 +992,37 @@ export default function ActivityPage() {
       </div>
 
       {/* ─── Table Section ─── */}
+      {/* Note: no overflow-hidden here — needed for sticky toolbar + table header to work */}
       <div className="bg-card border border-border rounded-xl shadow-sm">
 
-        {/* Table toolbar */}
-        <div className="px-4 py-3 border-b border-border bg-secondary/20 flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+        {/* ── Sticky toolbar: section title + search + expand ── */}
+        <div className="sticky top-0 z-20 bg-card border-b border-border">
+          {/* Row 1: title + badge */}
+          <div className="px-4 pt-3 pb-2 flex items-center gap-2">
             <Users className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="text-sm font-bold text-foreground">Monitoring KPI Aktivitas</span>
             <span className="bg-secondary border border-border text-foreground text-xs font-bold px-2 py-0.5 rounded-full shrink-0">
               {filteredAms.length} AM
             </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {/* Search bar — pindah ke sini dari filter bar */}
-            <div className="h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[160px]">
-              <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+          {/* Row 2: search + expand — full width, no overflow */}
+          <div className="px-4 pb-3 flex items-center gap-2">
+            <div className="flex-1 h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-0">
+              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <input
-                type="text" placeholder="Cari nama AM…"
-                value={search} onChange={e => setSearch(e.target.value)}
+                type="text"
+                placeholder="Cari nama AM, aktivitas, pelanggan, catatan…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
                 className="border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"
               />
+              {search && (
+                <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground shrink-0 text-xs leading-none">✕</button>
+              )}
             </div>
-            {/* Toggle Expand/Collapse jadi 1 tombol */}
             <button
               onClick={() => setExpandAll(prev => prev === true ? false : true)}
-              className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5"
+              className="h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               {expandAll === true
                 ? <><Minimize2 className="w-3 h-3" /> Collapse Semua</>
@@ -894,27 +1030,33 @@ export default function ActivityPage() {
               }
             </button>
           </div>
+
+          {/* ── Sticky table header (red) — syncs horizontally with body ── */}
+          <div
+            ref={tableHeaderScrollRef}
+            onScroll={onTableHeaderScroll}
+            className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
+            <div style={{ minWidth: "780px" }}>
+              <div
+                className="grid text-xs font-black uppercase tracking-wide text-white"
+                style={{ background: "#B91C1C", gridTemplateColumns: GRID_COLS, padding: "10px 16px" }}
+              >
+                <div />
+                <div className="pl-1">Nama AM</div>
+                <div>Progress KPI</div>
+                <div className="text-center">Aktivitas</div>
+                <div className="text-center">Target</div>
+                <div className="text-center">Sisa</div>
+                <div>Status</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Table inner wrapper */}
-        <div className="p-3">
-        <div className="border border-border overflow-hidden">
-
-        {/* Table header */}
-        <div
-          className="grid text-xs font-black uppercase tracking-wide text-white"
-          style={{ background: "#B91C1C", gridTemplateColumns: GRID_COLS, padding: "10px 16px" }}
-        >
-          <div />
-          <div className="pl-1">Nama AM</div>
-          <div>Progress KPI</div>
-          <div className="text-center">Aktivitas</div>
-          <div className="text-center">Target</div>
-          <div className="text-center">Sisa</div>
-          <div>Status</div>
-        </div>
-
-        {/* Table body */}
+        {/* ── Table body — scrollable horizontally ── */}
+        <div className="overflow-x-auto" ref={tableBodyScrollRef} onScroll={onTableBodyScroll}>
+        <div style={{ minWidth: "780px" }}>
         {isLoading ? (
           <div className="divide-y divide-border/50">
             {[...Array(6)].map((_, i) => (
@@ -955,8 +1097,8 @@ export default function ActivityPage() {
             />
           ))
         )}
-        </div>
-        </div>
+        </div>{/* end minWidth wrapper */}
+        </div>{/* end overflow-x-auto body */}
       </div>
     </div>
   );

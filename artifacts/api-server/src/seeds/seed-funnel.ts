@@ -1,4 +1,4 @@
-import { db, salesFunnelTable } from "@workspace/db";
+import { db, salesFunnelTable, dataImportsTable } from "@workspace/db";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,6 +36,27 @@ export async function seedFunnel(opts: { truncate?: boolean } = {}) {
     await db.delete(salesFunnelTable);
   }
 
+  // Derive snapshot date and period from the data
+  const snapshotDates = raw.map(r => r.snapshot_date).filter(Boolean) as string[];
+  const latestSnapshot = snapshotDates.length > 0
+    ? snapshotDates.sort().reverse()[0]
+    : new Date().toISOString().slice(0, 10);
+  const period = latestSnapshot.slice(0, 4); // e.g. "2026"
+
+  // Create a data_imports record so the snapshot dropdown works
+  const [importRecord] = await db
+    .insert(dataImportsTable)
+    .values({
+      type: "funnel",
+      rowsImported: raw.length,
+      period,
+      snapshotDate: latestSnapshot,
+      sourceUrl: `seed (snapshot ${latestSnapshot})`,
+      autoTelegramSent: false,
+    })
+    .returning({ id: dataImportsTable.id });
+
+  const importId = importRecord.id;
   console.log(`  [funnel] Seeding ${raw.length} funnel record(s) in batches of ${BATCH_SIZE}...`);
 
   const rows = raw.map((r) => ({
@@ -56,7 +77,7 @@ export async function seedFunnel(opts: { truncate?: boolean } = {}) {
     reportDate: r.report_date || null,
     createdDate: r.created_date || null,
     snapshotDate: r.snapshot_date || null,
-    importId: null,
+    importId,
   }));
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {

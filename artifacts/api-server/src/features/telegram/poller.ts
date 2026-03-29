@@ -408,3 +408,20 @@ export function startTelegramPoller(intervalMs = 15000) {
 export function stopTelegramPoller() {
   if (pollerTimer) { clearTimeout(pollerTimer); pollerTimer = null; }
 }
+
+export function rescheduleTelegramPoller(newToken?: string) {
+  logger.info("Telegram poller rescheduled — token updated");
+  stopTelegramPoller();
+  lastUpdateId = 0;
+  const restart = async () => {
+    if (newToken) {
+      try { await (async () => {
+        const resp = await fetch(`https://api.telegram.org/bot${newToken}/deleteWebhook?drop_pending_updates=false`);
+        const data = await resp.json() as { ok: boolean };
+        if (data.ok) logger.info("Webhook cleared for new token");
+      })(); } catch { /* non-fatal */ }
+    }
+    startTelegramPoller(15000);
+  };
+  setTimeout(() => restart().catch(() => {}), 500);
+}

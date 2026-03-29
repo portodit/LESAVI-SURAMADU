@@ -3,6 +3,7 @@ import { db, appSettingsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
 import { rescheduleGSheets } from "../gsheets/scheduler";
 import { rescheduleGDrive } from "../gdrive/scheduler";
+import { rescheduleTelegramPoller } from "../telegram/poller";
 
 const router: IRouter = Router();
 
@@ -97,6 +98,7 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
 
   rescheduleGSheets();
   rescheduleGDrive();
+  if (updates.telegramBotToken) rescheduleTelegramPoller(updates.telegramBotToken);
 
   res.json(buildSettingsResponse(settings));
 });

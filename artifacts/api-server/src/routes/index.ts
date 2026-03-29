@@ -15,6 +15,7 @@ import publicAmRouter from "../features/am/publicRoutes";
 import publicPerformanceRouter from "../features/performance/publicRoutes";
 import publicFunnelRouter from "../features/funnel/publicRoutes";
 import publicActivityRouter from "../features/activity/publicRoutes";
+import publicSettingsRouter from "../features/settings/publicRoutes";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(publicAmRouter);
 router.use(publicPerformanceRouter);
 router.use(publicFunnelRouter);
 router.use(publicActivityRouter);
+router.use(publicSettingsRouter);
 
 export default router;

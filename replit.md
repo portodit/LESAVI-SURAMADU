@@ -129,15 +129,45 @@ artifacts-monorepo/
 
 ## Sales Activity Data Cleaning Rules (Power Query Power BI)
 
-Prosedur cleaning data Sales Activity sesuai alur Power Query Power BI (folder: `Sales_Activity_Suramadu`):
+Prosedur cleaning data Sales Activity sesuai alur Power Query Power BI (folder: `Sales_Activity_Suramadu`).
+**Target setelah seluruh file digabung: ≥ 1.300 baris** (Power BI menunjukkan 1.352 baris dari folder lengkap).
 
-**Power Query Steps:**
-1. Filter `Folder Path` contains `"Sales_Activity_Suramadu"` — hanya baca file dari subfolder ini
-2. Filter hidden files dihapus (`[Attributes][Hidden] <> true`)
-3. Read & gabungkan semua file di folder (Folder connector — stack semua file menjadi 1 tabel)
-4. Expand semua kolom dari setiap file
-5. Set tipe kolom: `nik` → `Int64`, `createdat/start/end_date` → `datetime` (bukan `date`)
-6. Filter: `([divisi] = "DPS" or [divisi] = "DSS") and ([witel] = "SURAMADU")` → target 1300+ baris
+**8 Langkah Power Query (exact steps dari .pbix):**
+```
+Step 1: = Table.SelectRows(#"Filtered Rows", each Text.Contains([Folder Path], "Sales_Activity_Suramadu"))
+         → hanya baca file dari subfolder "Sales_Activity_Suramadu"
+
+Step 2: = Table.SelectRows(#"Filtered Rows1", each [Attributes]?[Hidden]? <> true)
+         → hapus file tersembunyi dari daftar
+
+Step 3: = Table.AddColumn(#"Filtered Hidden Files1", "Transform File (2)", each #"Transform File (2)"([Content]))
+         → invoke custom function untuk membaca isi setiap file (Folder Connector)
+
+Step 4: = Table.RenameColumns(#"Invoke Custom Function1", {"Name", "Source.Name"})
+         → rename kolom "Name" menjadi "Source.Name" (preservasi nama file sumber)
+
+Step 5: = Table.SelectColumns(#"Renamed Columns1", {"Source.Name", "Transform File (2)"})
+         → hanya simpan 2 kolom: Source.Name dan Transform File
+
+Step 6: = Table.ExpandTableColumn(#"Removed Other Columns1", "Transform File (2)",
+           Table.ColumnNames(#"Transform File (2)"(#"Sample File (2)")))
+         → expand semua kolom dari tabel gabungan (20 kolom per file)
+
+Step 7: = Table.TransformColumnTypes(#"Expanded Table Column1", {
+           {"Source.Name", type text}, {"nik", Int64.Type}, {"fullname", type text},
+           {"divisi", type text}, {"segmen", type any}, {"regional", type text},
+           {"witel", type text}, {"nipnas", Int64.Type}, {"ca_name", type text},
+           {"activity_type", type text}, {"label", type text}, {"lopid", type any},
+           {"createdat", type datetime}, {"activity_start_date", type datetime},
+           {"activity_end_date", type datetime}, {"pic_jobtitle", type text},
+           {"pic_name", type text}, {"pic_role", type text}, {"pic_phone", type text},
+           {"activity_notes", type text}})
+         → set tipe kolom: nik→Int64 (non-numerik di-drop), dates→datetime (ada jam:menit:detik)
+
+Step 8: = Table.SelectRows(#"Changed Type", each ([divisi] = "DPS" or [divisi] = "DSS")
+           and ([witel] = "SURAMADU"))
+         → filter final: hanya DPS/DSS witel SURAMADU
+```
 
 **Perbedaan kritis vs Pipeline (Sales Funnel):**
 - Folder berbeda: `Sales_Activity_Suramadu` (bukan `Sales_Funnel_Suramadu`)
@@ -145,18 +175,35 @@ Prosedur cleaning data Sales Activity sesuai alur Power Query Power BI (folder: 
 - Tidak ada filter `is_report` — semua aktivitas ditampilkan
 - Kolom tanggal bertipe `datetime` (ada jam:menit:detik), bukan `date`
 - Tidak ada dedup by LOP — dedup by `(nik, createdat_activity)` datetime
+- Filter hanya DPS/DSS (tidak termasuk DGS di Power BI) — sistem kita menambah DGS untuk multi-divisi AM
 
-**Implementasi di sistem:**
-- `cleanActivityRows` di `excel.ts`: filter witel+divisi, validasi NIK numerik, simpan datetime penuh
-- `fullname` **tidak** diwajibkan (Power BI tidak men-drop baris tanpa fullname)
-- GDrive sync: loop semua file di folder (bukan hanya `excelFiles[0]`)
+**Implementasi di sistem (`cleanActivityRows` di `excel.ts`):**
+- Filter witel=SURAMADU + divisi=DPS/DSS/DGS (DGS ditambah untuk AM multi-divisi)
+- Validasi NIK numerik (rows dengan NIK non-numerik di-skip, sesuai `Int64.Type` Power BI)
+- `fullname` **tidak** diwajibkan — baris tanpa fullname (Koordinasi internal, dll) tetap disimpan
+- `ca_name` kosong → aktivitas "Tanpa Pelanggan" — **tetap disimpan** (107 baris di DB)
+- Simpan datetime penuh (jam:menit:detik) untuk createdat, start_date, end_date
 - Unique constraint `(nik, createdat_activity)` di DB untuk dedup antar import
-- Datetime filter API: `activityEndDate?.startsWith("YYYY-MM")` bekerja untuk kedua format (date-only maupun datetime)
+- GDrive sync: loop semua file di folder (bukan hanya `excelFiles[0]`)
+
+**Data saat ini (import_id=3):**
+- 719 baris total (DPS=534, DSS=185) dari satu file upload, covering Jan–Mar 2026
+- 107 baris dengan ca_name kosong (Tanpa Pelanggan) — tersimpan dengan benar
+- 612 baris dengan ca_name (dengan pelanggan)
+- 9 unique AM NIK terimport
+- Power BI menunjukkan 1.352 karena membaca SEMUA file di folder (semua bulan + semua AM)
 
 **Kolom lengkap (20 kolom):**
 `nik, fullname, divisi, segmen, regional, witel, nipnas, ca_name, activity_type, label, lopid, createdat, activity_start_date, activity_end_date, pic_jobtitle, pic_name, pic_role, pic_phone, activity_notes`
 
 **KPI Activity:** label yang **tidak** mengandung kata "tanpa" = KPI. Target default 20 per bulan.
+
+**UI Import Cleaning Checklist:**
+Di halaman Import → tab Sales Activity, terdapat komponen `ActivityCleaningChecklist` yang:
+- Menampilkan 8 langkah Power Query di atas dengan keterangan kode M
+- Saat import berjalan: langkah-langkah ter-check otomatis sesuai progress bar
+- Setelah selesai: semua langkah berwarna hijau ✓
+- Saat idle: bisa di-expand untuk melihat detail tiap langkah
 
 ## GSheets Integration Notes
 

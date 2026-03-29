@@ -77,22 +77,40 @@ function EmbedModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/import", label: "Import Data", icon: Upload },
+const NAV_GROUPS = [
   {
-    label: "Visualisasi", icon: BarChart2,
-    children: [
-      { href: "/visualisasi/performa", label: "Performa AM", icon: BarChart2, pageTitle: "Performansi Account Manager LESA VI WITEL SURAMADU" },
-      { href: "/visualisasi/funnel", label: "Sales Funnel", icon: Filter, pageTitle: "Sales Funneling LOP MYTENS LESA VI Witel Suramadu" },
-      { href: "/visualisasi/activity", label: "Sales Activity", icon: Activity, pageTitle: "AM Sales Activity Report · LESA VI Witel Suramadu" },
+    groupLabel: "MENU UTAMA",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/import", label: "Import Data", icon: Upload },
+      {
+        label: "Visualisasi", icon: BarChart2,
+        children: [
+          { href: "/visualisasi/performa", label: "Performa AM", icon: BarChart2, pageTitle: "Performansi Account Manager LESA VI WITEL SURAMADU" },
+          { href: "/visualisasi/funnel", label: "Sales Funnel", icon: Filter, pageTitle: "Sales Funneling LOP MYTENS LESA VI Witel Suramadu" },
+          { href: "/visualisasi/activity", label: "Sales Activity", icon: Activity, pageTitle: "AM Sales Activity Report · LESA VI Witel Suramadu" },
+        ]
+      },
+      { href: "/manajemen-akun", label: "Manajemen Akun", icon: Users },
+      { href: "/corporate-customers", label: "Corporate Customer", icon: Building2 },
     ]
   },
-  { href: "/manajemen-akun", label: "Manajemen Akun", icon: Users },
-  { href: "/corporate-customers", label: "Corporate Customer", icon: Building2 },
-  { href: "/telegram", label: "Kirim Telegram", icon: MessageSquare },
-  { href: "/pengaturan", label: "Pengaturan", icon: Settings },
+  {
+    groupLabel: "PENGIRIMAN",
+    items: [
+      { href: "/telegram", label: "Kirim Telegram", icon: MessageSquare },
+    ]
+  },
+  {
+    groupLabel: "PENGATURAN",
+    items: [
+      { href: "/pengaturan", label: "Pengaturan", icon: Settings },
+    ]
+  },
 ];
+
+// Flatten all items for active-state lookup
+const NAV_ITEMS = NAV_GROUPS.flatMap(g => g.items);
 
 const SIDEBAR_W = 224;
 const SIDEBAR_COLLAPSED = 56;
@@ -120,11 +138,117 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const currentNavItem = NAV_ITEMS.flatMap(i => [i, ...(i.children || [])]).find(i => (i as any).href === location) as any;
   const currentLabel = currentNavItem?.pageTitle || currentNavItem?.label || "Dashboard";
 
+  const renderNavGroup = (items: typeof NAV_ITEMS, isMobile: boolean) =>
+    items.map((item, idx) => {
+      if ((item as any).children) {
+        const group = item as any;
+        const isChildActive = group.children.some((c: any) => location.startsWith(c.href));
+
+        if (collapsed && !isMobile) {
+          return (
+            <div key={idx} className="space-y-0.5">
+              {group.children.map(child => {
+                const isActive = location.startsWith(child.href);
+                return (
+                  <a key={child.href} href={child.href}
+                    title={child.label}
+                    onClick={e => { e.preventDefault(); guardNav(child.href); }}
+                    className={cn(
+                      "flex justify-center items-center py-2.5 rounded-xl transition-all duration-150 cursor-pointer",
+                      isActive
+                        ? "bg-primary text-white shadow-sm shadow-primary/30"
+                        : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                    )}
+                  >
+                    <child.icon className="w-4 h-4" />
+                  </a>
+                );
+              })}
+            </div>
+          );
+        }
+
+        return (
+          <div key={idx}>
+            <button
+              onClick={() => setVisOpen(!visOpen)}
+              className={cn(
+                "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150",
+                isChildActive
+                  ? "text-primary bg-primary/10"
+                  : "text-foreground/70 hover:text-foreground hover:bg-secondary/70"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <group.icon className="w-4 h-4 shrink-0" />
+                <span>{group.label}</span>
+              </div>
+              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0", visOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+              {(visOpen || isChildActive) && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
+                >
+                  <div className="ml-[22px] mt-1 mb-1 border-l-2 border-border/50 pl-3 pr-1.5 space-y-0.5">
+                    {group.children.map(child => {
+                      const isActive = location.startsWith(child.href);
+                      return (
+                        <a key={child.href} href={child.href}
+                          onClick={e => { e.preventDefault(); guardNav(child.href, () => setMobileOpen(false)); }}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer",
+                            isActive
+                              ? "bg-primary text-white shadow-sm shadow-primary/25"
+                              : "text-foreground/60 hover:text-primary hover:bg-primary/8"
+                          )}
+                        >
+                          <span className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0",
+                            isActive ? "bg-white" : "bg-muted-foreground/40"
+                          )} />
+                          {child.label}
+                        </a>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      }
+
+      const navItem = item as { href: string; label: string; icon: React.ElementType };
+      const isActive = location === navItem.href;
+      return (
+        <a key={navItem.href} href={navItem.href}
+          onClick={e => { e.preventDefault(); guardNav(navItem.href, () => setMobileOpen(false)); }}
+          title={collapsed && !isMobile ? navItem.label : undefined}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer",
+            collapsed && !isMobile ? "justify-center" : "",
+            isActive
+              ? "bg-primary text-white shadow-md shadow-primary/25"
+              : "text-foreground/70 hover:text-foreground hover:bg-secondary/70"
+          )}
+        >
+          <navItem.icon className="w-4 h-4 shrink-0" />
+          {(!collapsed || isMobile) && <span>{navItem.label}</span>}
+        </a>
+      );
+    });
+
   const SidebarInner = ({ isMobile = false }) => (
     <div className="flex flex-col h-full">
-      {/* Logo area */}
+      {/* ── Logo / brand — MUST match topbar height exactly (h-16 = 64px) ── */}
       <div className={cn(
-        "h-[60px] flex items-center shrink-0 border-b border-border",
+        "h-16 flex items-center shrink-0 border-b border-border",
         collapsed && !isMobile ? "px-0 justify-center" : "px-4 gap-2.5"
       )}>
         <button
@@ -158,121 +282,35 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </button>
         {isMobile && (
-          <button onClick={() => setMobileOpen(false)} className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-1">
+          <button onClick={() => setMobileOpen(false)} className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary">
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className={cn("flex-1 py-3 overflow-y-auto", collapsed && !isMobile ? "px-1.5 space-y-0.5" : "px-2.5 space-y-0.5")}>
-        {NAV_ITEMS.map((item, idx) => {
-          if (item.children) {
-            const isChildActive = item.children.some(c => location.startsWith(c.href));
-
-            if (collapsed && !isMobile) {
-              return (
-                <div key={idx} className="space-y-0.5 pb-0.5">
-                  <div className="mx-2 my-1 h-px bg-border/60" />
-                  {item.children.map(child => {
-                    const isActive = location.startsWith(child.href);
-                    return (
-                      <a key={child.href} href={child.href}
-                        title={child.label}
-                        onClick={e => { e.preventDefault(); guardNav(child.href); }}
-                        className={cn(
-                          "flex justify-center items-center py-2.5 rounded-xl transition-all duration-150 cursor-pointer",
-                          isActive
-                            ? "bg-primary text-white shadow-sm shadow-primary/30"
-                            : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                        )}
-                      >
-                        <child.icon className="w-4 h-4" />
-                      </a>
-                    );
-                  })}
-                  <div className="mx-2 my-1 h-px bg-border/60" />
-                </div>
-              );
-            }
-
-            return (
-              <div key={idx}>
-                <button
-                  onClick={() => setVisOpen(!visOpen)}
-                  className={cn(
-                    "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
-                    isChildActive
-                      ? "text-primary bg-primary/10 font-medium"
-                      : "text-foreground/70 hover:text-foreground hover:bg-secondary/70"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </div>
-                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0", visOpen && "rotate-180")} />
-                </button>
-
-                <AnimatePresence>
-                  {(visOpen || isChildActive) && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pl-9 pr-1.5 pt-1 pb-1 space-y-0.5">
-                        {item.children.map(child => {
-                          const isActive = location.startsWith(child.href);
-                          return (
-                            <a key={child.href} href={child.href}
-                              onClick={e => { e.preventDefault(); guardNav(child.href, () => setMobileOpen(false)); }}
-                              className={cn(
-                                "block px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer",
-                                isActive
-                                  ? "bg-primary text-white shadow-sm shadow-primary/25 font-medium"
-                                  : "text-foreground/65 hover:text-primary hover:bg-primary/8"
-                              )}
-                            >
-                              {child.label}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          }
-
-          const isActive = location === (item as any).href;
-          return (
-            <a key={(item as any).href} href={(item as any).href}
-              onClick={e => { e.preventDefault(); guardNav((item as any).href, () => setMobileOpen(false)); }}
-              title={collapsed && !isMobile ? item.label : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer",
-                collapsed && !isMobile ? "justify-center" : "",
-                isActive
-                  ? "bg-primary text-white shadow-md shadow-primary/25 font-medium"
-                  : "text-foreground/70 hover:text-foreground hover:bg-secondary/70"
-              )}
-            >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {(!collapsed || isMobile) && <span>{item.label}</span>}
-            </a>
-          );
-        })}
+      {/* ── Nav ── */}
+      <nav className="flex-1 overflow-y-auto py-3">
+        {NAV_GROUPS.map((group, gIdx) => (
+          <div key={gIdx} className={cn(gIdx > 0 && "mt-1")}>
+            {/* Group label */}
+            {!collapsed || isMobile ? (
+              <p className="px-4 pt-2 pb-1 text-[10px] font-bold tracking-widest text-muted-foreground/60 select-none uppercase">
+                {group.groupLabel}
+              </p>
+            ) : (
+              gIdx > 0 && <div className="mx-3 my-2 h-px bg-border/60" />
+            )}
+            <div className={cn("space-y-0.5", collapsed && !isMobile ? "px-1.5" : "px-2.5")}>
+              {renderNavGroup(group.items, isMobile)}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* User + collapse toggle area */}
+      {/* ── User + logout ── */}
       <div className={cn("shrink-0 border-t border-border py-3", collapsed && !isMobile ? "px-1.5" : "px-2.5")}>
-
         {(!collapsed || isMobile) && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 bg-secondary/50 border border-border/50">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1.5 bg-secondary/50 border border-border/50">
             <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[11px] text-primary shrink-0">
               {user.email ? user.email.slice(0, 2).toUpperCase() : "OF"}
             </div>
@@ -282,11 +320,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         )}
+        {collapsed && !isMobile && (
+          <div className="flex justify-center mb-1.5">
+            <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[11px] text-primary">
+              {user.email ? user.email.slice(0, 2).toUpperCase() : "OF"}
+            </div>
+          </div>
+        )}
         <button
           onClick={logout}
           title={collapsed && !isMobile ? "Logout" : undefined}
           className={cn(
-            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors",
+            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors",
             collapsed && !isMobile ? "justify-center" : "justify-start"
           )}
         >

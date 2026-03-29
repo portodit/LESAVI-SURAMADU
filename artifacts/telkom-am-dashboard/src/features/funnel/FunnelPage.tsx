@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { DIVISI_OPTIONS_WITH_ALL } from "@/shared/lib/divisi";
 import { useQuery } from "@tanstack/react-query";
@@ -405,8 +405,8 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
 
   const surplus = real >= activeTarget;
   return (
-    <div className="flex items-center gap-4">
-      <svg width="220" height="160" viewBox="0 0 160 115" className="shrink-0">
+    <div className="flex flex-col sm:flex-row items-center gap-4">
+      <svg width="220" height="160" viewBox="0 0 160 115" className="shrink-0 mx-auto">
         <path d={arc(startAngle, endAngle, r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round" />
         {hasTarget && clamp > 0 && (
           <path d={arc(startAngle, startAngle + fillDeg, r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round" />
@@ -427,7 +427,7 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode }: { pct: number; targe
         <text x={startX} y={startY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
         <text x={endX} y={endY + 13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
       </svg>
-      <div className="flex-1 space-y-2 text-sm min-w-0">
+      <div className="flex-1 space-y-2 text-sm min-w-0 w-full">
         <div className="flex justify-between items-center gap-2">
           <span className="text-xs font-semibold text-foreground">Real Pipeline</span>
           <span className="font-black text-foreground tabular-nums">{formatRupiah(real)}</span>
@@ -544,7 +544,7 @@ function KpiGrid({ data }: { data: FunnelData | undefined }) {
     },
   ];
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {kpis.map(k => (
         <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-center gap-3 overflow-hidden">
           <div className="flex-1 min-w-0">
@@ -593,7 +593,7 @@ function KontrakBadge({ k }: { k: string | null }) {
 
 export default function FunnelPage() {
   const [importId, setImportId] = useState<number | null>(null);
-  const [filterDivisi, setFilterDivisi] = useState<string>("LESA");
+  const [filterDivisi, setFilterDivisi] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
   const [filterKontrak, setFilterKontrak] = useState<Set<string>>(new Set());
   const [filterAm, setFilterAm] = useState<Set<string>>(new Set());
@@ -826,6 +826,16 @@ export default function FunnelPage() {
     return () => ro.disconnect();
   }, []);
 
+  // Scroll-sync refs for sticky table header (horizontal sync between header and body)
+  const funnelTableHeaderRef = useRef<HTMLDivElement>(null);
+  const funnelTableBodyRef = useRef<HTMLDivElement>(null);
+  const onFunnelHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (funnelTableBodyRef.current) funnelTableBodyRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onFunnelBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (funnelTableHeaderRef.current) funnelTableHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+
   function toggleAmRow(key: string) {
     setExpandedAm(p => ({ ...p, [key]: !p[key] }));
   }
@@ -992,7 +1002,7 @@ export default function FunnelPage() {
     })}</>;
   }
 
-  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0;
+  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0 || filterYears.size > 0;
   const hasDetailFilter = filterAm.size > 0;
 
   const effectiveTargetHo = data?.targetHo || 0;
@@ -1010,7 +1020,7 @@ export default function FunnelPage() {
   const dssTgt = filterTarget === "ho" ? dssTgtHo : dssTgtFullHo;
   const dpsPct = dpsTgt ? (dpsStats.totalNilai / dpsTgt) * 100 : 0;
   const dssPct = dssTgt ? (dssStats.totalNilai / dssTgt) * 100 : 0;
-  const isLesa = filterDivisi === "LESA";
+  const isLesa = filterDivisi === "LESA" || filterDivisi === "all";
 
   return (
     <div className="space-y-4 p-4">
@@ -1018,6 +1028,29 @@ export default function FunnelPage() {
       {/* Filter Bar */}
       <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-end gap-2 flex-nowrap overflow-x-auto">
+
+          {/* View Mode Toggle — single button, leftmost */}
+          <div className="flex flex-col gap-1 shrink-0">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tampilan</label>
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === "all" ? "split" : "all")}
+              title={viewMode === "all" ? "Beralih ke mode Per Divisi" : "Beralih ke mode Semua"}
+              className={cn(
+                "h-9 flex items-center gap-1.5 px-3 text-xs font-semibold border rounded-lg transition-colors whitespace-nowrap",
+                viewMode === "split"
+                  ? "bg-red-700 text-white border-red-700"
+                  : "bg-background text-muted-foreground border-border hover:text-foreground"
+              )}>
+              {viewMode === "split"
+                ? <><Columns2 className="w-3.5 h-3.5" /> Per Divisi</>
+                : <><AlignJustify className="w-3.5 h-3.5" /> Semua</>
+              }
+            </button>
+          </div>
+
+          <div className="w-px h-9 bg-border self-end shrink-0" />
+
           <SelectDropdown label="Snapshot" value={String(importId || "")}
             onChange={v => setImportId(Number(v))}
             options={snapshotOptions.length > 0 ? snapshotOptions : [{ value: "", label: "Belum ada data" }]}
@@ -1041,53 +1074,48 @@ export default function FunnelPage() {
           <SelectDropdown label="Target" value={filterTarget} onChange={v => setFilterTarget(v as "ho" | "fullho")}
             options={[{ value: "fullho", label: "Target Full HO" }, { value: "ho", label: "Target HO" }]}
             className="w-32 shrink-0" />
-          <div className="w-px h-9 bg-border self-end shrink-0" />
 
-          {/* View Mode Toggle */}
-          <div className="flex flex-col gap-1 shrink-0">
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Tampilan</label>
-            <div className="flex border border-border rounded-lg overflow-hidden h-9">
-              <button
-                type="button"
-                onClick={() => setViewMode("all")}
-                title="Semua Divisi"
-                className={cn(
-                  "flex items-center gap-1.5 px-3 text-xs font-semibold transition-colors whitespace-nowrap",
-                  viewMode === "all"
-                    ? "bg-red-700 text-white"
-                    : "bg-background text-muted-foreground hover:text-foreground"
-                )}>
-                <AlignJustify className="w-3.5 h-3.5" /> Semua
-              </button>
-              <div className="w-px bg-border" />
-              <button
-                type="button"
-                onClick={() => setViewMode("split")}
-                title="Per Divisi (DPS | DSS)"
-                className={cn(
-                  "flex items-center gap-1.5 px-3 text-xs font-semibold transition-colors whitespace-nowrap",
-                  viewMode === "split"
-                    ? "bg-red-700 text-white"
-                    : "bg-background text-muted-foreground hover:text-foreground"
-                )}>
-                <Columns2 className="w-3.5 h-3.5" /> Per Divisi
-              </button>
-            </div>
-          </div>
-
-          {hasActiveFilter && (
-            <div className="flex flex-col gap-1 shrink-0">
-              <label className="text-[10px] font-bold text-transparent uppercase">.</label>
-              <button onClick={() => {
-                setFilterStatus(new Set()); setFilterDivisi("all");
-                setFilterMonths(new Set()); setFilterKontrak(new Set());
-              }}
-                className="h-9 flex items-center gap-1 px-3 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
-                <X className="w-3.5 h-3.5" /> Reset
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* Active filter chips — always visible since Periode is always active */}
+        {hasActiveFilter && (
+          <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+            {/* Periode chip — always shows */}
+            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+              Periode: {filterMonths.size === 0
+                ? `${[...filterYears].sort().join(", ")} (semua bulan)`
+                : filterMonths.size === 1
+                  ? `${MONTHS_ID[parseInt([...filterMonths][0])]} ${[...filterYears][0] ?? ""}`
+                  : `${filterMonths.size} bulan`}
+              {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>}
+            </span>
+            {filterDivisi !== "all" && (
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                Divisi: {filterDivisi}
+                <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {filterKontrak.size > 0 && (
+              <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                Kontrak: {filterKontrak.size === 1 ? [...filterKontrak][0] : `${filterKontrak.size} terpilih`}
+                <button onClick={() => setFilterKontrak(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {filterStatus.size > 0 && (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                Status: {filterStatus.size === 1 ? [...filterStatus][0] : `${filterStatus.size} status`}
+                <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {(filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0) && (
+              <button onClick={() => { setFilterStatus(new Set()); setFilterDivisi("all"); setFilterMonths(new Set()); setFilterKontrak(new Set()); }}
+                className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+                <X className="w-3 h-3"/> Reset filter
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Content Area ─────────────────────────────────────────────────────── */}
@@ -1178,25 +1206,41 @@ export default function FunnelPage() {
             </button>
           </div>
         </div>
-        {/* Tabel punya scroll container sendiri — sticky thead bekerja di dalam sini, baris tidak bisa muncul di atas thead */}
+        {/* Scroll-sync table: sticky red header + content-height body */}
         <div className="p-3">
-          <div className="border border-border overflow-hidden">
-          <div className="overflow-auto" style={{ maxHeight: `calc(100dvh - ${detailToolbarH + 180}px)` }}>
-          <table className="w-full text-left text-sm border-collapse" style={{minWidth:"820px"}}>
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                <th className="px-4 py-3 min-w-[320px]">AM / Fase / Proyek</th>
-                <th className="px-3 py-3 whitespace-nowrap w-28">KATEGORI</th>
-                <th className="px-3 py-3 font-mono whitespace-nowrap w-28">LOP ID</th>
-                <th className="px-3 py-3 min-w-[220px]">Pelanggan</th>
-                <th className="px-4 py-3 text-right whitespace-nowrap min-w-[200px]">Nilai Proyek</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {renderAmTbodyContent(groupedByAm, search || hasActiveFilter || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel")}
-            </tbody>
-          </table>
-          </div>
+          <div className="border border-border rounded">
+            {/* Sticky header row — synced horizontally with body, sticks below section toolbar */}
+            <div ref={funnelTableHeaderRef} onScroll={onFunnelHeaderScroll}
+              className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 rounded-t"
+              style={{top:`${detailToolbarH}px`}}>
+              <table className="border-collapse" style={{width:"964px",tableLayout:"fixed"}}>
+                <colgroup>
+                  <col style={{width:"320px"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
+                  <col style={{width:"220px"}}/><col style={{width:"200px"}}/>
+                </colgroup>
+                <thead>
+                  <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
+                    <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
+                    <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
+                    <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
+                    <th className="px-3 py-3 text-left">Pelanggan</th>
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            {/* Scrollable body — expands to full content height */}
+            <div ref={funnelTableBodyRef} onScroll={onFunnelBodyScroll} className="overflow-x-auto">
+              <table className="text-left text-sm border-collapse" style={{width:"964px",tableLayout:"fixed"}}>
+                <colgroup>
+                  <col style={{width:"320px"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
+                  <col style={{width:"220px"}}/><col style={{width:"200px"}}/>
+                </colgroup>
+                <tbody className="divide-y divide-border/50">
+                  {renderAmTbodyContent(groupedByAm, search || hasDetailFilter ? "Tidak ada data yang cocok dengan filter" : "Belum ada data funnel")}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>}
@@ -1205,7 +1249,7 @@ export default function FunnelPage() {
       {viewMode === "split" && (
         <div className="flex flex-col gap-4">
         {/* Row 1: Stats + Chart */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {(["DPS", "DSS"] as const).map(div => {
             const st = div === "DPS" ? dpsStats : dssStats;
             const isDps = div === "DPS";
@@ -1224,7 +1268,7 @@ export default function FunnelPage() {
                       <div className="text-sm font-black text-foreground/80 leading-tight mt-0.5">{isDps ? "Private Service" : "State Service"}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Total LOP</div>
                       <div className={`text-3xl font-black tabular-nums leading-tight ${textAccent}`}>{st.totalLop}</div>
@@ -1249,7 +1293,7 @@ export default function FunnelPage() {
         </div>
 
         {/* Row 2: Tabel AM (card terpisah) */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {(["DPS", "DSS"] as const).map(div => {
             const st = div === "DPS" ? dpsStats : dssStats;
             const grp = div === "DPS" ? dpsGrouped : dssGrouped;
@@ -1275,26 +1319,24 @@ export default function FunnelPage() {
                     </button>
                   </div>
                 </div>
-                {/* AM Tree Table — overflow-x luar, overflow-y dalam */}
+                {/* AM Tree Table — horizontal scroll, content height */}
                 <div className="p-3">
-                <div className="border border-border overflow-hidden">
+                <div className="border border-border rounded">
                 <div className="overflow-x-auto">
-                  <div className="overflow-y-auto" style={{ maxHeight: "clamp(220px, 46vh, 540px)" }}>
-                    <table className="w-full text-left text-sm border-collapse" style={{ minWidth: "600px" }}>
-                      <thead className="sticky top-0 z-10">
-                        <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                          <th className="px-4 py-2.5 min-w-[280px]">AM / Fase / Proyek</th>
-                          <th className="px-3 py-2.5 whitespace-nowrap w-20">KATEGORI</th>
-                          <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20">LOP ID</th>
-                          <th className="px-3 py-2.5 min-w-[140px]">Pelanggan</th>
-                          <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/50">
-                        {renderAmTbodyContent(grp, `Tidak ada AM ${div}`)}
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="w-full text-left text-sm border-collapse" style={{ minWidth: "600px" }}>
+                    <thead>
+                      <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                        <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
+                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
+                        <th className="px-3 py-2.5 min-w-[140px] text-left">Pelanggan</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {renderAmTbodyContent(grp, `Tidak ada AM ${div}`)}
+                    </tbody>
+                  </table>
                 </div>
                 </div>
                 </div>

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salesActivityTable, accountManagersTable, dataImportsTable } from "@workspace/db";
+import { db, salesActivityTable, accountManagersTable, dataImportsTable, appSettingsTable } from "@workspace/db";
 import { matchesDivisi } from "../../shared/divisi";
 import { eq, desc } from "drizzle-orm";
 
@@ -32,10 +32,12 @@ router.get("/public/activity/snapshots", async (_req, res): Promise<void> => {
 router.get("/public/activity", async (req, res): Promise<void> => {
   const { year, month, divisi, import_id } = req.query;
 
-  const [allActs, ams] = await Promise.all([
+  const [allActs, ams, settingsArr] = await Promise.all([
     db.select().from(salesActivityTable),
     db.select().from(accountManagersTable),
+    db.select({ kpiActivityDefault: appSettingsTable.kpiActivityDefault }).from(appSettingsTable).limit(1),
   ]);
+  const kpiDefault = settingsArr[0]?.kpiActivityDefault ?? 30;
 
   // Hanya AM terdaftar (role=AM, aktif=true) — bukan officer/manager
   const registeredAms = ams.filter(a => a.aktif && a.role === "AM");
@@ -48,9 +50,6 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     if (!isNaN(impId)) acts = acts.filter(a => a.importId === impId);
   }
 
-  if (divisi && String(divisi) !== "all") {
-    acts = acts.filter(a => matchesDivisi(a.divisi, String(divisi)));
-  }
   const months = req.query.months ? String(req.query.months).split(",").filter(Boolean) : null;
   if (year && months && months.length > 0) {
     const prefixes = months.map(m => `${year}-${m.padStart(2, "0")}`);
@@ -79,7 +78,7 @@ router.get("/public/activity", async (req, res): Promise<void> => {
       divisi: am.divisi ?? "",
       kpiCount: 0,
       totalCount: 0,
-      kpiTarget: am.kpiActivity ?? 20,
+      kpiTarget: am.kpiActivity ?? kpiDefault,
       activities: [],
     };
   }

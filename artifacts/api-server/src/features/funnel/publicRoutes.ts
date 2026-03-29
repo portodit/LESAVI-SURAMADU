@@ -111,6 +111,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   }));
 
   let targetHoVal = 0, targetFullHoVal = 0;
+  const targetByDivisi: Record<string, { targetHo: number; targetFullHo: number }> = {};
   const allTargets = await db.select().from(salesFunnelTargetTable)
     .orderBy(desc(salesFunnelTargetTable.tahun), desc(salesFunnelTargetTable.bulan));
 
@@ -129,6 +130,15 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     if (lookupYear) matched = matched.filter(t => t.tahun === lookupYear);
     // bulan=null means target berlaku seluruh tahun — tetap match jika bulan tidak dispesifik
     if (lookupMonth) matched = matched.filter(t => t.bulan === null || t.bulan === lookupMonth);
+
+    // Build per-divisi target breakdown
+    for (const t of matched) {
+      if (t.divisi) {
+        if (!targetByDivisi[t.divisi]) targetByDivisi[t.divisi] = { targetHo: 0, targetFullHo: 0 };
+        targetByDivisi[t.divisi].targetHo += t.targetHo || 0;
+        targetByDivisi[t.divisi].targetFullHo += t.targetFullHo || 0;
+      }
+    }
 
     if (divisiFilter && divisiFilter !== "all") {
       const expanded = expandDivisi(divisiFilter);
@@ -155,6 +165,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     totalLop, totalNilai,
     targetHo: targetHoVal,
     targetFullHo: targetFullHoVal,
+    targetByDivisi,
     realFullHo: totalNilai,
     shortage,
     amCount: amSet.size,

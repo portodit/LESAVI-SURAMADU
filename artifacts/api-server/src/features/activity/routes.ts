@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salesActivityTable, accountManagersTable, dataImportsTable } from "@workspace/db";
+import { db, salesActivityTable, accountManagersTable, dataImportsTable, appSettingsTable } from "@workspace/db";
 import { requireAuth } from "../../shared/auth";
 import { matchesDivisi } from "../../shared/divisi";
 import { eq, desc } from "drizzle-orm";
@@ -33,10 +33,12 @@ router.get("/activity/snapshots", requireAuth, async (req, res): Promise<void> =
 router.get("/activity", requireAuth, async (req, res): Promise<void> => {
   const { year, month, divisi, import_id } = req.query;
 
-  const [allActs, ams] = await Promise.all([
+  const [allActs, ams, settingsArr] = await Promise.all([
     db.select().from(salesActivityTable),
     db.select().from(accountManagersTable),
+    db.select({ kpiActivityDefault: appSettingsTable.kpiActivityDefault }).from(appSettingsTable).limit(1),
   ]);
+  const kpiDefault = settingsArr[0]?.kpiActivityDefault ?? 30;
 
   // Hanya AM terdaftar (role=AM, aktif=true) — bukan officer/manager
   const registeredAms = ams.filter(a => a.aktif && a.role === "AM");
@@ -50,9 +52,6 @@ router.get("/activity", requireAuth, async (req, res): Promise<void> => {
     if (!isNaN(impId)) acts = acts.filter(a => a.importId === impId);
   }
 
-  if (divisi && String(divisi) !== "all") {
-    acts = acts.filter(a => matchesDivisi(a.divisi, String(divisi)));
-  }
   if (year && month && String(month) !== "all") {
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
     acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
@@ -77,7 +76,7 @@ router.get("/activity", requireAuth, async (req, res): Promise<void> => {
       divisi: am.divisi ?? "",
       kpiCount: 0,
       totalCount: 0,
-      kpiTarget: am.kpiActivity ?? 20,
+      kpiTarget: am.kpiActivity ?? kpiDefault,
       activities: [],
     };
   }
@@ -137,9 +136,12 @@ router.get("/activity/:nik", requireAuth, async (req, res): Promise<void> => {
     acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
   }
 
-  const allAms = await db.select().from(accountManagersTable);
+  const [allAms, singleSettingsArr] = await Promise.all([
+    db.select().from(accountManagersTable),
+    db.select({ kpiActivityDefault: appSettingsTable.kpiActivityDefault }).from(appSettingsTable).limit(1),
+  ]);
   const am = allAms.find(a => a.nik === raw);
-  const kpiTarget = am?.kpiActivity ?? 20;
+  const kpiTarget = am?.kpiActivity ?? (singleSettingsArr[0]?.kpiActivityDefault ?? 30);
   const fullname = acts[0]?.fullname || am?.nama || "";
   const divisi = acts[0]?.divisi || am?.divisi || "";
 

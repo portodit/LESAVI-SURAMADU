@@ -6,14 +6,14 @@ export const DIVISI_OPTIONS = [
 ];
 
 export const DIVISI_OPTIONS_WITH_ALL = [
+  { value: "all",  label: "Semua Divisi" },
   { value: "LESA", label: "LESA" },
   { value: "GOVT", label: "GOVT" },
   { value: "DPS",  label: "DPS" },
   { value: "DSS",  label: "DSS" },
-  { value: "all",  label: "Semua Divisi" },
 ];
 
-export const DEFAULT_DIVISI = "LESA";
+export const DEFAULT_DIVISI = "all";
 
 /** Expands LESA → ["DPS","DSS"], GOVT → ["DGS"], else → [d] */
 export function expandDivisi(d: string): string[] {

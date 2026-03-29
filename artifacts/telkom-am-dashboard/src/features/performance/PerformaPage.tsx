@@ -292,7 +292,7 @@ export default function PerformaVis() {
   // Filter state
   const [filterSnapshotId, setFilterSnapshotId] = useState<number | null>(null);
   const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set()); // "YYYY-MM"
-  const [filterDivisi, setFilterDivisi] = useState("LESA");
+  const [filterDivisi, setFilterDivisi] = useState("all");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach CM");
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
@@ -571,6 +571,27 @@ export default function PerformaVis() {
     }
   };
 
+  // Sticky section header height — table header sticks right below it
+  const perfSectionHeaderRef = useRef<HTMLDivElement>(null);
+  const [perfSectionHeaderH, setPerfSectionHeaderH] = useState(56);
+  useEffectRef(() => {
+    const el = perfSectionHeaderRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPerfSectionHeaderH(el.offsetHeight));
+    ro.observe(el);
+    setPerfSectionHeaderH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+  // Scroll-sync refs for sticky table header (horizontal sync)
+  const perfTableHeaderRef = useRef<HTMLDivElement>(null);
+  const perfTableBodyRef = useRef<HTMLDivElement>(null);
+  const onPerfHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (perfTableBodyRef.current) perfTableBodyRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+  const onPerfBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (perfTableHeaderRef.current) perfTableHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -585,11 +606,27 @@ export default function PerformaVis() {
   const hasData = amTableData.length > 0;
   const noDataAtAll = !allPerfs?.length;
 
+  const isPeriodeFiltered = filterPeriodes.size > 0 && filterPeriodes.size < availablePeriodes.length;
+  const isDivisiFiltered = filterDivisi !== "all";
+  const isAmFiltered = filterNamaAms.size > 0;
+  const isRankFiltered = filterTipeRank !== "Ach CM";
+  const isRevenueFiltered = filterTipeRevenue !== "Reguler";
+  const hasPerformaActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
+
+  const resetPerformaFilters = () => {
+    setFilterDivisi("all");
+    setFilterNamaAms(new Set());
+    setFilterTipeRank("Ach CM");
+    setFilterTipeRevenue("Reguler");
+    setSearchQuery("");
+    setFilterPeriodes(new Set(availablePeriodes));
+  };
+
   return (
     <div className="space-y-4">
       {/* ─── Filter Bar ─────────────────────────────────── */}
       <div className="bg-card border border-border rounded-xl px-4 py-3">
-        <div className="flex items-end gap-2 min-w-0">
+        <div className="flex items-end gap-2 min-w-0 flex-wrap">
           {/* 1. Snapshot */}
           <SelectDropdown
             label="📷 Snapshot"
@@ -652,6 +689,47 @@ export default function PerformaVis() {
           />
 
         </div>
+
+        {/* Active filter chips */}
+        {hasPerformaActiveFilter && (
+          <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
+            {isPeriodeFiltered && (
+              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                Periode: {filterPeriodes.size === 1 ? periodeLabel([...filterPeriodes][0]) : `${filterPeriodes.size} periode`}
+                <button onClick={() => setFilterPeriodes(new Set(availablePeriodes))} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {isDivisiFiltered && (
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                Divisi: {filterDivisi}
+                <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {isAmFiltered && (
+              <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                AM: {filterNamaAms.size === 1 ? [...filterNamaAms][0] : `${filterNamaAms.size} AM`}
+                <button onClick={() => setFilterNamaAms(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {isRankFiltered && (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                Rank: {filterTipeRank}
+                <button onClick={() => setFilterTipeRank("Ach CM")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {isRevenueFiltered && (
+              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Revenue: {filterTipeRevenue}
+                <button onClick={() => setFilterTipeRevenue("Reguler")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            <button onClick={resetPerformaFilters}
+              className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+              <X className="w-3 h-3" /> Reset filter
+            </button>
+          </div>
+        )}
       </div>
 
       {noDataAtAll ? (
@@ -725,52 +803,67 @@ export default function PerformaVis() {
           <div>
             {/* Table */}
             <div className="bg-card border border-border rounded-xl">
-              <div className="px-4 py-3 border-b border-border bg-secondary/30 flex items-center justify-between gap-3 flex-wrap">
-                <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  AM Performance Report
-                </h3>
-                <div className="flex items-center gap-2 flex-1 justify-end">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Cari AM atau pelanggan..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-7 pr-7 py-1.5 text-xs bg-background border border-border rounded-lg w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
+              <div ref={perfSectionHeaderRef} className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border rounded-t-xl">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h3 className="text-sm font-display font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    AM Performance Report
+                  </h3>
+                  <div className="flex items-center gap-2 flex-1 justify-end">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Cari AM atau pelanggan..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="pl-7 pr-7 py-1.5 text-xs bg-background border border-border rounded-lg w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleExpandAll}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap"
+                    >
+                      {expandAll ? <Minimize2 className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
+                      {expandAll ? "Collapse Semua" : "Expand Semua AM"}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleExpandAll}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors whitespace-nowrap"
-                  >
-                    {expandAll ? <Minimize2 className="w-3 h-3" /> : <Expand className="w-3 h-3" />}
-                    {expandAll ? "Collapse Semua" : "Expand Semua AM"}
-                  </button>
                 </div>
               </div>
               <div className="p-3">
-                <div className="border border-border overflow-visible">
-                <div className="[overflow-x:clip]">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                      <th className="px-4 py-2.5 w-6"></th>
-                      <th className="px-4 py-2.5">Nama AM</th>
-                      <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
-                      <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
-                      <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach CM" && "underline underline-offset-2")}>CM %</th>
-                      <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach YTD" && "underline underline-offset-2")}>YTD %</th>
-                      <th className="px-3 py-2.5 text-center">Customer</th>
-                      <th className="px-3 py-2.5 text-center underline underline-offset-2">
-                        {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK REV"}
-                      </th>
+                <div className="border border-border rounded">
+                {/* Sticky table header — synced horizontally with body */}
+                <div ref={perfTableHeaderRef} onScroll={onPerfHeaderScroll}
+                  className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10"
+                  style={{ top: `${perfSectionHeaderH}px` }}>
+                  <table className="border-collapse" style={{ minWidth: "600px", width: "100%" }}>
+                    <thead>
+                      <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
+                        <th className="px-4 py-2.5 text-left w-6"></th>
+                        <th className="px-4 py-2.5 text-left">Nama AM</th>
+                        <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
+                        <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
+                        <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach CM" && "underline underline-offset-2")}>CM %</th>
+                        <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach YTD" && "underline underline-offset-2")}>YTD %</th>
+                        <th className="px-3 py-2.5 text-center">Customer</th>
+                        <th className="px-3 py-2.5 text-center underline underline-offset-2">
+                          {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK REV"}
+                        </th>
+                      </tr>
+                    </thead>
+                  </table>
+                </div>
+                {/* Scrollable body */}
+                <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll} className="overflow-x-auto">
+                <table className="w-full text-left text-xs" style={{ minWidth: "600px" }}>
+                  <thead className="sr-only" aria-hidden>
+                    <tr>
+                      <th className="w-6"></th><th>Nama AM</th><th>Target</th><th>Real</th><th>CM %</th><th>YTD %</th><th>Customer</th><th>Rank</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
