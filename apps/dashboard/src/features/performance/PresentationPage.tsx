@@ -1022,7 +1022,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               ...(amExpanded?{position:"sticky" as const,top:fsFunnelTheadH,zIndex:15,boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}:{})
             }}
             onClick={()=>toggleAmRow(amKey)}>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3" style={amExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
               <div className="flex items-center gap-2">
                 <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0",amExpanded&&"rotate-90")}/>
                 <span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>
@@ -1034,7 +1034,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 </button>
               </div>
             </td>
-            <td className="px-3 py-3" colSpan={amExpanded?4:3}>
+            <td className="px-3 py-3" colSpan={amExpanded?4:3} style={amExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
               <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
             </td>
             {!amExpanded&&(<td className="px-4 py-3 text-right whitespace-nowrap">
@@ -1057,14 +1057,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     ...(phaseExpanded?{position:"sticky" as const,top:fsFunnelTheadH+49,zIndex:14,boxShadow:"0 2px 6px rgba(0,0,0,0.09)"}:{})
                   }}
                   onClick={()=>togglePhaseRow(phaseKey)}>
-                  <td className="px-4 py-2.5 pl-10">
+                  <td className="px-4 py-2.5 pl-10" style={phaseExpanded?{backgroundColor:"rgb(253,242,248)"}:{}}>
                     <div className="flex items-center gap-2">
                       <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                       <span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span>
                       <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                     </div>
                   </td>
-                  {phaseExpanded?<td colSpan={4} className="px-3 py-2.5"/>
+                  {phaseExpanded?<td colSpan={4} className="px-3 py-2.5" style={{backgroundColor:"rgb(253,242,248)"}}/>
                     :<><td colSpan={3} className="px-3 py-2.5"/>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
@@ -1251,18 +1251,18 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         {/* Unified table scroll container — sticky thead + sticky expanded AM/phase rows */}
         <div className="px-3 pb-3">
           <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
-            <table className="text-left text-sm border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
+            <table className="text-left text-sm w-full" style={{minWidth:"964px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0}}>
               <colgroup>
                 <col style={{width:"33%"}}/><col style={{width:"116px"}}/><col style={{width:"116px"}}/>
                 <col/><col style={{width:"200px"}}/>
               </colgroup>
               <thead ref={fsFunnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
-                <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                  <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
-                  <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
-                  <th className="px-3 py-3 text-left">Pelanggan</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
+                <tr className="text-white font-black uppercase tracking-wide text-xs">
+                  <th className="px-4 py-3 text-left" style={{background:"#B91C1C"}}>AM / Fase / Proyek</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>KATEGORI</th>
+                  <th className="px-3 py-3 text-left font-mono whitespace-nowrap" style={{background:"#B91C1C"}}>LOP ID</th>
+                  <th className="px-3 py-3 text-left" style={{background:"#B91C1C"}}>Pelanggan</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Nilai Proyek</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
