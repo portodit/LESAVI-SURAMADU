@@ -1835,7 +1835,7 @@ function ActivitySlide() {
                 className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 <div style={{minWidth:"780px"}}>
-                  <div className="grid text-xs font-black uppercase tracking-wide text-white"
+                  <div className="grid text-sm font-black uppercase tracking-wide text-white font-display"
                     style={{background:"#B91C1C",gridTemplateColumns:ACT_GRID_COLS,padding:"10px 16px"}}>
                     <div/><div className="pl-1">Nama AM</div><div>Progress KPI</div>
                     <div className="text-center">Aktivitas</div><div className="text-center">Target</div><div className="text-center">Sisa</div><div>Status</div>
@@ -1889,21 +1889,21 @@ function ActivitySlide() {
 
                     {/* Progress bar — bigger */}
                     <div className="pr-2">
-                      <div className="h-3.5 bg-secondary rounded-full overflow-hidden mb-1.5">
+                      <div className="h-4 bg-secondary rounded-full overflow-hidden mb-2">
                         <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700",progressGrad)}
                           style={{width:pct===0?"0%":`${Math.max(pct,3)}%`}}/>
                       </div>
                       <div className="flex items-center justify-between gap-1">
-                        <span className={cn("text-sm font-black font-mono",pctClr)}>{pct}%</span>
-                        <span className={cn("text-xs font-bold font-mono",pct===0?"text-foreground/50":"text-foreground")}>
+                        <span className={cn("text-base font-black font-display",pctClr)}>{pct}%</span>
+                        <span className={cn("text-sm font-bold font-display",pct===0?"text-foreground/50":"text-foreground")}>
                           {kpiCount}/{am.kpiTarget} aktivitas KPI
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-sm font-black font-mono text-foreground text-center">{kpiCount}</div>
-                    <div className="text-sm font-bold font-mono text-foreground/70 text-center">{am.kpiTarget}</div>
-                    <div className={cn("text-sm font-bold font-mono text-center",sisa===0?"text-emerald-600 dark:text-emerald-400":"text-foreground")}>{sisa===0?"✓":sisa}</div>
+                    <div className="text-base font-black font-display text-foreground text-center">{kpiCount}</div>
+                    <div className="text-base font-bold font-display text-foreground/70 text-center">{am.kpiTarget}</div>
+                    <div className={cn("text-base font-bold font-display text-center",sisa===0?"text-emerald-600 dark:text-emerald-400":"text-foreground")}>{sisa===0?"✓":sisa}</div>
                     <div>
                       {pct>=100
                         ?<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">✓ Tercapai</span>
