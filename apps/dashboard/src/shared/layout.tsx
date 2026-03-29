@@ -343,7 +343,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-background flex font-sans">
+    <div className="h-screen overflow-hidden bg-background flex font-sans">
       {/* Mobile backdrop */}
       <AnimatePresence>
         {mobileOpen && (

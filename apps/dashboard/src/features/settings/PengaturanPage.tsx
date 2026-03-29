@@ -311,7 +311,7 @@ export default function PengaturanPage() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
                 activeTab === tab.id
-                  ? "bg-background text-foreground shadow-sm border border-border"
+                  ? "bg-primary text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -324,7 +324,7 @@ export default function PengaturanPage() {
 
       {/* ── Bot Telegram Tab ─────────────────────────────────────────────────── */}
       {activeTab === "bot" && (
-        <div className="space-y-4 max-w-2xl">
+        <div className="space-y-4">
           {/* Telegram Bot Token card */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-3 mb-5">

@@ -39,15 +39,18 @@ find "$TMP_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} + 2>/dev/
 echo "📂 Menyalin source code..."
 SRC="/home/runner/workspace"
 
-cp -r "$SRC/." "$TMP_DIR/"
-
-# Hapus file yang tidak perlu di-push
-find "$TMP_DIR" -name 'node_modules' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-find "$TMP_DIR" -name 'dist' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-find "$TMP_DIR" -name '.cache' -type d -prune -exec rm -rf {} + 2>/dev/null || true
-find "$TMP_DIR" -name '*.tsbuildinfo' -exec rm -f {} + 2>/dev/null || true
-rm -f "$TMP_DIR/.replit" "$TMP_DIR/replit.nix" 2>/dev/null || true
-rm -rf "$TMP_DIR/attached_assets" 2>/dev/null || true
+cd "$SRC"
+tar --exclude='.git' \
+    --exclude='node_modules' \
+    --exclude='dist' \
+    --exclude='.cache' \
+    --exclude='*.tsbuildinfo' \
+    --exclude='.replit' \
+    --exclude='replit.nix' \
+    --exclude='attached_assets' \
+    --exclude='.local' \
+    --exclude='*.log' \
+    -cf - . | tar -xf - -C "$TMP_DIR"
 
 # ── Commit dan push ────────────────────────────────────────────
 cd "$TMP_DIR"
