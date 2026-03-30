@@ -315,10 +315,10 @@ export default function ImportData() {
   const driveProgressRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   // Multi-select per driveType
   const [driveSelectedFiles, setDriveSelectedFiles] = useState<Record<string, Record<string, boolean>>>({});
-  // Sync log
+  // Sync log — keyed by driveType so each tab has its own log
   type SyncLogEntry = { fileId: string; fileName: string; status: "waiting" | "running" | "ok" | "error"; message: string; rows?: number };
-  const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([]);
-  const [syncLogOpen, setSyncLogOpen] = useState(true);
+  const [syncLog, setSyncLog] = useState<Record<string, SyncLogEntry[]>>({});
+  const [syncLogOpen, setSyncLogOpen] = useState<Record<string, boolean>>({});
 
   const { data: appSettings } = useQuery<any>({
     queryKey: ["app-settings-gs"],
@@ -418,25 +418,25 @@ export default function ImportData() {
     const entries: SyncLogEntry[] = filesToSync.map(f => ({
       fileId: f.id, fileName: f.name, status: "waiting", message: "Menunggu...",
     }));
-    setSyncLog(entries);
-    setSyncLogOpen(true);
+    setSyncLog(p => ({ ...p, [type]: entries }));
+    setSyncLogOpen(p => ({ ...p, [type]: true }));
     setDriveSyncing(p => ({ ...p, [type]: true }));
     setDriveSyncResult(p => ({ ...p, [type]: null }));
     startDriveProgress(type);
     let anyOk = false;
     for (let i = 0; i < filesToSync.length; i++) {
       const f = filesToSync[i];
-      setSyncLog(prev => prev.map((e, idx) => idx === i ? { ...e, status: "running", message: "Sedang download & import..." } : e));
+      setSyncLog(prev => ({ ...prev, [type]: (prev[type] || []).map((e, idx) => idx === i ? { ...e, status: "running", message: "Sedang download & import..." } : e) }));
       try {
         const fDetected = extractDateFromFilename(f.name);
         const result = await apiFetch<any>(`/api/gdrive/sync?type=${type}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileId: f.id, snapshotDate: fDetected?.isoDate || driveSnapshotOverride[type] || undefined }),
         });
-        setSyncLog(prev => prev.map((e, idx) => idx === i ? { ...e, status: "ok", message: `${result.imported} baris berhasil diimport`, rows: result.imported } : e));
+        setSyncLog(prev => ({ ...prev, [type]: (prev[type] || []).map((e, idx) => idx === i ? { ...e, status: "ok", message: `${result.imported} baris berhasil diimport`, rows: result.imported } : e) }));
         anyOk = true;
       } catch (e: any) {
-        setSyncLog(prev => prev.map((e2, idx) => idx === i ? { ...e2, status: "error", message: e.message || "Gagal" } : e2));
+        setSyncLog(prev => ({ ...prev, [type]: (prev[type] || []).map((e2, idx) => idx === i ? { ...e2, status: "error", message: e.message || "Gagal" } : e2) }));
       }
     }
     stopDriveProgress(type, anyOk);
@@ -1389,28 +1389,28 @@ export default function ImportData() {
                       );
                     })()}
 
-                    {/* Sync log panel — collapsible */}
-                    {syncLog.length > 0 && (
+                    {/* Sync log panel — collapsible, per driveType */}
+                    {(syncLog[driveType] || []).length > 0 && (
                       <div className="border border-border rounded-xl overflow-hidden">
                         <button
-                          onClick={() => setSyncLogOpen(p => !p)}
+                          onClick={() => setSyncLogOpen(p => ({ ...p, [driveType]: !p[driveType] }))}
                           className="w-full px-3 py-2 flex items-center gap-2 bg-secondary/40 hover:bg-secondary/60 transition-colors border-b border-border text-left"
                         >
                           <Terminal className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="text-[11px] font-bold text-foreground flex-1">Log Proses Sync</span>
                           <span className={cn(
                             "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                            syncLog.every(e => e.status === "ok") ? "bg-emerald-100 text-emerald-700"
-                            : syncLog.some(e => e.status === "error") ? "bg-red-100 text-red-700"
+                            (syncLog[driveType] || []).every(e => e.status === "ok") ? "bg-emerald-100 text-emerald-700"
+                            : (syncLog[driveType] || []).some(e => e.status === "error") ? "bg-red-100 text-red-700"
                             : "bg-amber-100 text-amber-700"
                           )}>
-                            {syncLog.filter(e => e.status === "ok").length}/{syncLog.length} OK
+                            {(syncLog[driveType] || []).filter(e => e.status === "ok").length}/{(syncLog[driveType] || []).length} OK
                           </span>
-                          {syncLogOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                          {syncLogOpen[driveType] ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                         </button>
-                        {syncLogOpen && (
+                        {syncLogOpen[driveType] && (
                           <div className="max-h-52 overflow-y-auto divide-y divide-border/40 bg-[#1e1e2e]/[0.03]">
-                            {syncLog.map((entry, i) => (
+                            {(syncLog[driveType] || []).map((entry, i) => (
                               <div key={entry.fileId} className="flex items-start gap-2.5 px-3 py-2.5">
                                 <div className="shrink-0 mt-0.5">
                                   {entry.status === "waiting" && <Clock className="w-3.5 h-3.5 text-muted-foreground/40" />}
