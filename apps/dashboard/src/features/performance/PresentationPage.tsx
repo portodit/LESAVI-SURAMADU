@@ -1148,7 +1148,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       const divBadge=divisi?<span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",divisi==="DPS"?"bg-blue-100 text-blue-700":divisi==="DSS"?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-600")}>{divisi}</span>:null;
 
       if(!amExpanded){return(
-        <table key={amKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
+        <table key={amKey} className="text-left text-sm" style={{...FS_TB_STYLE,border:"1.5px solid #e2e8f0"}}><FSColGroup/>
           <tbody>
             <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors" style={{borderTop:"2px solid transparent"}} onClick={()=>toggleAmRow(amKey)}>
               <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
@@ -1162,7 +1162,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       // Expanded: 1 tabel per AM — thead berisi baris AM (sticky, 1x saja)
       // Tiap fase = 1 tbody — baris header fase menggunakan sticky pada masing-masing sel
       return(
-        <table key={amKey} className="text-left text-sm" style={{...FS_TB_STYLE,border:"2px solid #94a3b8"}}><FSColGroup/>
+        <table key={amKey} className="text-left text-sm" style={{...FS_TB_STYLE,border:"2px solid #dc2626"}}><FSColGroup/>
           {/* Baris AM — sticky SATU KALI, tidak diulang per fase */}
           <thead ref={(el)=>setAmTheadH(amKey,el)}
             style={{position:"sticky",top:amStickyTop,zIndex:12}}>
