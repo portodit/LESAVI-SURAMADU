@@ -1707,8 +1707,7 @@ function ActivitySlide() {
   // Sticky height measurement for per-AM sticky rows
   const actToolbarRef = useRef<HTMLDivElement>(null);
   const [actToolbarH, setActToolbarH] = useState(93);
-  const actAmSumRowRef = useRef<HTMLDivElement>(null);
-  const [actAmSumRowH, setActAmSumRowH] = useState(62);
+  const [actAmSumRowH, setActAmSumRowH] = useState(70);
   useEffect(()=>{
     const el=actToolbarRef.current;
     if(!el) return;
@@ -1716,12 +1715,10 @@ function ActivitySlide() {
     obs.observe(el);
     return ()=>obs.disconnect();
   },[]);
-  useEffect(()=>{
-    const el=actAmSumRowRef.current;
+  const actAmSumRowCallbackRef = useCallback((el: HTMLDivElement|null)=>{
     if(!el) return;
     const obs=new ResizeObserver(([e])=>setActAmSumRowH(e.contentRect.height));
     obs.observe(el);
-    return ()=>obs.disconnect();
   },[]);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
@@ -1789,7 +1786,8 @@ function ActivitySlide() {
   const {data:actSettingsData} = useQuery<any>({
     queryKey:["settings-kpi-slide"],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}/api/public/settings`).catch(()=>null);if(!r||!r.ok)return null;return r.json();},
-    staleTime:300_000,
+    staleTime:0,
+    refetchOnWindowFocus:true,
   });
   const actSettingsKpi:number = actSettingsData?.kpiActivityDefault ?? 30;
   const actEffectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
@@ -2033,7 +2031,7 @@ function ActivitySlide() {
                   className={cn("border-b border-border/50 last:border-b-0 transition-all",isExpanded&&"relative z-[5] border-b-0")}
                   style={isExpanded?{outline:"2px solid #B91C1C",outlineOffset:"-1px",borderRadius:6,marginBottom:6}:{}}>
                   <div
-                    ref={amIdx===0?actAmSumRowRef:undefined}
+                    ref={isExpanded?actAmSumRowCallbackRef:undefined}
                     onClick={()=>{setActExpandAll(null);setExpandedAm(p=>({...p,[am.fullname]:!p[am.fullname]}));}}
                     className={cn("grid items-center px-4 py-3 cursor-pointer transition-colors group",
                       isExpanded?"bg-card border-b border-primary/20":"hover:bg-secondary/40")}
