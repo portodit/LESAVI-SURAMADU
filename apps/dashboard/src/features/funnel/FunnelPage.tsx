@@ -827,6 +827,18 @@ export default function FunnelPage() {
     return () => ro.disconnect();
   }, []);
 
+  // Ref untuk baris AM — dipakai menghitung offset sticky phase row agar menempel rapat
+  const funnelAmRowRef = useRef<HTMLTableRowElement>(null);
+  const [funnelAmRowH, setFunnelAmRowH] = useState(46);
+  useEffect(() => {
+    const el = funnelAmRowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setFunnelAmRowH(el.offsetHeight));
+    ro.observe(el);
+    setFunnelAmRowH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
   function toggleAmRow(key: string) {
     setExpandedAm(p => ({ ...p, [key]: !p[key] }));
   }
@@ -864,17 +876,18 @@ export default function FunnelPage() {
   function renderAmTbodyContent(ams: typeof groupedByAm, emptyMsg?: string) {
     if (isLoading) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
     if (ams.length === 0) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg ?? "Belum ada data"}</td></tr>;
+    const bgCard = "hsl(var(--card))";
+    // Semua sticky pada z-index yang sama (tidak berlapis-lapis)
+    const STICKY_Z = 10;
+    let firstExpandedAttached = false;
     return <>{ams.map(am => {
       const amKey = am.nikAm || am.namaAm;
       const amExpanded = !!expandedAm[amKey];
       const amTotal = Array.from(am.phases.values()).flat().reduce((s, l) => s + (l.nilaiProyek || 0), 0);
       const amLopCount = Array.from(am.phases.values()).flat().length;
       const hasData = amLopCount > 0;
-      // Phases with actual LOPs (for expand-all button)
       const phasesWithData = PHASES.filter(p => am.phases.has(p) && (am.phases.get(p)?.length ?? 0) > 0);
-      // Unknown phases (not in F0-F5) that have LOPs
       const unknownPhases = Array.from(am.phases.keys()).filter(p => !PHASES.includes(p) && (am.phases.get(p)?.length ?? 0) > 0);
-      // All phases to render when expanded: F0 only if has data, F1-F5 always, + unknown phases with LOPs
       const allRenderPhases = [
         ...PHASES.filter(p => p === "F0" ? (am.phases.get(p)?.length ?? 0) > 0 : true),
         ...unknownPhases,
@@ -882,18 +895,27 @@ export default function FunnelPage() {
       const ring = amExpanded ? "#94a3b8" : undefined;
       const ringStyle = (extra?: React.CSSProperties): React.CSSProperties =>
         ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, ...extra } : {};
+      // Ref untuk AM row pertama yang expanded — untuk mengukur tingginya
+      const attachRef = amExpanded && !firstExpandedAttached;
+      if (amExpanded) firstExpandedAttached = true;
+      // Style sticky per sel AM row (bukan per tr) — lebih kompatibel & z-index 1 layer
+      const amCellSticky: React.CSSProperties = amExpanded
+        ? { position: "sticky", top: funnelTheadH, zIndex: STICKY_Z, backgroundColor: bgCard }
+        : {};
       return (
         <React.Fragment key={amKey}>
-          <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors"
-            style={{
-              ...(ring ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` } : { borderTop: "2px solid transparent" }),
-              ...(amExpanded ? { position: "sticky" as const, top: funnelTheadH, zIndex: 15, boxShadow: "0 2px 8px rgba(0,0,0,0.13)" } : {})
-            }}
+          <tr
+            ref={attachRef ? funnelAmRowRef : undefined}
+            className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors"
+            style={ring
+              ? { borderTop: `2px solid ${ring}`, borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: amExpanded ? "none" : `2px solid ${ring}` }
+              : { borderTop: "2px solid transparent" }
+            }
             onClick={() => toggleAmRow(amKey)}>
-            <td className="px-4 py-3">
-              <div className="flex items-center gap-2">
+            <td className="px-4 py-3" style={amCellSticky}>
+              <div className="flex items-center gap-2 min-w-0">
                 <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", amExpanded && "rotate-90")} />
-                <span className={cn("font-black text-sm uppercase tracking-wide", hasData ? "text-foreground" : "text-muted-foreground")}>{am.namaAm}</span>
+                <span className={cn("font-black text-sm uppercase tracking-wide truncate", hasData ? "text-foreground" : "text-muted-foreground")}>{am.namaAm}</span>
                 {(()=>{const d=resolveAmDivisi(am);return d?<span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",d==="DPS"?"bg-blue-100 text-blue-700":d==="DSS"?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-600")}>{d}</span>:null;})()}
                 {hasData && (
                   <button type="button" onClick={e => { e.stopPropagation(); handleAmExpandIcon(amKey, [...phasesWithData, ...unknownPhases]); }}
@@ -904,7 +926,7 @@ export default function FunnelPage() {
                 )}
               </div>
             </td>
-            <td className="px-3 py-3" colSpan={amExpanded ? 4 : 3}>
+            <td className="px-3 py-3 whitespace-nowrap" colSpan={amExpanded ? 4 : 3} style={amCellSticky}>
               <span className={cn("text-xs font-black tracking-wide", hasData ? "text-foreground" : "text-muted-foreground")}>
                 {hasData ? `TOTAL ${amLopCount} LOP` : "BELUM ADA DATA"}
               </span>
@@ -933,32 +955,32 @@ export default function FunnelPage() {
             const phaseExpanded = hasLops && !!expandedPhase[phaseKey];
             const phaseTotal = lops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
             const c = PHASE_COLORS[phase];
+            const phaseBg = phaseExpanded ? "rgb(253,242,248)" : "rgba(253,242,248,0.75)";
+            // Sticky per sel pada phase row — z-index sama, top tepat di bawah AM row
+            const phaseCellSticky: React.CSSProperties = phaseExpanded
+              ? { position: "sticky", top: funnelTheadH + funnelAmRowH, zIndex: STICKY_Z, background: phaseBg }
+              : { background: phaseBg };
             return (
               <React.Fragment key={phaseKey}>
                 <tr
                   className={cn("select-none transition-all", hasLops ? "cursor-pointer hover:brightness-95" : "opacity-50 cursor-default")}
-                  style={{
-                    background: phaseExpanded ? "rgb(253,242,248)" : "rgba(253,242,248,0.75)",
-                    borderLeft: `4px solid ${c?.bar || "#94a3b8"}`,
-                    ...ringStyle({}),
-                    ...(phaseExpanded ? { position: "sticky" as const, top: funnelTheadH + 49, zIndex: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.09)" } : {})
-                  }}
+                  style={{ borderLeft: `4px solid ${c?.bar || "#94a3b8"}`, ...ringStyle({}) }}
                   onClick={() => hasLops && togglePhaseRow(phaseKey)}>
-                  <td className="px-4 py-2.5 pl-10">
-                    <div className="flex items-center gap-2">
+                  <td className="px-4 py-2.5 pl-10" style={phaseCellSticky}>
+                    <div className="flex items-center gap-2 min-w-0">
                       {hasLops
                         ? <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0", phaseExpanded && "rotate-90")} />
                         : <span className="w-3.5 h-3.5 shrink-0" />
                       }
-                      <span className="text-sm font-black uppercase tracking-wide" style={{ color: c?.text }}>DAFTAR PROYEK {phase}</span>
-                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
+                      <span className="text-sm font-black uppercase tracking-wide whitespace-nowrap" style={{ color: c?.text }}>DAFTAR PROYEK {phase}</span>
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full shrink-0">{lops.length} proyek</span>
                     </div>
                   </td>
                   {phaseExpanded
-                    ? <td colSpan={4} className="px-3 py-2.5" />
+                    ? <td colSpan={4} className="px-3 py-2.5" style={phaseCellSticky} />
                     : <>
-                        <td colSpan={3} className="px-3 py-2.5" />
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <td colSpan={3} className="px-3 py-2.5" style={phaseCellSticky} />
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap" style={phaseCellSticky}>
                           <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
                         </td>
                       </>
@@ -1210,17 +1232,18 @@ export default function FunnelPage() {
         {/* Unified scroll-container table: thead sticky at top-0, expanded AM/phase rows also sticky */}
         <div className="px-3 pb-3">
           <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
-            <table className="text-left text-sm border-collapse w-full" style={{minWidth:"964px",tableLayout:"fixed"}}>
+            <table className="text-left text-sm w-full" style={{minWidth:"640px",tableLayout:"auto",borderCollapse:"collapse"}}>
               <colgroup>
-                <col style={{width:"33%"}}/><col style={{width:"112px"}}/><col style={{width:"112px"}}/>
-                <col/><col style={{width:"200px"}}/>
+                {/* Kolom adaptif: col 1 mengambil sisa ruang, kolom lain fixed di layar lebar */}
+                <col style={{minWidth:"200px"}}/><col style={{width:"100px"}}/><col style={{width:"108px"}}/>
+                <col style={{minWidth:"120px"}}/><col style={{width:"180px"}}/>
               </colgroup>
               <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                  <th className="px-4 py-3 text-left">AM / Fase / Proyek</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">AM / Fase / Proyek</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
                   <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
-                  <th className="px-3 py-3 text-left">Pelanggan</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">Pelanggan</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
                 </tr>
               </thead>
