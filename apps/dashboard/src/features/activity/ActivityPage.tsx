@@ -697,9 +697,9 @@ export default function ActivityPage() {
   });
 
   const { data: settingsData } = useQuery<{ kpiActivityDefault: number }>({
-    queryKey: ["settings-kpi"],
+    queryKey: ["settings"],
     queryFn: () => apiFetch<{ kpiActivityDefault: number }>("/api/settings"),
-    staleTime: 300_000,
+    staleTime: 0,
   });
   const settingsKpi = settingsData?.kpiActivityDefault ?? 30;
 
