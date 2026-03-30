@@ -412,8 +412,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <motion.div
             key={location}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.18 }}
             className="max-w-[1400px] mx-auto"
           >

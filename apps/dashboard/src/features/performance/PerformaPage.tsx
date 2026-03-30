@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect as useEffectRef } from "react";
-import { FunnelSectionCard } from "./FunnelSectionCard";
 import { matchesDivisiPerforma, DIVISI_OPTIONS_WITH_ALL, divisiFilterLabel } from "@/shared/lib/divisi";
 import { useListPerformance, useListImportHistory } from "@workspace/api-client-react";
 import { formatRupiah, formatPercent, getStatusColor, getAchPct, cn } from "@/shared/lib/utils";
@@ -1016,9 +1015,6 @@ export default function PerformaVis() {
             </div>
 
           </div>
-
-          {/* ─── Funnel Section ───────────────────────────── */}
-          <FunnelSectionCard />
 
           {/* ─── Trend Chart ─────────────────────────────── */}
           <div className="bg-card border border-border rounded-xl p-5">
