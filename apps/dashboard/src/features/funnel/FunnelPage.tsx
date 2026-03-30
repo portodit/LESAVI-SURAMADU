@@ -405,6 +405,7 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode, divisi }: { pct: numbe
   const endY = cy + r * Math.sin(toRad(endAngle));
 
   const surplus = real >= activeTarget;
+  const surplusColor = divisi === "DPS" ? "text-blue-600" : "text-emerald-600";
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4">
       <svg width="220" height="160" viewBox="0 0 160 115" className="shrink-0 mx-auto">
@@ -440,10 +441,10 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode, divisi }: { pct: numbe
               <span className="font-black tabular-nums text-foreground">{formatRupiah(activeTarget)}</span>
             </div>
             <div className="pt-2 border-t-2 border-border flex justify-between items-center gap-2">
-              <span className={cn("text-xs font-black uppercase tracking-wide", surplus ? "text-emerald-600" : "text-red-600")}>
+              <span className={cn("text-xs font-black uppercase tracking-wide", surplus ? surplusColor : "text-red-600")}>
                 {surplus ? "Kelebihan" : "Kekurangan"}
               </span>
-              <span className={cn("font-black tabular-nums text-base", surplus ? "text-emerald-600" : "text-red-600")}>
+              <span className={cn("font-black tabular-nums text-base", surplus ? surplusColor : "text-red-600")}>
                 {surplus ? "+" : "-"}{formatRupiah(Math.abs(activeTarget - real))}
               </span>
             </div>
@@ -1048,7 +1049,7 @@ export default function FunnelPage() {
 
       {/* Filter Bar */}
       <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
-        <div className="flex items-end gap-2 flex-nowrap overflow-x-auto">
+        <div className="flex items-end gap-2 flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
           {/* View Mode Toggle — single button, leftmost */}
           <div className="flex flex-col gap-1 shrink-0">
@@ -1099,7 +1100,7 @@ export default function FunnelPage() {
         </div>
 
         {/* Active filter chips — always visible */}
-        <div className="flex items-center gap-2 flex-wrap pt-3 mt-3 border-t border-border/50">
+        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pt-3 mt-3 border-t border-border/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
           {/* Periode — always shows */}
           <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
@@ -1201,12 +1202,13 @@ export default function FunnelPage() {
       {/* Detail Table — hanya di "all" mode */}
       {viewMode !== "split" && <div className="bg-card border border-border rounded-xl shadow-sm">
         {/* Sticky toolbar — tanpa rounded agar mulus saat floating */}
-        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="text-base font-display font-bold text-foreground flex items-center gap-2">
+        <div className="sticky top-0 z-30 bg-card px-4 py-3 border-b border-border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex items-center gap-3 flex-nowrap" style={{ minWidth: "fit-content" }}>
+          <h3 className="text-base font-display font-bold text-foreground flex items-center gap-2 shrink-0">
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Funnel per AM
           </h3>
-          <div className="flex items-end gap-2 flex-1 justify-end flex-wrap">
+          <div className="flex items-center gap-2 flex-nowrap ml-auto">
             <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
             {hasDetailFilter && (
@@ -1227,6 +1229,7 @@ export default function FunnelPage() {
               {allExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
               {allExpanded ? "Collapse Semua" : "Expand Semua AM"}
             </button>
+          </div>
           </div>
         </div>
         {/* Unified scroll-container table: thead sticky at top-0, expanded AM/phase rows also sticky */}
