@@ -36,6 +36,22 @@ Git CLI diblokir oleh platform Replit di main agent. Koneksi ke GitHub dilakukan
 - **Script**: `push-to-github.mjs` di root project
 - **Detail teknis**: lihat [GITHUB_PUSH_GUIDE.md](./GITHUB_PUSH_GUIDE.md)
 
+### Path Mapping Wajib — Replit ≠ GitHub
+
+> ⚠️ Struktur folder di Replit **berbeda** dengan di GitHub. Script push menangani remapping otomatis.
+
+| Replit (lokal) | GitHub repo |
+|----------------|-------------|
+| `artifacts/api-server/` | `apps/api/` |
+| `artifacts/telkom-am-dashboard/` | `apps/dashboard/` |
+| `lib/` | `packages/` |
+| `.doc/` | `.doc/` (sama) |
+| root files | root files (sama) |
+
+Script `push-to-github.mjs` sudah menangani ini otomatis — agent **tidak perlu** melakukan mapping manual.
+
+**Jangan pernah menambahkan folder `artifacts/` baru ke GitHub** — jika terjadi, cleanup harus dilakukan via GitHub Tree API (set `sha: null` untuk menghapus).
+
 ### Cara Verifikasi Koneksi
 ```bash
 curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
