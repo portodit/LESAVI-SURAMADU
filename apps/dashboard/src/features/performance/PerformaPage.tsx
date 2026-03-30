@@ -969,11 +969,11 @@ export default function PerformaVis() {
                                     <thead>
                                       <tr className="bg-rose-100 dark:bg-rose-950/30"
                                         style={{position:"sticky" as const, top:perfSectionHeaderH+perfTableHeaderH+perfAmRowH, zIndex:9}}>
-                                        <th className="px-3 py-1.5 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
-                                        <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
+                                        <th className="px-3 py-3 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
+                                        <th className="px-3 py-3 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
+                                        <th className="px-3 py-3 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
+                                        <th className="px-3 py-3 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
+                                        <th className="px-3 py-3 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
