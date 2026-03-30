@@ -1162,19 +1162,21 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           return(
             <table key={phaseKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
               <thead style={{position:"sticky",top:fsFunnelTheadH,zIndex:15}}>
-                {/* Baris 1: Nama AM — selalu tampil di setiap fase, sticky bersama baris fase */}
-                <tr ref={amIdx===0&&phaseIdx===0?fsFunnelAmRowRef:undefined}
-                  className="cursor-pointer select-none hover:brightness-95 transition-colors"
-                  style={{borderTop:phaseIdx===0?`2px solid ${ring}`:"none",borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:"none"}}
-                  onClick={()=>toggleAmRow(amKey)}>
-                  <th className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
-                    <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
-                  </th>
-                  <th className="px-3 py-2.5 font-normal" colSpan={4} style={{backgroundColor:bgCard}}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></th>
-                </tr>
-                {/* Baris 2: Nama fase — sticky melekat tepat di bawah baris AM */}
+                {/* Baris 1: Nama AM — hanya tampil di fase pertama agar tidak redundan */}
+                {phaseIdx===0&&(
+                  <tr ref={amIdx===0?fsFunnelAmRowRef:undefined}
+                    className="cursor-pointer select-none hover:brightness-95 transition-colors"
+                    style={{borderTop:`2px solid ${ring}`,borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:"none"}}
+                    onClick={()=>toggleAmRow(amKey)}>
+                    <th className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
+                      <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
+                    </th>
+                    <th className="px-3 py-2.5 font-normal" colSpan={4} style={{backgroundColor:bgCard}}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></th>
+                  </tr>
+                )}
+                {/* Baris 2: Nama fase */}
                 <tr className="cursor-pointer select-none hover:brightness-95 transition-all"
-                  style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)"}}
+                  style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
                   onClick={()=>togglePhaseRow(phaseKey)}>
                   <th className="px-4 py-2.5 pl-10 font-normal text-left" style={{background:phaseBg}}>
                     <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
