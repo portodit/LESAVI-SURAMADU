@@ -606,6 +606,28 @@ export default function PerformaVis() {
     if (perfTableHeaderRef.current) perfTableHeaderRef.current.scrollLeft = e.currentTarget.scrollLeft;
   }, []);
 
+  // Table header row height — for sticky AM row offset
+  const [perfTableHeaderH, setPerfTableHeaderH] = useState(37);
+  useEffectRef(() => {
+    const el = perfTableHeaderRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPerfTableHeaderH(el.offsetHeight));
+    ro.observe(el);
+    setPerfTableHeaderH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+  // AM summary row height — for sticky customer sub-header offset
+  const perfAmRowRef = useRef<HTMLTableRowElement>(null);
+  const [perfAmRowH, setPerfAmRowH] = useState(38);
+  useEffectRef(() => {
+    const el = perfAmRowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPerfAmRowH(el.offsetHeight));
+    ro.observe(el);
+    setPerfAmRowH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -873,7 +895,7 @@ export default function PerformaVis() {
                   </table>
                 </div>
                 {/* Scrollable body */}
-                <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll} className="overflow-x-auto">
+                <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll}>
                 <table className="w-full text-left text-xs" style={{ minWidth: "600px" }}>
                   <thead className="sr-only" aria-hidden>
                     <tr>
@@ -881,7 +903,7 @@ export default function PerformaVis() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {filteredAmData.map(row => {
+                    {filteredAmData.map((row, rowIdx) => {
                       const isExpanded = effectiveExpandedRows.has(row.nik);
                       const customers = row.customers || [];
                       const hasCustomers = customers.length > 0;
@@ -889,18 +911,20 @@ export default function PerformaVis() {
                       return (
                         <React.Fragment key={row.nik}>
                           <tr
-                            className={cn("hover:bg-secondary/20 transition-colors", hasCustomers && "cursor-pointer")}
+                            ref={rowIdx === 0 ? perfAmRowRef : undefined}
+                            className={cn("transition-colors", isExpanded ? "bg-card" : "hover:bg-secondary/20", hasCustomers && "cursor-pointer")}
+                            style={isExpanded ? {position:"sticky" as const, top:perfSectionHeaderH+perfTableHeaderH, zIndex:10, boxShadow:"0 2px 6px rgba(0,0,0,0.08)"} : {}}
                             onClick={() => hasCustomers && toggleRow(row.nik)}
                           >
-                            <td className="px-2 py-2.5 text-muted-foreground">
+                            <td className="px-2 py-2.5 text-muted-foreground" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {hasCustomers ? (
                                 isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
                               ) : null}
                             </td>
-                            <td className="px-4 py-2.5 font-medium text-foreground overflow-visible">
+                            <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               <div className="group relative flex items-center gap-1.5 w-fit">
                                 <span>{row.namaAm}</span>
-                                <span className="text-[10px] text-muted-foreground shrink-0">{row.divisi}</span>
+                                <span className="text-[10px] text-muted-foreground font-normal normal-case shrink-0">{row.divisi}</span>
                                 {/* Hover tooltip */}
                                 <div className="pointer-events-none absolute left-0 top-full mt-1.5 z-[200] w-56 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                                   <div className="bg-card border border-border rounded-xl shadow-xl px-3 py-2.5 text-xs">
@@ -923,24 +947,25 @@ export default function PerformaVis() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-right text-foreground tabular-nums">{formatRupiah(row.cmTarget)}</td>
-                            <td className="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">{formatRupiah(row.cmReal)}</td>
-                            <td className={cn("px-3 py-2.5 text-right font-bold tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")}>
+                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiah(row.cmTarget)}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiah(row.cmReal)}</td>
+                            <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
-                            <td className={cn("px-3 py-2.5 text-right font-bold tabular-nums", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")}>
+                            <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.ytdAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
-                            <td className="px-3 py-2.5 text-center text-muted-foreground font-semibold">{customers.length}</td>
-                            <td className="px-3 py-2.5 text-center font-bold text-foreground">{row.displayRank}</td>
+                            <td className="px-3 py-2.5 text-center font-black text-foreground" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{customers.length}</td>
+                            <td className="px-3 py-2.5 text-center font-black text-foreground" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{row.displayRank}</td>
                           </tr>
                           {isExpanded && hasCustomers && (
                             <tr className="bg-rose-50/40 dark:bg-rose-950/10">
                               <td colSpan={8} className="px-0 pb-3 pt-0">
-                                <div className="mx-4 mt-2 mb-1 border-2 border-rose-200 dark:border-rose-800/50 rounded-xl overflow-hidden shadow-sm">
+                                <div className="mx-4 mt-2 mb-1 border-2 border-rose-200 dark:border-rose-800/50 rounded-xl overflow-clip shadow-sm">
                                   <table className="w-full text-xs">
                                     <thead>
-                                      <tr className="bg-rose-50 dark:bg-rose-950/30">
+                                      <tr className="bg-rose-100 dark:bg-rose-950/30"
+                                        style={{position:"sticky" as const, top:perfSectionHeaderH+perfTableHeaderH+perfAmRowH, zIndex:9}}>
                                         <th className="px-3 py-1.5 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
                                         <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
                                         <th className="px-3 py-1.5 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
