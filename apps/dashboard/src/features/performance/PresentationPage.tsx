@@ -1162,12 +1162,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       // Expanded: 1 tabel per AM — thead berisi baris AM (sticky, 1x saja)
       // Tiap fase = 1 tbody — baris header fase menggunakan sticky pada masing-masing sel
       return(
-        <table key={amKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
+        <table key={amKey} className="text-left text-sm" style={{...FS_TB_STYLE,border:"2px solid #94a3b8"}}><FSColGroup/>
           {/* Baris AM — sticky SATU KALI, tidak diulang per fase */}
           <thead ref={(el)=>setAmTheadH(amKey,el)}
             style={{position:"sticky",top:amStickyTop,zIndex:12}}>
             <tr className="cursor-pointer select-none hover:brightness-95 transition-colors"
-              style={{borderTop:"2px solid #94a3b8",borderLeft:"2px solid #94a3b8",borderRight:"2px solid #94a3b8",borderBottom:"none"}}
+              style={{borderBottom:"none"}}
               onClick={()=>toggleAmRow(amKey)}>
               <th className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
                 <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
@@ -1192,13 +1192,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
                   </td>
                   {phaseExpanded
-                    ?<td colSpan={4} style={{...phaseCell,borderRight:"2px solid #94a3b8"}}/>
-                    :<><td colSpan={3} style={phaseCell}/><td style={{...phaseCell,borderRight:"2px solid #94a3b8",textAlign:"right"}} className="px-4 py-2.5 whitespace-nowrap"><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></td></>
+                    ?<td colSpan={4} style={phaseCell}/>
+                    :<><td colSpan={3} style={phaseCell}/><td style={{...phaseCell,textAlign:"right"}} className="px-4 py-2.5 whitespace-nowrap"><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></td></>
                   }
                 </tr>
                 {/* Baris proyek */}
                 {phaseExpanded&&lops.map((lop:any,idx:number)=>(
-                  <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={{borderLeft:"2px solid #94a3b8",borderRight:"2px solid #94a3b8"}}>
+                  <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors">
                     <td className="px-4 py-2 pl-16" style={{minWidth:"320px"}}><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
                     <td className="px-3 py-2 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
                     <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
@@ -1208,7 +1208,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 ))}
                 {/* Total fase */}
                 {phaseExpanded&&(
-                  <tr className="bg-red-50 border-t border-red-200" style={{borderLeft:"2px solid #94a3b8",borderRight:"2px solid #94a3b8"}}>
+                  <tr className="bg-red-50 border-t border-red-200">
                     <td colSpan={4} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
                     <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
                   </tr>
@@ -1218,7 +1218,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           })}
           {/* Baris total AM */}
           <tbody>
-            <tr className="bg-slate-100 border-t-2 border-slate-300" style={{borderLeft:"2px solid #94a3b8",borderRight:"2px solid #94a3b8",borderBottom:"2px solid #94a3b8"}}>
+            <tr className="bg-slate-100 border-t-2 border-slate-300">
               <td colSpan={4} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
               <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">{formatRupiahFull(amTotal)}</td>
             </tr>
