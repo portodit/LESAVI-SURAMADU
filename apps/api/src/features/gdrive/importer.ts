@@ -6,16 +6,45 @@
 import { db, appSettingsTable, dataImportsTable, accountManagersTable, performanceDataTable, salesFunnelTable, salesActivityTable, masterCustomerTable } from "@workspace/db";
 import { and, sql, eq } from "drizzle-orm";
 import {
-  parseExcelBuffer, parseRaw2DArray, detectPeriod, extractSnapshotDateFromUrl,
+  parseExcelBuffer, parseRaw2DArray, getWorkbookSheetNames,
+  detectPeriod, extractSnapshotDateFromUrl,
   cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify,
 } from "../import/excel";
 import type { ParsedRow } from "../import/excel";
 
 const GOOGLE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 
-export async function downloadDriveFileAsRows(fileId: string, mimeType: string, apiKey: string): Promise<ParsedRow[]> {
+/**
+ * Pilih sheet terbaik untuk import performance — prioritas:
+ * 1. Nama persis "RAW_AM_DATA" (case-insensitive)
+ * 2. Nama mengandung "RAW" dan ("AM" atau "DATA")
+ * 3. Nama mengandung "RAW"
+ * 4. Nama mengandung "DATA"
+ * 5. Sheet pertama (fallback)
+ */
+function findBestPerformanceSheet(sheetNames: string[]): string {
+  if (sheetNames.length === 0) return "Sheet1";
+  const up = (s: string) => s.toUpperCase().trim();
+  const exact = sheetNames.find(s => up(s) === "RAW_AM_DATA" || up(s).replace(/[^A-Z0-9]/g, "") === "RAWAMDATA");
+  if (exact) return exact;
+  const rawAm = sheetNames.find(s => up(s).includes("RAW") && (up(s).includes("AM") || up(s).includes("DATA")));
+  if (rawAm) return rawAm;
+  const raw = sheetNames.find(s => up(s).includes("RAW"));
+  if (raw) return raw;
+  const data = sheetNames.find(s => up(s).includes("DATA") || up(s).includes("PERFORMANSI") || up(s).includes("PERFORMA"));
+  if (data) return data;
+  return sheetNames[0];
+}
+
+export async function downloadDriveFileAsRows(
+  fileId: string,
+  mimeType: string,
+  apiKey: string,
+  type?: string,
+  preferredSheet?: string,
+): Promise<ParsedRow[]> {
   if (mimeType === GOOGLE_SHEET_MIME) {
-    return downloadGoogleSheetRows(fileId, apiKey);
+    return downloadGoogleSheetRows(fileId, apiKey, type, preferredSheet);
   }
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
   const res = await fetch(url);
@@ -23,11 +52,25 @@ export async function downloadDriveFileAsRows(fileId: string, mimeType: string, 
     const body = await res.text().catch(() => "");
     throw new Error(`Gagal download file dari Drive: ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
   }
-  const ab = await res.arrayBuffer();
-  return parseExcelBuffer(Buffer.from(ab));
+  const buf = Buffer.from(await res.arrayBuffer());
+
+  // Auto-deteksi sheet terbaik untuk performance jika file multi-sheet
+  let resolvedSheet = preferredSheet;
+  if (!resolvedSheet) {
+    const sheetNames = getWorkbookSheetNames(buf);
+    if (sheetNames.length > 1 && type === "performance") {
+      resolvedSheet = findBestPerformanceSheet(sheetNames);
+    }
+  }
+  return parseExcelBuffer(buf, resolvedSheet);
 }
 
-async function downloadGoogleSheetRows(spreadsheetId: string, apiKey: string): Promise<ParsedRow[]> {
+async function downloadGoogleSheetRows(
+  spreadsheetId: string,
+  apiKey: string,
+  type?: string,
+  preferredSheet?: string,
+): Promise<ParsedRow[]> {
   const metaRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}&fields=sheets.properties`
   );
@@ -36,7 +79,17 @@ async function downloadGoogleSheetRows(spreadsheetId: string, apiKey: string): P
     throw new Error(`Gagal ambil metadata Sheets: ${metaRes.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
   }
   const meta: any = await metaRes.json();
-  const sheetTitle: string = meta.sheets?.[0]?.properties?.title ?? "Sheet1";
+  const allTitles: string[] = (meta.sheets ?? []).map((s: any) => s?.properties?.title ?? "").filter(Boolean);
+
+  // Pilih sheet: preferredSheet → auto-detect untuk performance → sheet pertama
+  let sheetTitle: string;
+  if (preferredSheet && allTitles.includes(preferredSheet)) {
+    sheetTitle = preferredSheet;
+  } else if (type === "performance" && allTitles.length > 1) {
+    sheetTitle = findBestPerformanceSheet(allTitles);
+  } else {
+    sheetTitle = allTitles[0] ?? "Sheet1";
+  }
 
   const valRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetTitle)}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`
@@ -310,8 +363,9 @@ export async function runDriveImport(
   fileName: string,
   apiKey: string,
   snapshotDate: string,
+  preferredSheet?: string,
 ) {
-  const rows = await downloadDriveFileAsRows(fileId, mimeType, apiKey);
+  const rows = await downloadDriveFileAsRows(fileId, mimeType, apiKey, type, preferredSheet);
   if (rows.length === 0) throw new Error("File kosong atau tidak dapat dibaca");
 
   const sourceUrl = `https://drive.google.com/file/d/${fileId}`;

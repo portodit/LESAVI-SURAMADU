@@ -76,7 +76,7 @@ router.get("/gdrive/list", requireAuth, async (req, res): Promise<void> => {
 // ── POST /api/gdrive/sync?type=performance ────────────────────────────────────
 router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
   const { type } = req.query;
-  const { fileId: explicitFileId, snapshotDate: snapshotDateBodyOverride } = req.body;
+  const { fileId: explicitFileId, snapshotDate: snapshotDateBodyOverride, sheetName } = req.body;
   const folderKey = DRIVE_FOLDER_KEYS[String(type)];
   if (!folderKey) { res.status(400).json({ error: "type tidak valid" }); return; }
 
@@ -121,6 +121,7 @@ router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
       targetFile.name,
       apiKey,
       snapshotDate,
+      sheetName || undefined,
     );
 
     res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime, snapshotDate });

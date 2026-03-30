@@ -19,6 +19,12 @@ export function parseExcelFromBase64(base64: string, sheetName?: string): Parsed
   return parseExcelBuffer(buffer, sheetName);
 }
 
+/** Baca hanya nama sheet dari buffer Excel tanpa parse data (lebih cepat) */
+export function getWorkbookSheetNames(buffer: Buffer): string[] {
+  const workbook = XLSX.read(buffer, { type: "buffer", bookSheets: true });
+  return workbook.SheetNames;
+}
+
 export function parseExcelBuffer(buffer: Buffer, sheetName?: string): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: false });
   const resolvedSheet = sheetName && workbook.SheetNames.includes(sheetName)
