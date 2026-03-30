@@ -31,10 +31,10 @@ interface User {
   witel: string;
   telegramChatId: string | null;
   telegramConnected: boolean;
-  registeredAkun: boolean;
   kpiActivity: number;
   crossWitel: boolean;
   createdAt: string;
+  registeredAkun: boolean;
 }
 
 interface UserFormData {
