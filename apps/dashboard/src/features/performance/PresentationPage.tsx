@@ -1170,7 +1170,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <table key={amKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
           {/* Baris AM — sticky SATU KALI, tidak diulang per fase */}
           <thead ref={amIdx===0?fsFunnelAmRowRef:undefined}
-            style={{position:"sticky",top:amStickyTop,zIndex:15,boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
+            style={{position:"sticky",top:amStickyTop,zIndex:12}}>
             <tr className="cursor-pointer select-none hover:brightness-95 transition-colors"
               style={{borderTop:"2px solid #94a3b8",borderLeft:"2px solid #94a3b8",borderRight:"2px solid #94a3b8",borderBottom:"none"}}
               onClick={()=>toggleAmRow(amKey)}>
@@ -1188,7 +1188,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             const phaseTotal=lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
             const c=FS_PHASE_COLORS[phase];
             const phaseBg=phaseExpanded?"rgb(253,242,248)":"rgba(253,242,248,0.75)";
-            const phaseCell:React.CSSProperties={position:"sticky",top:phaseStickyTop,zIndex:12,background:phaseBg,boxShadow:"0 2px 6px rgba(0,0,0,0.09)"};
+            const phaseCell:React.CSSProperties={position:"sticky",top:phaseStickyTop,zIndex:12,background:phaseBg};
             return(
               <tbody key={phaseKey}>
                 {/* Baris header fase — sel masing-masing sticky menempel tepat di bawah baris AM */}
