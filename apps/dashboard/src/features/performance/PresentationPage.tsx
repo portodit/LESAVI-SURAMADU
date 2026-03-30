@@ -2729,7 +2729,7 @@ export default function EmbedPerforma() {
               <div className="border border-border rounded">
               {/* Sticky table header — synced horizontally with body */}
               <div ref={perfTableHeaderRef} onScroll={onPerfHeaderScroll}
-                className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10"
+                className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 bg-card"
                 style={{ top: `${perfToolbarH}px` }}>
                 <table className="border-collapse" style={{ minWidth: "600px", width: "100%" }}>
                   <thead>
