@@ -2862,34 +2862,36 @@ export default function EmbedPerforma() {
                 targetValue={topYtd ? formatRupiah(topYtd.ytdTarget) : undefined}
               />
               {/* Distribusi */}
-              <div className="bg-card border border-border rounded-xl p-4 flex flex-col">
+              <div className="bg-card border border-border rounded-xl p-4">
                 <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Distribusi Pencapaian Target</h3>
-                <div className="relative flex-1 w-full" style={{ minHeight: 160 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={distribusi} cx="50%" cy="50%" innerRadius={52} outerRadius={72} dataKey="value" labelLine={false}>
-                        {distribusi.map((e, i) => <Cell key={i} fill={e.color} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: "10px", border: "none", fontSize: "11px" }} formatter={(v, n) => [`${v} AM`, n]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center">
-                      <p className="text-2xl font-black text-foreground leading-none">{amTableData.length}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">AM</p>
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+                    <ResponsiveContainer width={160} height={160}>
+                      <PieChart>
+                        <Pie data={distribusi} cx="50%" cy="50%" innerRadius={52} outerRadius={72} dataKey="value" labelLine={false}>
+                          {distribusi.map((e, i) => <Cell key={i} fill={e.color} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: "10px", border: "none", fontSize: "11px" }} formatter={(v, n) => [`${v} AM`, n]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center">
+                        <p className="text-2xl font-black text-foreground leading-none">{amTableData.length}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">AM</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  {distribusi.map(d => (
-                    <div key={d.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
-                        <span className="text-muted-foreground text-[11px]">{d.name}</span>
+                  <div className="flex-1 space-y-2">
+                    {distribusi.map(d => (
+                      <div key={d.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                          <span className="text-muted-foreground text-[11px]">{d.name}</span>
+                        </div>
+                        <span className="font-bold tabular-nums text-[11px]">{d.value} AM</span>
                       </div>
-                      <span className="font-bold tabular-nums text-[11px]">{d.value} AM</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
