@@ -1758,7 +1758,7 @@ function ActivitySlide() {
   const now = new Date();
   const [filterYear,  setFilterYear]  = useState(String(now.getFullYear()));
   const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth()+1)]));
-  const [filterDivisi, setFilterDivisi] = useState("all");
+  const [filterDivisi, setFilterDivisi] = useState("LESA");
   const [filterSnapId, setFilterSnapId] = useState<string>("all");
   const [filterKategori, setFilterKategori] = useState<Set<string>>(new Set());
   const snapInitialized = useRef(false);
@@ -1825,7 +1825,7 @@ function ActivitySlide() {
     return ()=>clearTimeout(t);
   },[]);
 
-  const divisiOptions = DIVISI_OPTIONS_WITH_ALL;
+  const divisiOptions = DIVISI_OPTIONS;
 
   // ─── Snapshots ──────────────────────────────────────────────────────────
   const {data:actSnaps=[]} = useQuery<any[]>({
@@ -1887,7 +1887,8 @@ function ActivitySlide() {
     if(!data) return [];
     const byAmMap=Object.fromEntries((data.byAm||[]).map((a:any)=>[a.fullname,a]));
     return (data.masterAms||[])
-      .filter((m:any)=>matchesDivisiPerforma(m.divisi, filterDivisi))
+      // Include AMs that have activities (multi-divisi support) OR master divisi matches
+      .filter((m:any)=>byAmMap[m.nama]!==undefined || matchesDivisi(m.divisi, filterDivisi))
       .filter((m:any)=>{
         if(!actSearch) return true;
         const q=actSearch.toLowerCase();
@@ -1906,9 +1907,15 @@ function ActivitySlide() {
         const ex=byAmMap[m.nama];
         const perAmOverride=ex?.perAmKpiTarget;
         const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
+        let baseActs=(ex?.activities||[]);
+        // Per-activity divisi filter (multi-divisi AM: hide other-divisi rows when specific filter active)
+        if(filterDivisi&&filterDivisi!=="all"){
+          baseActs=baseActs.filter((a:any)=>matchesDivisi(a.divisi,filterDivisi));
+        }
+        const activityDivisis=Array.from(new Set(baseActs.map((a:any)=>a.divisi).filter(Boolean)));
         const base=ex
-          ?{...ex,kpiTarget:baseKpiTarget}
-          :{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:baseKpiTarget,activities:[]};
+          ?{...ex,activities:baseActs,kpiTarget:baseKpiTarget,activityDivisis}
+          :{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:baseKpiTarget,activities:[],activityDivisis:matchesDivisi(m.divisi,filterDivisi)?[m.divisi]:[]};
         const visibleActs=filterKategori.size===0?base.activities:base.activities.filter((a:any)=>filterKategori.has(a.label));
         return {...base,visibleActivities:visibleActs};
       });
@@ -1942,7 +1949,7 @@ function ActivitySlide() {
 
   // ─── Filter bar ─────────────────────────────────────────────────────────
   const isActPeriodFiltered = filterMonths.size > 0;
-  const isActDivisiFiltered = filterDivisi !== "all";
+  const isActDivisiFiltered = filterDivisi !== "LESA";
   const isActKategoriFiltered = filterKategori.size > 0 && filterKategori.size < allLabels.length;
   const actHasActiveFilter = isActPeriodFiltered || isActDivisiFiltered || isActKategoriFiltered;
 
@@ -1950,7 +1957,7 @@ function ActivitySlide() {
     const now2 = new Date();
     setFilterMonths(new Set([String(now2.getMonth() + 1)]));
     setFilterYear(String(now2.getFullYear()));
-    setFilterDivisi("all");
+    setFilterDivisi("LESA");
     const kpiLabels2 = allLabels.filter((l: string) => !l.toLowerCase().includes("tanpa"));
     setFilterKategori(new Set(kpiLabels2));
   };
@@ -1990,8 +1997,8 @@ function ActivitySlide() {
         {/* Divisi — always shows */}
         <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
           isActDivisiFiltered ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" : "bg-secondary text-muted-foreground border-border")}>
-          Divisi: {filterDivisi === "all" ? "Semua" : filterDivisi}
-          {isActDivisiFiltered && <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
+          Divisi: {filterDivisi}
+          {isActDivisiFiltered && <button onClick={() => setFilterDivisi("LESA")} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Kategori — always shows */}
         <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
@@ -2143,8 +2150,18 @@ function ActivitySlide() {
                     {/* Name + divisi */}
                     <div className="overflow-hidden pl-1">
                       <div className="text-sm font-bold text-foreground truncate">{am.fullname}</div>
-                      <div className="text-xs font-semibold text-foreground/70 mt-0.5 flex items-center gap-1">
-                        <span>{am.divisi}</span>
+                      <div className="text-xs font-semibold text-foreground/70 mt-0.5 flex items-center gap-1 flex-wrap">
+                        {(am.activityDivisis as string[])?.length
+                          ? (am.activityDivisis as string[]).map((d:string)=>(
+                              <span key={d} className={cn(
+                                "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none",
+                                d==="DPS"?"bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                                :d==="DSS"?"bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
+                                :"bg-secondary text-foreground/70"
+                              )}>{d}</span>
+                            ))
+                          : <span className="text-foreground/40 italic text-[10px]">{am.divisi}</span>
+                        }
                         {!hasActs&&<span className="text-foreground/40 font-normal italic text-[11px]">· tidak ada data</span>}
                         {hasActs&&<span className="text-foreground/60 font-semibold">· {visibleActs.length}{visibleActs.length!==am.activities.length?`/${am.activities.length}`:""} aktivitas</span>}
                       </div>
