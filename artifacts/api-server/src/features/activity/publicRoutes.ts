@@ -90,6 +90,7 @@ router.get("/public/activity", async (req, res): Promise<void> => {
       kpiCount: 0,
       totalCount: 0,
       kpiTarget: am.kpiActivity ?? kpiDefault,
+      perAmKpiTarget: am.kpiActivity ?? null,
       activities: [],
     };
   }

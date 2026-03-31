@@ -1827,7 +1827,8 @@ function ActivitySlide() {
   const {data,isLoading} = useQuery<any>({
     queryKey:["activity-slide",queryUrl],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}${queryUrl}`);if(!r.ok)return null;return r.json();},
-    staleTime:60_000,
+    staleTime:0,
+    refetchOnWindowFocus:true,
   });
 
   const {data:actSettingsData} = useQuery<any>({
@@ -1860,7 +1861,8 @@ function ActivitySlide() {
       })
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
-        const baseKpiTarget=(ex?.kpiTarget??actSettingsKpi)*actEffectiveMonths;
+        const perAmOverride=ex?.perAmKpiTarget;
+        const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
         const base=ex
           ?{...ex,kpiTarget:baseKpiTarget}
           :{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:baseKpiTarget,activities:[]};
