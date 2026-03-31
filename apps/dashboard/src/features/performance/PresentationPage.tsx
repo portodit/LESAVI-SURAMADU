@@ -2047,12 +2047,16 @@ function ActivitySlide() {
                 <div key={am.nik+am.fullname}
                   className={cn("border-b border-border/50 last:border-b-0 transition-all",isExpanded&&"relative z-[5] border-b-0")}
                   style={isExpanded?{outline:"2px solid #B91C1C",outlineOffset:"-1px",borderRadius:6,marginBottom:6}:{}}>
+                  {/* ── Combined sticky wrapper: AM row + sub-header together ── */}
                   <div
                     ref={isExpanded?actAmSumRowCallbackRef:undefined}
+                    style={isExpanded?{position:"sticky" as const,top:actToolbarH,zIndex:12,boxShadow:"0 2px 8px rgba(0,0,0,0.09)"}:{}}
+                  >
+                  <div
                     onClick={()=>{setActExpandAll(null);setExpandedAm(p=>({...p,[am.fullname]:!p[am.fullname]}));}}
                     className={cn("grid items-center px-4 py-3 cursor-pointer transition-colors group",
                       isExpanded?"bg-card border-b border-primary/20":"hover:bg-secondary/40")}
-                    style={{gridTemplateColumns:ACT_GRID_COLS,...(isExpanded?{position:"sticky" as const,top:actToolbarH,zIndex:12,boxShadow:"0 2px 8px rgba(0,0,0,0.09)"}:{})}}
+                    style={{gridTemplateColumns:ACT_GRID_COLS}}
                   >
                     {/* Expand icon */}
                     <div className={cn("w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 transition-all",
@@ -2096,8 +2100,17 @@ function ActivitySlide() {
                       }
                     </div>
                   </div>
+                  {/* Sub-header inside the same sticky wrapper — never covered by AM row */}
+                  {isExpanded&&hasActs&&(
+                    <div className="grid text-xs font-black uppercase tracking-wide text-foreground/75 bg-secondary border-b border-border"
+                      style={{gridTemplateColumns:"28px 96px 1fr 140px 120px 60px",padding:"10px 14px 10px 52px"}}>
+                      <div>#</div><div>Tanggal</div><div>Pelanggan &amp; Catatan</div>
+                      <div>Tipe Aktivitas</div><div>Kategori</div><div>KPI</div>
+                    </div>
+                  )}
+                  </div>{/* end sticky wrapper */}
 
-                  {/* Expanded detail */}
+                  {/* Expanded detail — activity rows only */}
                   {isExpanded&&(
                     <div className="border-t border-border/30 bg-secondary/20">
                       {!hasActs?(
@@ -2107,13 +2120,6 @@ function ActivitySlide() {
                         </div>
                       ):(
                         <>
-                          {/* Sub-header — sticky below AM row */}
-                          <div className="grid text-xs font-black uppercase tracking-wide text-foreground/75 bg-secondary border-b border-border"
-                            style={{gridTemplateColumns:"28px 96px 1fr 140px 120px 60px",padding:"10px 14px 10px 52px",position:"sticky" as const,top:actToolbarH+actAmSumRowH,zIndex:11}}>
-                            <div>#</div><div>Tanggal</div><div>Pelanggan &amp; Catatan</div>
-                            <div>Tipe Aktivitas</div><div>Kategori</div><div>KPI</div>
-                          </div>
-
                           {/* Activity rows */}
                           {visibleActs.map((act:any,i:number)=>{
                             const {short,day}=actFmtDate(act.activityEndDate);
