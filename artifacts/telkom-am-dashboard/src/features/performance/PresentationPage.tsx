@@ -3018,15 +3018,15 @@ export default function EmbedPerforma() {
                             <PerfColGroup/>
                             <thead style={{position:"sticky", top:perfPresentTableHeaderH+perfPresentAmRowH, zIndex:15}}>
                               <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"1px solid #fecdd3"}}>
-                                <th className="px-2 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">#</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
+                                <th className="px-2 py-2 text-center text-xs font-black text-rose-700 uppercase tracking-wide">#</th>
+                                <th className="px-4 py-2 text-left text-xs font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
                                 {filterDivisi === "LESA" && (
-                                  <th className="px-3 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">Divisi</th>
+                                  <th className="px-3 py-2 text-center text-xs font-black text-rose-700 uppercase tracking-wide">Divisi</th>
                                 )}
-                                <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Target</th>
-                                <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Real</th>
-                                <th className="px-3 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Ach %</th>
-                                <th className="px-3 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
+                                <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Target</th>
+                                <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Real</th>
+                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Ach %</th>
+                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
                                 <th colSpan={2} />
                               </tr>
                             </thead>
