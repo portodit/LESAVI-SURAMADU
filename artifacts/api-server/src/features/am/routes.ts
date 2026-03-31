@@ -51,7 +51,7 @@ router.post("/am", requireAuth, async (req, res): Promise<void> => {
     segmen: segmen || null,
     witel: witel || "SURAMADU",
     telegramChatId: telegramChatId || null,
-    kpiActivity: resolvedRole === "AM" ? (kpiActivity || 30) : 0,
+    kpiActivity: resolvedRole === "AM" ? (kpiActivity ?? null) : 0,
     aktif: true,
     discoveredFrom: "manual",
   } as any).returning();
