@@ -896,14 +896,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   const filteredLops = useMemo(()=>{
     const q=search.toLowerCase();
-    return periodFilteredLops.filter((l:any)=>{
+    const base=periodFilteredLops.filter((l:any)=>{
       if(filterAm.size>0&&(!l.nikAm||!filterAm.has(l.nikAm))) return false;
       if(filterStatus.size>0&&(!l.statusF||!filterStatus.has(l.statusF))) return false;
       if(filterKontrak.size>0&&(!l.kategoriKontrak||!filterKontrak.has(l.kategoriKontrak))) return false;
-      if(filterDurasi==="single_year"&&!(l.monthSubs!=null&&l.monthSubs<=12)) return false;
       if(filterDurasi==="multi_year"&&!(l.monthSubs!=null&&l.monthSubs>12)) return false;
       if(q){const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();if(!hay.includes(q))return false;}
       return true;
+    });
+    if(filterDurasi!=="single_year") return base;
+    return base.map((l:any)=>{
+      const m=l.monthSubs;
+      if(!m||m<12) return l;
+      return {...l, nilaiProyek: Math.round(l.nilaiProyek*12/m)};
     });
   },[periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
@@ -1326,9 +1331,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       )}
       <FSCheckboxDropdown label="Status Funnel" options={FS_PHASES} selected={filterStatus} onChange={setFilterStatus}
         placeholder="Semua status" labelFn={p=>`${p} – ${FS_PHASE_LABELS[p]}`} summaryLabel="status" className="w-36 shrink-0"/>
-      <FSSelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
-        options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Single Year (≤12 bln)"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
-        className="w-44 shrink-0"/>
     </div>
   );
 
@@ -1373,7 +1375,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         )}
         {filterDurasi !== "all" && (
           <span className="inline-flex shrink-0 items-center gap-1 bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-            Durasi: {filterDurasi === "single_year" ? "Single Year" : "Multi Year"}
+            Durasi: {filterDurasi === "single_year" ? "Nilai per Tahun" : "Multi Year"}
             <button onClick={() => setFilterDurasi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
@@ -1439,6 +1441,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <div className="w-px h-5 bg-border/60 shrink-0"/>
             <FSCheckboxDropdown label="" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
+            <FSSelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
+              options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
+              className="w-44 shrink-0"/>
             <div className="relative shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
               <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
