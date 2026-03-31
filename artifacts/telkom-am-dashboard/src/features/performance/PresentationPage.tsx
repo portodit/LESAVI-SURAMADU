@@ -1192,6 +1192,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
     if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
     if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
+    const multiExpanded = Object.values(expandedAm).filter(Boolean).length > 1;
     return<>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
       const amExpanded=!!expandedAm[amKey];
@@ -1238,7 +1239,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           const phaseBg=phaseExpanded?"rgb(253,242,248)":"rgba(253,242,248,0.75)";
           return(
             <table key={phaseKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
-              <thead style={{position:"sticky",top:fsFunnelTheadH+fsFunnelAmRowH,zIndex:15}}>
+              <thead style={multiExpanded ? undefined : {position:"sticky",top:fsFunnelTheadH+fsFunnelAmRowH,zIndex:15}}>
                 {/* Phase header row — sticks below the AM name row */}
                 <tr className="cursor-pointer select-none hover:brightness-95 transition-all"
                   style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
