@@ -728,19 +728,29 @@ export default function FunnelPage() {
 
   const filteredLops = useMemo(() => {
     const q = search.toLowerCase();
-    return periodFilteredLops.filter(l => {
+    const base = periodFilteredLops.filter(l => {
       if (filterAm.size > 0 && (!l.nikAm || !filterAm.has(l.nikAm))) return false;
       if (filterStatus.size > 0 && (!l.statusF || !filterStatus.has(l.statusF))) return false;
       if (filterKontrak.size > 0 && (!l.kategoriKontrak || !filterKontrak.has(l.kategoriKontrak))) return false;
-      if (filterDurasi === "single_year" && !(l.monthSubs != null && l.monthSubs <= 12)) return false;
+      // multi_year: hanya LOP > 12 bulan
       if (filterDurasi === "multi_year" && !(l.monthSubs != null && l.monthSubs > 12)) return false;
+      // single_year: tampilkan SEMUA LOP (< 12 bulan dianggap 1 tahun, nilai tidak dipotong)
       if (q) {
         const hay = `${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak ?? ""} ${l.divisi ?? ""} ${l.segmen ?? ""} ${l.nikAm ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [periodFilteredLops, filterAm, filterStatus, filterKontrak, search]);
+    // Annualize nilai proyek untuk single_year dan multi_year
+    if (filterDurasi === "all") return base;
+    return base.map(l => {
+      const m = l.monthSubs;
+      // < 12 bulan dianggap 1 tahun → nilai penuh
+      if (!m || m < 12) return l;
+      // >= 12 bulan → nilai per tahun = nilaiProyek * 12 / monthSubs
+      return { ...l, nilaiProyek: Math.round(l.nilaiProyek * 12 / m) };
+    });
+  }, [periodFilteredLops, filterAm, filterStatus, filterKontrak, filterDurasi, search]);
 
   const groupedByAm = useMemo(() => {
     const amMap = new Map<string, { namaAm: string; nikAm: string; divisi: string; phases: Map<string, LopRow[]> }>();
@@ -1268,7 +1278,7 @@ export default function FunnelPage() {
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
                   <th className="px-4 py-3 text-left whitespace-nowrap">AM / Fase / Proyek</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap">MASA KONTRAK</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">KONTRAK</th>
                   <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">Pelanggan</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
@@ -1365,7 +1375,7 @@ export default function FunnelPage() {
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
                         <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
                         <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">MASA KONTRAK</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KONTRAK</th>
                         <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
                         <th className="px-3 py-2.5 min-w-[140px] text-left">Pelanggan</th>
                         <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
