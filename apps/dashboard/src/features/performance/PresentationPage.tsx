@@ -1173,7 +1173,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
                         <td className="px-4 py-2 pl-16" style={{minWidth:"320px"}}><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
                         <td className="px-3 py-2 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                        <td className="px-3 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
+                        <td className="px-3 py-2 text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
                         <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
                         <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                         <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
@@ -1203,7 +1203,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
   const FS_TB_STYLE:React.CSSProperties={minWidth:"964px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
   function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"116px"}}/><col style={{width:"96px"}}/><col style={{width:"100px"}}/><col/><col style={{width:"200px"}}/></colgroup>);}
-  function fsDurasi(m:any):string{if(!m||m<=0)return"–";const y=Math.floor(m/12),mo=m%12;if(y>0&&mo>0)return`${y}thn ${mo}bln`;if(y>0)return`${y}thn`;return`${m}bln`;}
+  function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
     if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
@@ -1273,7 +1273,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
                     <td className="px-4 py-2 pl-16" style={{minWidth:"320px"}}><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
                     <td className="px-3 py-2 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                    <td className="px-3 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
+                    <td className="px-3 py-2 text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
                     <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
                     <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
@@ -1441,7 +1441,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <div className="w-px h-5 bg-border/60 shrink-0"/>
             <FSCheckboxDropdown label="" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
-            <FSSelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
+            <FSSelectDropdown label="" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
               className="w-44 shrink-0"/>
             <div className="relative shrink-0">
