@@ -48,8 +48,19 @@ function parseKomponen(raw: string | null | undefined): any[] {
   if (!raw) return [];
   try { return JSON.parse(raw); } catch { return []; }
 }
+const KOMPONEN_TYPES = ["Reguler", "Sustain", "Scaling", "NGTMA"] as const;
+function customerTotal(c: any): { target: number; real: number } {
+  if (c.targetTotal != null || c.realTotal != null) return { target: c.targetTotal ?? 0, real: c.realTotal ?? 0 };
+  return KOMPONEN_TYPES.reduce((acc, t) => ({
+    target: acc.target + (c[t]?.target ?? 0),
+    real: acc.real + (c[t]?.real ?? 0),
+  }), { target: 0, real: 0 });
+}
 function sumKomponen(customers: any[], tipe: string): { target: number; real: number } {
-  if (tipe === "Semua") return { target: customers.reduce((s, c) => s + (c.targetTotal ?? 0), 0), real: customers.reduce((s, c) => s + (c.realTotal ?? 0), 0) };
+  if (tipe === "Semua") return customers.reduce((acc, c) => {
+    const tot = customerTotal(c);
+    return { target: acc.target + tot.target, real: acc.real + tot.real };
+  }, { target: 0, real: 0 });
   return { target: customers.reduce((s, c) => s + (c[tipe]?.target ?? 0), 0), real: customers.reduce((s, c) => s + (c[tipe]?.real ?? 0), 0) };
 }
 function hasTypedColumn(target: any, real: any): boolean {
@@ -584,7 +595,8 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
 }
 
 function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: { pct:number; targetHo:number; targetFullHo:number; real:number; mode:"ho"|"fullho"; compact?:boolean; divisi?:"DPS"|"DSS" }) {
-  const clamp=Math.min(Math.max(pct,0),100);
+  const clamp=Math.min(Math.max(pct,0),100); // hanya untuk arc visual
+  const displayPct=Math.max(pct,0); // nilai tampil bisa >100
   const r=54,cx=80,cy=70;
   const startAngle=-210,endAngle=30,totalDeg=endAngle-startAngle;
   const fillDeg=(clamp/100)*totalDeg;
@@ -613,7 +625,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
         {hasTarget&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
         {hasTarget?(
           <>
-            <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{clamp.toFixed(1)}%</text>
+            <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{displayPct.toFixed(1)}%</text>
             <text x={cx} y={cy+12} textAnchor="middle" fontSize="9" fill="#6b7280">CAPAIAN</text>
           </>
         ):(
@@ -645,7 +657,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
           {hasTarget&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
           {hasTarget?(
             <>
-              <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{clamp.toFixed(1)}%</text>
+              <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{displayPct.toFixed(1)}%</text>
               <text x={cx} y={cy+12} textAnchor="middle" fontSize="9" fill="#6b7280">CAPAIAN</text>
             </>
           ):(
@@ -904,10 +916,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(q){const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();if(!hay.includes(q))return false;}
       return true;
     });
-    if(filterDurasi!=="single_year") return base;
+    if(filterDurasi==="all") return base;
+    // single_year & multi_year: annualize nilai proyek per tahun
     return base.map((l:any)=>{
       const m=l.monthSubs;
-      if(!m||m<12) return l;
+      if(!m||m<12) return l; // < 12 bulan dianggap 1 tahun → nilai penuh
       return {...l, nilaiProyek: Math.round(l.nilaiProyek*12/m)};
     });
   },[periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
@@ -1467,7 +1480,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 <tr className="text-white font-black uppercase tracking-wide text-xs">
                   <th className="px-4 py-3 text-left" style={{background:"#B91C1C"}}>AM / Fase / Proyek</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>KATEGORI</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>MASA KONTRAK</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>KONTRAK</th>
                   <th className="px-3 py-3 text-left font-mono whitespace-nowrap" style={{background:"#B91C1C"}}>LOP ID</th>
                   <th className="px-3 py-3 text-left" style={{background:"#B91C1C"}}>Pelanggan</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Nilai Proyek</th>
@@ -1580,7 +1593,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
                         <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
                         <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">MASA KONTRAK</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KONTRAK</th>
                         <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
                         <th className="px-3 py-2.5 min-w-[120px] text-left">Pelanggan</th>
                         <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[130px]">Nilai Proyek</th>
@@ -2378,7 +2391,7 @@ export default function EmbedPerforma() {
           );
         });
         setFilterPeriodes(new Set(psWithData.length > 0 ? psWithData : ps));
-        setFilterDivisi("all");
+        setFilterDivisi("LESA");
         setFilterNamaAms(new Set());
       })
       .catch(() => {})
@@ -3086,8 +3099,9 @@ export default function EmbedPerforma() {
                             </thead>
                             <tbody>
                               {row.customers.map((c: any, ci: number) => {
-                                const cReal = c.realTotal ?? 0;
-                                const cTarget = c.targetTotal ?? 0;
+                                const { target: cTarget, real: cReal } = filterTipeRevenue === "Semua"
+                                  ? customerTotal(c)
+                                  : { target: c[filterTipeRevenue]?.target ?? 0, real: c[filterTipeRevenue]?.real ?? 0 };
                                 const prop = c.proporsi != null ? c.proporsi * 100 : 0;
                                 const cAch = cTarget > 0 ? cReal / cTarget * 100 : 0;
                                 return (
