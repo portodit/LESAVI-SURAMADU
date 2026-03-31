@@ -2239,7 +2239,7 @@ export default function EmbedPerforma() {
   const [snapshotId, setSnapshotId] = useState<number | null>(null);
   const [allPerfs, setAllPerfs] = useState<any[]>([]);
   const [filterPeriodes, setFilterPeriodes] = useState<Set<string>>(new Set());
-  const [filterDivisi, setFilterDivisi] = useState("all");
+  const [filterDivisi, setFilterDivisi] = useState("LESA");
   const [filterNamaAms, setFilterNamaAms] = useState<Set<string>>(new Set());
   const [filterTipeRank, setFilterTipeRank] = useState("Ach CM");
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
@@ -2404,14 +2404,14 @@ export default function EmbedPerforma() {
 
   // Active filter booleans for slide 0 filter chips
   const isPeriodeFiltered = filterPeriodes.size > 0 && filterPeriodes.size < availablePeriodes.length;
-  const isDivisiFiltered = filterDivisi !== "all";
+  const isDivisiFiltered = filterDivisi !== "LESA";
   const isAmFiltered = filterNamaAms.size > 0;
   const isRankFiltered = filterTipeRank !== "Ach CM";
   const isRevenueFiltered = filterTipeRevenue !== "Reguler";
   const hasPerformActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
   const resetPerformFilters = useCallback(() => {
     setFilterPeriodes(new Set());
-    setFilterDivisi("all");
+    setFilterDivisi("LESA");
     setFilterNamaAms(new Set());
     setFilterTipeRank("Ach CM");
     setFilterTipeRevenue("Reguler");
@@ -2468,7 +2468,7 @@ export default function EmbedPerforma() {
       };
     }).filter(Boolean) as any[];
     // Multi-divisi AMs appear when any of their divisi matches the filter
-    if (filterDivisi !== "all") result = result.filter(r =>
+    if (filterDivisi !== "LESA") result = result.filter(r =>
       (r.divisiAll as string[]).some((d: string) => matchesDivisiPerforma(d, filterDivisi))
     );
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
@@ -2703,7 +2703,7 @@ export default function EmbedPerforma() {
                   label="Divisi"
                   value={filterDivisi}
                   onChange={v => { setFilterDivisi(v); setFilterNamaAms(new Set()); }}
-                  options={DIVISI_OPTIONS_WITH_ALL}
+                  options={DIVISI_OPTIONS}
                   className="flex-1 min-w-0"
                 />
                 <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="flex-1 min-w-0" />
@@ -2780,7 +2780,7 @@ export default function EmbedPerforma() {
               label="Divisi"
               value={filterDivisi}
               onChange={v => { setFilterDivisi(v); setFilterNamaAms(new Set()); }}
-              options={DIVISI_OPTIONS_WITH_ALL}
+              options={DIVISI_OPTIONS}
               className="shrink-0 w-24"
             />
             <CheckboxDropdown label="Nama AM" options={amNames} selected={filterNamaAms} onChange={setFilterNamaAms} placeholder="Semua AM" headerLabel="Pilih AM" summaryLabel="AM" className="shrink-0 w-24" />
@@ -2846,7 +2846,7 @@ export default function EmbedPerforma() {
                 {isDivisiFiltered && (
                   <span className="inline-flex shrink-0 items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
                     Divisi: {filterDivisi}
-                    <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setFilterDivisi("LESA")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isAmFiltered && (
@@ -3007,7 +3007,9 @@ export default function EmbedPerforma() {
                             <div className="group relative flex flex-col w-fit gap-0.5">
                               <span className="text-sm font-extrabold">{row.namaAm}</span>
                               <span className="flex items-center gap-1 flex-wrap">
-                                {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
+                                {((row.divisiAll as string[]) ?? [row.divisi])
+                                  .filter((d: string) => filterDivisi === "LESA" || matchesDivisiPerforma(d, filterDivisi))
+                                  .map((d: string) => (
                                   <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
                                     d === "DPS" ? "bg-blue-100 text-blue-700" : d === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
                                   )}>{d}</span>
