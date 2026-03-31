@@ -638,9 +638,9 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
     </div>
   );
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4">
+    <div className="flex flex-col sm:flex-row items-center gap-3">
       <div className="shrink-0 mx-auto">
-        <svg width="180" height="130" viewBox="0 0 160 115">
+        <svg width="150" height="108" viewBox="0 0 160 115">
           <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
           {hasTarget&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
           {hasTarget?(
@@ -658,29 +658,29 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
           <text x={endX} y={endY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
         </svg>
       </div>
-      <div className="flex-1 space-y-1.5 text-sm w-full min-w-0">
-        <div className="flex justify-between items-baseline gap-2">
-          <span className="text-muted-foreground text-xs whitespace-nowrap shrink-0">Real Pipeline</span>
-          <span className="font-bold text-foreground tabular-nums whitespace-nowrap text-right">{fmtRupiahFS(real)}</span>
+      <div className="flex-1 w-full min-w-0 overflow-hidden space-y-1.5" style={{fontSize:"clamp(9px,1.05vw,12px)"}}>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">Real Pipeline</span>
+          <span className="font-bold text-foreground tabular-nums truncate text-right ml-1">{fmtRupiahFS(real)}</span>
         </div>
         {hasTarget&&(
           <>
-            <div className="flex justify-between items-baseline gap-2">
-              <span className="text-muted-foreground text-xs whitespace-nowrap shrink-0">{mode==="ho"?"Target HO":"Target Full HO"}</span>
-              <span className="tabular-nums text-foreground whitespace-nowrap text-right">{fmtRupiahFS(activeTarget)}</span>
+            <div className="flex justify-between items-baseline gap-1">
+              <span className="text-muted-foreground whitespace-nowrap shrink-0">{mode==="ho"?"Target HO":"Target Full HO"}</span>
+              <span className="tabular-nums text-foreground truncate text-right ml-1">{fmtRupiahFS(activeTarget)}</span>
             </div>
-            <div className="pt-1.5 border-t border-border flex justify-between items-baseline gap-2">
-              <span className={cn("text-xs font-bold whitespace-nowrap shrink-0",real>=activeTarget?surplusTextCls:deficitTextCls)}>
+            <div className="pt-1.5 border-t border-border flex justify-between items-baseline gap-1">
+              <span className={cn("font-bold whitespace-nowrap shrink-0",real>=activeTarget?surplusTextCls:deficitTextCls)}>
                 {real>=activeTarget?"Kelebihan":"Kekurangan"}
               </span>
-              <span className={cn("font-bold tabular-nums text-sm whitespace-nowrap text-right",real>=activeTarget?surplusTextCls:deficitTextCls)}>
+              <span className={cn("font-bold tabular-nums truncate text-right ml-1",real>=activeTarget?surplusTextCls:deficitTextCls)}>
                 {real>=activeTarget?"+":"-"}{fmtRupiahFS(Math.abs(activeTarget-real))}
               </span>
             </div>
           </>
         )}
         {!hasTarget&&(
-          <p className="text-xs text-muted-foreground">Target belum diset — import di menu Import Data</p>
+          <p className="text-muted-foreground">Target belum diset — import di menu Import Data</p>
         )}
       </div>
     </div>
