@@ -1907,11 +1907,7 @@ function ActivitySlide() {
         const ex=byAmMap[m.nama];
         const perAmOverride=ex?.perAmKpiTarget;
         const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
-        let baseActs=(ex?.activities||[]);
-        // Per-activity divisi filter (multi-divisi AM: hide other-divisi rows when specific filter active)
-        if(filterDivisi&&filterDivisi!=="all"){
-          baseActs=baseActs.filter((a:any)=>matchesDivisi(a.divisi,filterDivisi));
-        }
+        const baseActs=(ex?.activities||[]);
         const activityDivisis=Array.from(new Set(baseActs.map((a:any)=>a.divisi).filter(Boolean)));
         const base=ex
           ?{...ex,activities:baseActs,kpiTarget:baseKpiTarget,activityDivisis}

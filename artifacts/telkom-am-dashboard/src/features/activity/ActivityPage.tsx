@@ -782,10 +782,6 @@ export default function ActivityPage() {
       const existing = byAmMap[ma.nama];
       if (existing) {
         let acts = existing.activities;
-        // Per-activity divisi filter (multi-divisi AM: hide other-divisi rows when specific filter active)
-        if (divisi && divisi !== "all") {
-          acts = acts.filter(a => matchesDivisi(a.divisi, divisi));
-        }
         if (filterMonths.size > 0) {
           acts = acts.filter(a => {
             if (!a.activityEndDate) return false;
