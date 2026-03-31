@@ -2427,7 +2427,9 @@ export default function EmbedPerforma() {
         return s.target > bS.target ? r : best;
       }, cmRows[0]);
       const divisiAll = [...new Set(cmRows.map((r: any) => r.divisi as string))];
-      const allCustomers = cmRows.flatMap((cr: any) => parseKomponen(cr.komponenDetail));
+      const allCustomers = cmRows.flatMap((cr: any) =>
+        parseKomponen(cr.komponenDetail).map((c: any) => ({ ...c, _divisi: cr.divisi }))
+      );
       return {
         nik, namaAm: primaryCmRow.namaAm, divisi: primaryCmRow.divisi, divisiAll,
         statusWarna: primaryCmRow.statusWarna,
@@ -2959,9 +2961,15 @@ export default function EmbedPerforma() {
                             {hasCustomers ? (isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />) : null}
                           </td>
                           <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={{backgroundColor:bgCard}}>
-                            <div className="group relative flex flex-col w-fit">
+                            <div className="group relative flex flex-col w-fit gap-0.5">
                               <span className="text-sm font-bold">{row.namaAm}</span>
-                              <span className="text-[10px] text-muted-foreground font-normal normal-case">{row.divisi}</span>
+                              <span className="flex items-center gap-1 flex-wrap">
+                                {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
+                                  <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
+                                    d === "DPS" ? "bg-blue-100 text-blue-700" : d === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                  )}>{d}</span>
+                                ))}
+                              </span>
                             </div>
                           </td>
                           <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiah(row.cmTarget)}</td>
@@ -3014,6 +3022,9 @@ export default function EmbedPerforma() {
                               <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"1px solid #fecdd3"}}>
                                 <th className="px-2 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">#</th>
                                 <th className="px-4 py-2 text-left text-[10px] font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
+                                {filterDivisi === "LESA" && (
+                                  <th className="px-3 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">Divisi</th>
+                                )}
                                 <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Target</th>
                                 <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Real</th>
                                 <th className="px-3 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Ach %</th>
@@ -3034,6 +3045,15 @@ export default function EmbedPerforma() {
                                       <div className="text-xs font-bold text-foreground leading-snug">{c.pelanggan || "—"}</div>
                                       {c.nip && <div className="text-[10px] text-muted-foreground mt-0.5">{c.nip}</div>}
                                     </td>
+                                    {filterDivisi === "LESA" && (
+                                      <td className="px-3 py-2 text-center">
+                                        {c._divisi && (
+                                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold",
+                                            c._divisi === "DPS" ? "bg-blue-100 text-blue-700" : c._divisi === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                          )}>{c._divisi}</span>
+                                        )}
+                                      </td>
+                                    )}
                                     <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums">{formatRupiah(cTarget)}</td>
                                     <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums">{formatRupiah(cReal)}</td>
                                     <td className={cn("px-3 py-2 text-right text-xs font-black tabular-nums", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
