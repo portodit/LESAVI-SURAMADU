@@ -68,11 +68,11 @@ router.get("/public/import-history", async (req, res): Promise<void> => {
 router.get("/public/am", async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Access-Control-Allow-Origin", "*");
-  // Hanya AM dengan role=AM dan aktif=true yang relevan untuk visualisasi & login presentasi
+  // Semua user aktif boleh login presentation (AM, OFFICER, MANAGER)
   const ams = await db
     .select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, divisi: accountManagersTable.divisi, role: accountManagersTable.role })
     .from(accountManagersTable)
-    .where(and(eq(accountManagersTable.aktif, true), eq(accountManagersTable.role, "AM")))
+    .where(eq(accountManagersTable.aktif, true))
     .orderBy(accountManagersTable.nama);
   res.json(ams);
 });
