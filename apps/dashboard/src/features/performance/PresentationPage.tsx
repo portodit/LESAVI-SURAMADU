@@ -1192,6 +1192,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
     if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
     if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
+    const multiExpanded = Object.values(expandedAm).filter(Boolean).length > 1;
     return<>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
       const amExpanded=!!expandedAm[amKey];
@@ -1207,7 +1208,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <table key={amKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
           <tbody>
             <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors" style={{borderTop:"2px solid transparent"}} onClick={()=>toggleAmRow(amKey)}>
-              <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
+              <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
               <td className="px-3 py-3" colSpan={3}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></td>
               <td className="px-4 py-3 text-right whitespace-nowrap"><span className="font-black text-foreground tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span></td>
             </tr>
@@ -1223,7 +1224,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               style={{borderTop:`2px solid ${ring}`,borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:"none"}}
               onClick={()=>toggleAmRow(amKey)}>
               <td className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
-                <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="font-black text-foreground text-sm uppercase tracking-wide">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
+                <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="text-foreground text-sm uppercase tracking-wide font-bold">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
               </td>
               <td className="px-3 py-2.5 font-normal" colSpan={4} style={{backgroundColor:bgCard}}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></td>
             </tr>
@@ -1238,7 +1239,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           const phaseBg=phaseExpanded?"rgb(253,242,248)":"rgba(253,242,248,0.75)";
           return(
             <table key={phaseKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
-              <thead style={{position:"sticky",top:fsFunnelTheadH+fsFunnelAmRowH,zIndex:15}}>
+              <thead style={multiExpanded ? undefined : {position:"sticky",top:fsFunnelTheadH+fsFunnelAmRowH,zIndex:15}}>
                 {/* Phase header row — sticks below the AM name row */}
                 <tr className="cursor-pointer select-none hover:brightness-95 transition-all"
                   style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
@@ -1323,10 +1324,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {mobilePortalEl && createPortal(navbarFilterBar, mobilePortalEl)}
 
       {/* ── Active filter chips — always visible ── */}
-      <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+      <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-card border border-border rounded-xl px-4 py-2.5">
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
         {/* Periode — always shows */}
-        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+        <span className="inline-flex shrink-0 items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
           Periode: {filterMonths.size === 0
             ? `${filterYear} (semua bulan)`
             : filterMonths.size === 1
@@ -1335,30 +1336,30 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Target mode — always shows */}
-        <span className="inline-flex items-center gap-1 bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
+        <span className="inline-flex shrink-0 items-center gap-1 bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
           Target: {filterMode === "ho" ? "HO" : "Full HO"}
         </span>
         {filterKontrak.size > 0 && (
-          <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+          <span className="inline-flex shrink-0 items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
             Kontrak: {filterKontrak.size === 1 ? [...filterKontrak][0] : `${filterKontrak.size} terpilih`}
             <button onClick={() => setFilterKontrak(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
         {filterStatus.size > 0 && (
-          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+          <span className="inline-flex shrink-0 items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
             Status: {filterStatus.size === 1 ? [...filterStatus][0] : `${filterStatus.size} status`}
             <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
         {filterAm.size > 0 && (
-          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+          <span className="inline-flex shrink-0 items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
             AM: {filterAm.size === 1 ? [...filterAm][0] : `${filterAm.size} AM`}
             <button onClick={() => setFilterAm(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
         {(filterStatus.size > 0 || filterKontrak.size > 0 || filterMonths.size > 0 || filterAm.size > 0) && (
           <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterMonths(new Set()); setFilterAm(new Set()); }}
-            className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+            className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <X className="w-3 h-3"/> Reset filter
           </button>
         )}
@@ -1827,7 +1828,8 @@ function ActivitySlide() {
   const {data,isLoading} = useQuery<any>({
     queryKey:["activity-slide",queryUrl],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}${queryUrl}`);if(!r.ok)return null;return r.json();},
-    staleTime:60_000,
+    staleTime:0,
+    refetchOnWindowFocus:true,
   });
 
   const {data:actSettingsData} = useQuery<any>({
@@ -1860,7 +1862,8 @@ function ActivitySlide() {
       })
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
-        const baseKpiTarget=(ex?.kpiTarget??actSettingsKpi)*actEffectiveMonths;
+        const perAmOverride=ex?.perAmKpiTarget;
+        const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
         const base=ex
           ?{...ex,kpiTarget:baseKpiTarget}
           :{nik:m.nik,fullname:m.nama,divisi:m.divisi,kpiCount:0,totalCount:0,kpiTarget:baseKpiTarget,activities:[]};
@@ -1930,10 +1933,10 @@ function ActivitySlide() {
       {mobilePortalEl && createPortal(filterBar, mobilePortalEl)}
 
       {/* ── Active filter chips — always visible ── */}
-      <div className="flex items-center gap-2 flex-wrap bg-card border border-border rounded-xl px-4 py-2.5">
+      <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-card border border-border rounded-xl px-4 py-2.5">
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
         {/* Periode — always shows */}
-        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+        <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
           isActPeriodFiltered ? "bg-primary/10 text-primary border-primary/20" : "bg-secondary text-muted-foreground border-border")}>
           Periode: {filterMonths.size === 0
             ? `${filterYear} (semua bulan)`
@@ -1943,20 +1946,20 @@ function ActivitySlide() {
           {isActPeriodFiltered && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Divisi — always shows */}
-        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+        <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
           isActDivisiFiltered ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" : "bg-secondary text-muted-foreground border-border")}>
           Divisi: {filterDivisi === "all" ? "Semua" : filterDivisi}
           {isActDivisiFiltered && <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Kategori — always shows */}
-        <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
+        <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border",
           isActKategoriFiltered ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800" : "bg-secondary text-muted-foreground border-border")}>
           Kategori: {filterKategori.size === 0 ? "Semua" : filterKategori.size === allLabels.length ? `Semua (${allLabels.length})` : filterKategori.size === 1 ? [...filterKategori][0] : `${filterKategori.size} kategori`}
           {isActKategoriFiltered && <button onClick={() => { kategoriInitialized.current = false; setFilterKategori(new Set()); }} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {actHasActiveFilter && (
           <button onClick={resetActFilters}
-            className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+            className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <X className="w-3 h-3"/> Reset filter
           </button>
         )}
@@ -2806,40 +2809,40 @@ export default function EmbedPerforma() {
           <>
             {/* Active filter chips */}
             {hasPerformActiveFilter && (
-              <div className="flex items-center gap-2 flex-wrap bg-secondary/30 border border-border rounded-xl px-4 py-2.5">
+              <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-secondary/30 border border-border rounded-xl px-4 py-2.5">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
                 {isPeriodeFiltered && (
-                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                  <span className="inline-flex shrink-0 items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
                     Periode: {filterPeriodes.size === 1 ? periodeLabel([...filterPeriodes][0]) : `${filterPeriodes.size} periode`}
                     <button onClick={() => setFilterPeriodes(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isDivisiFiltered && (
-                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                  <span className="inline-flex shrink-0 items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
                     Divisi: {filterDivisi}
                     <button onClick={() => setFilterDivisi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isAmFiltered && (
-                  <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
+                  <span className="inline-flex shrink-0 items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
                     AM: {filterNamaAms.size === 1 ? [...filterNamaAms][0] : `${filterNamaAms.size} AM`}
                     <button onClick={() => setFilterNamaAms(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isRankFiltered && (
-                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                  <span className="inline-flex shrink-0 items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
                     Rank: {filterTipeRank}
                     <button onClick={() => setFilterTipeRank("Ach CM")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isRevenueFiltered && (
-                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <span className="inline-flex shrink-0 items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
                     Revenue: {filterTipeRevenue}
                     <button onClick={() => setFilterTipeRevenue("Reguler")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 <button onClick={resetPerformFilters}
-                  className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
+                  className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
                   <X className="w-3 h-3" /> Reset filter
                 </button>
               </div>
@@ -2863,12 +2866,12 @@ export default function EmbedPerforma() {
               />
               {/* Distribusi */}
               <div className="bg-card border border-border rounded-xl p-4">
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Distribusi Pencapaian Target</h3>
+                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Distribusi Pencapaian Target</h3>
                 <div className="flex items-center gap-3">
-                  <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
-                    <ResponsiveContainer width={100} height={100}>
+                  <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+                    <ResponsiveContainer width={160} height={160}>
                       <PieChart>
-                        <Pie data={distribusi} cx="50%" cy="50%" innerRadius={26} outerRadius={42} dataKey="value" labelLine={false}>
+                        <Pie data={distribusi} cx="50%" cy="50%" innerRadius={52} outerRadius={72} dataKey="value" labelLine={false}>
                           {distribusi.map((e, i) => <Cell key={i} fill={e.color} />)}
                         </Pie>
                         <Tooltip contentStyle={{ borderRadius: "10px", border: "none", fontSize: "11px" }} formatter={(v, n) => [`${v} AM`, n]} />
@@ -2876,8 +2879,8 @@ export default function EmbedPerforma() {
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center">
-                        <p className="text-base font-black text-foreground">{amTableData.length}</p>
-                        <p className="text-[9px] text-muted-foreground">AM</p>
+                        <p className="text-2xl font-black text-foreground leading-none">{amTableData.length}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">AM</p>
                       </div>
                     </div>
                   </div>
@@ -2885,7 +2888,7 @@ export default function EmbedPerforma() {
                     {distribusi.map(d => (
                       <div key={d.name} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
                           <span className="text-muted-foreground text-[11px]">{d.name}</span>
                         </div>
                         <span className="font-bold tabular-nums text-[11px]">{d.value} AM</span>
@@ -2962,7 +2965,7 @@ export default function EmbedPerforma() {
                           </td>
                           <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={{backgroundColor:bgCard}}>
                             <div className="group relative flex flex-col w-fit gap-0.5">
-                              <span className="text-sm font-bold">{row.namaAm}</span>
+                              <span className="text-sm font-extrabold">{row.namaAm}</span>
                               <span className="flex items-center gap-1 flex-wrap">
                                 {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
                                   <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
@@ -3020,15 +3023,15 @@ export default function EmbedPerforma() {
                             <PerfColGroup/>
                             <thead style={{position:"sticky", top:perfPresentTableHeaderH+perfPresentAmRowH, zIndex:15}}>
                               <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"1px solid #fecdd3"}}>
-                                <th className="px-2 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">#</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
+                                <th className="px-2 py-2 text-center text-xs font-black text-rose-700 uppercase tracking-wide">#</th>
+                                <th className="px-4 py-2 text-left text-xs font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
                                 {filterDivisi === "LESA" && (
-                                  <th className="px-3 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">Divisi</th>
+                                  <th className="px-3 py-2 text-center text-xs font-black text-rose-700 uppercase tracking-wide">Divisi</th>
                                 )}
-                                <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Target</th>
-                                <th className="px-4 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Real</th>
-                                <th className="px-3 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Ach %</th>
-                                <th className="px-3 py-2 text-right text-[10px] font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
+                                <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Target</th>
+                                <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Real</th>
+                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Ach %</th>
+                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
                                 <th colSpan={2} />
                               </tr>
                             </thead>
