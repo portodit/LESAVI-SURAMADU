@@ -790,6 +790,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const [expandedPhase,setExpandedPhase] = useState<Record<string,boolean>>({});
   const [allExpanded,setAllExpanded] = useState(false);
   const [targetHoOverride,setTargetHoOverride] = useState("");
+  const funnelSearchRef = useRef<HTMLInputElement>(null);
   const [targetFullHoOverride,setTargetFullHoOverride] = useState("");
 
   const { data: snapshots = [] } = useQuery<any[]>({
@@ -1042,6 +1043,20 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     }
   }
   function togglePhaseRow(key:string){setExpandedPhase(p=>({...p,[key]:!p[key]}));}
+
+  // ── Keyboard shortcuts (active only when FunnelSlide is mounted = slide 1 is active) ──
+  useEffect(()=>{
+    function onKey(e:KeyboardEvent){
+      const t=e.target as HTMLElement;
+      const inInput=t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable;
+      if(inInput) return;
+      if(e.key==="e"||e.key==="E"){ e.preventDefault(); handleToggleAll(); }
+      if(e.key==="Escape"){ setAllExpanded(false); setExpandedAm({}); setExpandedPhase({}); setSearch(""); }
+      if(e.key==="/"){ e.preventDefault(); funnelSearchRef.current?.focus(); }
+    }
+    window.addEventListener("keydown",onKey);
+    return ()=>window.removeEventListener("keydown",onKey);
+  },[]);
 
   const effectiveTargetHo=targetHoOverride?parseFloat(targetHoOverride)*1e9:(data?.targetHo||0);
   const effectiveTargetFullHo=targetFullHoOverride?parseFloat(targetFullHoOverride)*1e9:(data?.targetFullHo||0);
@@ -1405,7 +1420,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
             <div className="relative shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
-              <input type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
+              <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
                 className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
               {search&&<button onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5"/></button>}
             </div>
@@ -1710,6 +1725,7 @@ function ActivitySlide() {
   const [expandedAm, setExpandedAm] = useState<Record<string,boolean>>({});
   const [actSearch, setActSearch] = useState("");
   const [actExpandAll, setActExpandAll] = useState<boolean|null>(null);
+  const actSearchRef = useRef<HTMLInputElement>(null);
 
   // Sync horizontal scroll between sticky header and scrollable body
   const actHeaderScrollRef = useRef<HTMLDivElement>(null);
@@ -1736,6 +1752,20 @@ function ActivitySlide() {
     if(!el) return;
     const obs=new ResizeObserver(([e])=>setActAmSumRowH(e.contentRect.height));
     obs.observe(el);
+  },[]);
+
+  // ── Keyboard shortcuts (active only when ActivitySlide is mounted = slide 2 is active) ──
+  useEffect(()=>{
+    function onKey(e:KeyboardEvent){
+      const t=e.target as HTMLElement;
+      const inInput=t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable;
+      if(inInput) return;
+      if(e.key==="e"||e.key==="E"){ e.preventDefault(); setActExpandAll(p=>p===true?false:true); }
+      if(e.key==="Escape"){ setActExpandAll(false); setExpandedAm({}); setActSearch(""); }
+      if(e.key==="/"){ e.preventDefault(); actSearchRef.current?.focus(); }
+    }
+    window.addEventListener("keydown",onKey);
+    return ()=>window.removeEventListener("keydown",onKey);
   },[]);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
@@ -1996,7 +2026,7 @@ function ActivitySlide() {
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="h-8 flex items-center gap-2 bg-background border border-border rounded-lg px-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-colors min-w-[220px]">
                     <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
-                    <input type="text" placeholder="Cari AM, tipe, label, pelanggan, catatan…" value={actSearch} onChange={e=>setActSearch(e.target.value)}
+                    <input ref={actSearchRef} type="text" placeholder="Cari AM, tipe, label, pelanggan, catatan…" value={actSearch} onChange={e=>setActSearch(e.target.value)}
                       className="border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 bg-transparent flex-1 min-w-0"/>
                   </div>
                   <button onClick={()=>setActExpandAll(prev=>prev===true?false:true)}
@@ -2194,6 +2224,8 @@ export default function EmbedPerforma() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [funnelSubtitle, setFunnelSubtitle] = useState("HO / FULL HO");
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const perfSearchRef = useRef<HTMLInputElement>(null);
 
   // Ukur tinggi toolbar tabel Performa AM secara dinamis
   const perfToolbarRef = useRef<HTMLDivElement>(null);
@@ -2238,14 +2270,51 @@ export default function EmbedPerforma() {
     }
   }, []);
 
+  // ── Global keyboard shortcuts ────────────────────────────────────────────────
+  const filteredAmDataRef = useRef<typeof filteredAmData>([]);
+  useEffect(() => { filteredAmDataRef.current = filteredAmData; }, [filteredAmData]);
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight") setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1));
-      if (e.key === "ArrowLeft") setCurrentSlide(s => Math.max(s - 1, 0));
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
+
+      // Slide navigation — always active
+      if (e.key === "ArrowRight") { setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1)); return; }
+      if (e.key === "ArrowLeft")  { setCurrentSlide(s => Math.max(s - 1, 0)); return; }
+
+      if (inInput) return; // rest of shortcuts skip when typing
+
+      // Jump to slide by number
+      if (e.key === "1") { e.preventDefault(); setCurrentSlide(0); return; }
+      if (e.key === "2") { e.preventDefault(); setCurrentSlide(1); return; }
+      if (e.key === "3") { e.preventDefault(); setCurrentSlide(2); return; }
+
+      // Fullscreen
+      if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); return; }
+
+      // Help overlay
+      if (e.key === "?") { e.preventDefault(); setShortcutHelpOpen(p => !p); return; }
+
+      // Close help / close dropdowns
+      if (e.key === "Escape") { setShortcutHelpOpen(false); }
+
+      // Slide 0 (Performa) specific shortcuts
+      if (currentSlide === 0) {
+        if (e.key === "e" || e.key === "E") {
+          e.preventDefault();
+          setExpandedRows(prev => {
+            const niks = filteredAmDataRef.current.map(r => r.nik);
+            return prev.size >= niks.length ? new Set() : new Set(niks);
+          });
+        }
+        if (e.key === "Escape") { setExpandedRows(new Set()); setSearchQuery(""); }
+        if (e.key === "/") { e.preventDefault(); perfSearchRef.current?.focus(); }
+      }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [currentSlide, toggleFullscreen]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/import-history`)
@@ -2448,6 +2517,74 @@ export default function EmbedPerforma() {
   return (
     <div className="h-screen bg-background font-sans text-foreground text-sm flex flex-col overflow-hidden">
 
+      {/* ─── Keyboard Shortcut Help Overlay ──────────────────── */}
+      {shortcutHelpOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={() => setShortcutHelpOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-5 w-[340px] max-h-[85svh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-black text-sm uppercase tracking-wide">Keyboard Shortcuts</h2>
+              <button onClick={() => setShortcutHelpOpen(false)} className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            {/* Navigasi */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Navigasi Slide</p>
+            <div className="space-y-2 mb-4">
+              {[
+                { keys:["←","→"], desc:"Slide sebelumnya / berikutnya" },
+                { keys:["1"],     desc:"Langsung ke Slide 1 — Performa" },
+                { keys:["2"],     desc:"Langsung ke Slide 2 — Sales Funnel" },
+                { keys:["3"],     desc:"Langsung ke Slide 3 — Aktivitas" },
+              ].map(s=>(
+                <div key={s.desc} className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 shrink-0">
+                    {s.keys.map(k=>(
+                      <kbd key={k} className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1.5 rounded border border-border bg-muted text-[11px] font-mono font-semibold shadow-sm">{k}</kbd>
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{s.desc}</span>
+                </div>
+              ))}
+            </div>
+            {/* Tabel */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Tabel &amp; Data</p>
+            <div className="space-y-2 mb-4">
+              {[
+                { keys:["E"],     desc:"Expand / Collapse semua baris AM" },
+                { keys:["/"],     desc:"Fokus ke search bar" },
+                { keys:["Esc"],   desc:"Collapse semua &amp; hapus pencarian" },
+              ].map(s=>(
+                <div key={s.desc} className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 shrink-0">
+                    {s.keys.map(k=>(
+                      <kbd key={k} className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1.5 rounded border border-border bg-muted text-[11px] font-mono font-semibold shadow-sm">{k}</kbd>
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{__html:s.desc}} />
+                </div>
+              ))}
+            </div>
+            {/* Tampilan */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Tampilan</p>
+            <div className="space-y-2">
+              {[
+                { keys:["F"],     desc:"Fullscreen / Keluar fullscreen" },
+                { keys:["?"],     desc:"Tampilkan / sembunyikan shortcut ini" },
+              ].map(s=>(
+                <div key={s.desc} className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 shrink-0">
+                    {s.keys.map(k=>(
+                      <kbd key={k} className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1.5 rounded border border-border bg-muted text-[11px] font-mono font-semibold shadow-sm">{k}</kbd>
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{s.desc}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground/60 mt-4 pt-3 border-t border-border/50">Shortcut nonaktif saat fokus di input / search bar</p>
+          </div>
+        </div>
+      )}
+
       {/* ─── Slide Navigation Overlay (all screen sizes) ────── */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
@@ -2569,9 +2706,13 @@ export default function EmbedPerforma() {
               <ChevronRight className="w-4 h-4" />
             </button>
             <div className="w-px h-5 bg-border/60 mx-0.5 hidden sm:block" />
-            <button onClick={toggleFullscreen} title={isFullscreen ? "Keluar fullscreen" : "Fullscreen (F11)"}
+            <button onClick={toggleFullscreen} title={isFullscreen ? "Keluar fullscreen (F)" : "Fullscreen (F)"}
               className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground hidden sm:block">
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button onClick={() => setShortcutHelpOpen(p => !p)} title="Keyboard shortcuts (?)"
+              className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground hidden sm:flex items-center justify-center font-bold text-xs w-6 h-6 border border-border/60">
+              ?
             </button>
           </div>
         </div>
@@ -2746,6 +2887,7 @@ export default function EmbedPerforma() {
                   <div className="relative flex-1 min-w-0 max-w-xs">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
                     <input
+                      ref={perfSearchRef}
                       type="text"
                       placeholder="Cari AM, NIK, divisi, pelanggan, NIP…"
                       value={searchQuery}
