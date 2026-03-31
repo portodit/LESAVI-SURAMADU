@@ -2762,14 +2762,14 @@ export default function EmbedPerforma() {
               </div>
               <div className="p-3">
               {/* ── Funnel-style multi-table: one global header table (sticky) + per-AM tables ── */}
-              <div className="border border-border rounded overflow-x-auto">
+              <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 220px)"}}>
               {(() => {
                 const PERF_TB: React.CSSProperties = { minWidth: "800px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, width: "100%" };
                 const bgCard = "hsl(var(--card))";
                 return (
                   <>
-                  {/* ① Global header table — sticky at perfToolbarH */}
-                  <table style={{...PERF_TB, position:"sticky", top:perfToolbarH, zIndex:20, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
+                  {/* ① Global header table — sticky at top:0 of the overflow-auto scroll container */}
+                  <table style={{...PERF_TB, position:"sticky", top:0, zIndex:20, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
                     <PerfColGroup/>
                     <thead ref={perfTheadCallbackRef}>
                       <tr className="bg-red-700 text-white">
@@ -2840,7 +2840,7 @@ export default function EmbedPerforma() {
                     return (
                       <div key={row.nik}>
                         {/* Sticky AM name row — own table, sticks flush below global header */}
-                        <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:perfToolbarH+perfPresentTableHeaderH, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
+                        <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:perfPresentTableHeaderH, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
                           <PerfColGroup/>
                           <tbody>
                             <tr className="cursor-pointer select-none"
@@ -2854,7 +2854,7 @@ export default function EmbedPerforma() {
                         {/* Customer detail table — inline rows, sub-header sticky below AM row */}
                         <table style={{...PERF_TB, borderLeft:`2px solid ${ring}`, borderRight:`2px solid ${ring}`}}>
                           <PerfColGroup/>
-                          <thead style={{position:"sticky", top:perfToolbarH+perfPresentTableHeaderH+perfPresentAmRowH, zIndex:15}}>
+                          <thead style={{position:"sticky", top:perfPresentTableHeaderH+perfPresentAmRowH, zIndex:15}}>
                             <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"1px solid #fecdd3"}}>
                               <th className="px-2 py-2 text-center text-[10px] font-black text-rose-700 uppercase tracking-wide">#</th>
                               <th className="px-4 py-2 text-left text-[10px] font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
