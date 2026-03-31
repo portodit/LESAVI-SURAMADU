@@ -1223,7 +1223,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               style={{borderTop:`2px solid ${ring}`,borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:"none"}}
               onClick={()=>toggleAmRow(amKey)}>
               <td className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
-                <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
+                <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="text-foreground text-sm uppercase tracking-wide font-bold">{am.namaAm}</span>{divBadge}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
               </td>
               <td className="px-3 py-2.5 font-normal" colSpan={4} style={{backgroundColor:bgCard}}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></td>
             </tr>
