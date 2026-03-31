@@ -1044,8 +1044,8 @@ export default function FunnelPage() {
     })}</>;
   }
 
-  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0 || filterYears.size > 0 || filterDurasi !== "all";
-  const hasDetailFilter = filterAm.size > 0;
+  const hasActiveFilter = filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0 || filterYears.size > 0;
+  const hasDetailFilter = filterAm.size > 0 || filterDurasi !== "all";
 
   const effectiveTargetHo = data?.targetHo || 0;
   const effectiveTargetFullHo = data?.targetFullHo || 0;
@@ -1113,9 +1113,6 @@ export default function FunnelPage() {
             placeholder="Semua kontrak" summaryLabel="kontrak" className="w-36 shrink-0" />
           <CheckboxDropdown label="Status Funnel" options={PHASES} selected={filterStatus} onChange={setFilterStatus}
             placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="w-32 shrink-0" />
-          <SelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
-            options={[{ value: "all", label: "Semua Durasi" }, { value: "single_year", label: "Single Year (≤12 bln)" }, { value: "multi_year", label: "Multi Year (>12 bln)" }]}
-            className="w-44 shrink-0" />
           <SelectDropdown label="Target" value={filterTarget} onChange={v => setFilterTarget(v as "ho" | "fullho")}
             options={[{ value: "fullho", label: "Target Full HO" }, { value: "ho", label: "Target HO" }]}
             className="w-32 shrink-0" />
@@ -1156,14 +1153,8 @@ export default function FunnelPage() {
               <button onClick={() => setFilterStatus(new Set())} className="hover:opacity-70"><X className="w-3 h-3" /></button>
             </span>
           )}
-          {filterDurasi !== "all" && (
-            <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-              Durasi: {filterDurasi === "single_year" ? "Single Year" : "Multi Year"}
-              <button onClick={() => setFilterDurasi("all")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
-            </span>
-          )}
-          {(filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all") && (
-            <button onClick={() => { setFilterStatus(new Set()); setFilterDivisi("all"); setFilterMonths(new Set()); setFilterKontrak(new Set()); setFilterDurasi("all"); }}
+          {(filterStatus.size > 0 || filterDivisi !== "all" || filterMonths.size > 0 || filterKontrak.size > 0) && (
+            <button onClick={() => { setFilterStatus(new Set()); setFilterDivisi("all"); setFilterMonths(new Set()); setFilterKontrak(new Set()); }}
               className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0">
               <X className="w-3 h-3"/> Reset filter
             </button>
@@ -1235,13 +1226,16 @@ export default function FunnelPage() {
           <div className="flex items-center gap-3 flex-nowrap" style={{ minWidth: "fit-content" }}>
           <h3 className="text-base font-display font-bold text-foreground flex items-center gap-2 shrink-0">
             <TrendingUp className="w-4 h-4 text-primary" />
-            Detail Funnel per AM
+            Detail Sales Funnel per Account Manager
           </h3>
           <div className="flex items-center gap-2 flex-nowrap ml-auto">
             <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
+            <SelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
+              options={[{ value: "all", label: "Semua Durasi" }, { value: "single_year", label: "Single Year (≤12 bln)" }, { value: "multi_year", label: "Multi Year (>12 bln)" }]}
+              className="w-44 shrink-0" />
             {hasDetailFilter && (
-              <button onClick={() => setFilterAm(new Set())}
+              <button onClick={() => { setFilterAm(new Set()); setFilterDurasi("all"); }}
                 className="h-9 flex items-center gap-1 px-2.5 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/5 transition-colors whitespace-nowrap">
                 <X className="w-3.5 h-3.5" />
               </button>
