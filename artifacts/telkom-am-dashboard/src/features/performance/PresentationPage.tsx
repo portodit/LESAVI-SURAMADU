@@ -792,6 +792,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const [allExpanded,setAllExpanded] = useState(false);
   const [targetHoOverride,setTargetHoOverride] = useState("");
   const funnelSearchRef = useRef<HTMLInputElement>(null);
+  const funnelTableRef = useRef<HTMLDivElement>(null);
   const [targetFullHoOverride,setTargetFullHoOverride] = useState("");
 
   const { data: snapshots = [] } = useQuery<any[]>({
@@ -1056,6 +1057,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(e.key==="e"||e.key==="E"){ e.preventDefault(); handleToggleAll(); }
       if(e.key==="Escape"){ setAllExpanded(false); setExpandedAm({}); setExpandedPhase({}); setSearch(""); }
       if(e.key==="/"){ e.preventDefault(); funnelSearchRef.current?.focus(); }
+      if(e.key==="t"||e.key==="T"){ e.preventDefault(); funnelTableRef.current?.focus(); }
     }
     window.addEventListener("keydown",onKey);
     return ()=>window.removeEventListener("keydown",onKey);
@@ -1449,7 +1451,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
         {/* Multi-table scroll container: tiap fase = tabel sendiri, thead-nya sticky bersama */}
         <div className="px-3 pb-3">
-          <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
+          <div ref={funnelTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="border border-border rounded overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 210px)"}}>
             {/* Header kolom — sticky di atas, pisah dari tabel AM agar tidak saling tarik */}
             <table ref={fsFunnelTheadRef} className="text-left text-sm" style={{...FS_TB_STYLE,position:"sticky",top:0,zIndex:20}}>
               <FSColGroup/>
@@ -1748,6 +1750,7 @@ function ActivitySlide() {
   // Sync horizontal scroll between sticky header and scrollable body
   const actHeaderScrollRef = useRef<HTMLDivElement>(null);
   const actBodyScrollRef = useRef<HTMLDivElement>(null);
+  const actTableRef = useRef<HTMLDivElement>(null);
   const onActBodyScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (actHeaderScrollRef.current) actHeaderScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
   }, []);
@@ -1781,6 +1784,7 @@ function ActivitySlide() {
       if(e.key==="e"||e.key==="E"){ e.preventDefault(); setActExpandAll(p=>p===true?false:true); }
       if(e.key==="Escape"){ setActExpandAll(false); setExpandedAm({}); setActSearch(""); }
       if(e.key==="/"){ e.preventDefault(); actSearchRef.current?.focus(); }
+      if(e.key==="t"||e.key==="T"){ e.preventDefault(); actTableRef.current?.focus(); }
     }
     window.addEventListener("keydown",onKey);
     return ()=>window.removeEventListener("keydown",onKey);
@@ -2032,6 +2036,7 @@ function ActivitySlide() {
           </div>
 
           {/* ─── Table ─── */}
+          <div ref={actTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl" style={{maxHeight:"calc(100svh - 245px)"}}>
           <div className="mx-2">
           <div className="bg-card border border-border rounded-xl shadow-sm">
 
@@ -2221,6 +2226,7 @@ function ActivitySlide() {
             </div>{/* end body overflow-x-auto */}
           </div>{/* end .bg-card */}
           </div>{/* end mx-2 */}
+          </div>{/* end actTableRef scroll */}
         </>
       )}
     </div>
@@ -2246,6 +2252,7 @@ export default function EmbedPerforma() {
   const [funnelSubtitle, setFunnelSubtitle] = useState("HO / FULL HO");
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const perfSearchRef = useRef<HTMLInputElement>(null);
+  const perfTableRef = useRef<HTMLDivElement>(null);
 
   // Ukur tinggi toolbar tabel Performa AM secara dinamis
   const perfToolbarRef = useRef<HTMLDivElement>(null);
@@ -2327,6 +2334,7 @@ export default function EmbedPerforma() {
         }
         if (e.key === "Escape") { setExpandedRows(new Set()); setSearchQuery(""); }
         if (e.key === "/") { e.preventDefault(); perfSearchRef.current?.focus(); }
+        if (e.key === "t" || e.key === "T") { e.preventDefault(); perfTableRef.current?.focus(); }
       }
     }
     window.addEventListener("keydown", handleKey);
@@ -2589,6 +2597,7 @@ export default function EmbedPerforma() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Tabel &amp; Data</p>
             <div className="space-y-2 mb-4">
               {[
+                { keys:["T"],     desc:"Fokus ke tabel — ↑↓ untuk scroll" },
                 { keys:["E"],     desc:"Expand / Collapse semua baris AM" },
                 { keys:["/"],     desc:"Fokus ke search bar" },
                 { keys:["Esc"],   desc:"Collapse semua &amp; hapus pencarian" },
@@ -2937,6 +2946,19 @@ export default function EmbedPerforma() {
                       </button>
                     )}
                   </div>
+                  <button
+                    onClick={() => setExpandedRows(prev => {
+                      const niks = filteredAmDataRef.current.map(r => r.nik);
+                      return prev.size >= niks.length ? new Set() : new Set(niks);
+                    })}
+                    className="h-7 px-2.5 rounded-lg text-xs font-semibold border border-border bg-secondary hover:border-primary/40 hover:text-primary text-foreground transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                    title="Expand / Collapse semua AM (E)"
+                  >
+                    {expandedRows.size > 0 && expandedRows.size >= filteredAmData.length
+                      ? <><Minimize2 className="w-3 h-3"/> Collapse Semua</>
+                      : <><Expand className="w-3 h-3"/> Expand Semua</>
+                    }
+                  </button>
                 </div>
               </div>
               <div className="p-3">
@@ -2966,7 +2988,7 @@ export default function EmbedPerforma() {
                     </table>
                     </div>
                     {/* ② Per-AM data + total — scroll container (header is outside, so sticky never escapes) */}
-                    <div className="overflow-auto" style={{maxHeight:"calc(100svh - 280px)"}}>
+                    <div ref={perfTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 280px)"}}>
                     {filteredAmData.length === 0 ? (
                       <table style={PERF_TB}><PerfColGroup/>
                         <tbody><tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
