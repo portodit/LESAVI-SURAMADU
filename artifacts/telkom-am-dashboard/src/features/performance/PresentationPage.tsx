@@ -3076,8 +3076,7 @@ export default function EmbedPerforma() {
                                 <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Target</th>
                                 <th className="px-4 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Real</th>
                                 <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Ach %</th>
-                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
-                                <th colSpan={2} />
+                                <th className="px-3 py-2 text-right text-xs font-black text-rose-700 uppercase tracking-wide" colSpan={filterDivisi === "LESA" ? 2 : 3}>Proporsi</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -3107,7 +3106,7 @@ export default function EmbedPerforma() {
                                     <td className={cn("px-3 py-2 text-right text-xs font-black tabular-nums", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
                                       {cAch.toFixed(1)}%
                                     </td>
-                                    <td className="px-3 py-2 text-right text-xs tabular-nums">
+                                    <td className="px-3 py-2 text-right text-xs tabular-nums" colSpan={filterDivisi === "LESA" ? 2 : 3}>
                                       <div className="flex items-center justify-end gap-1.5">
                                         <div className="w-10 h-1.5 bg-secondary rounded-full overflow-hidden">
                                           <div className="h-full bg-primary rounded-full" style={{width:`${Math.min(prop,100)}%`}} />
@@ -3115,7 +3114,6 @@ export default function EmbedPerforma() {
                                         <span className="font-semibold text-foreground">{prop.toFixed(1)}%</span>
                                       </div>
                                     </td>
-                                    <td colSpan={2} />
                                   </tr>
                                 );
                               })}
