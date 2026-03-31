@@ -2962,7 +2962,7 @@ export default function EmbedPerforma() {
                           </td>
                           <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={{backgroundColor:bgCard}}>
                             <div className="group relative flex flex-col w-fit gap-0.5">
-                              <span className="text-sm font-bold">{row.namaAm}</span>
+                              <span className="text-sm font-extrabold">{row.namaAm}</span>
                               <span className="flex items-center gap-1 flex-wrap">
                                 {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
                                   <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
