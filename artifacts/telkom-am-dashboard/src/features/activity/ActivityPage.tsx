@@ -516,13 +516,20 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
             {((am as any).activityDivisis as string[] | undefined)?.length
               ? ((am as any).activityDivisis as string[]).map((d: string) => (
                   <span key={d} className={cn(
-                    "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none",
-                    d === "DPS" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                    : d === "DSS" ? "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
-                    : "bg-secondary text-foreground/70"
+                    "text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
+                    d === "DPS" ? "bg-blue-100 text-blue-700"
+                    : d === "DSS" ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-600"
                   )}>{d}</span>
                 ))
-              : <span className="text-foreground/40 italic text-[10px]">{am.divisi}</span>
+              : am.divisi ? (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
+                    am.divisi === "DPS" ? "bg-blue-100 text-blue-700"
+                    : am.divisi === "DSS" ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-600"
+                  )}>{am.divisi}</span>
+                ) : null
             }
             {!hasActs && <span className="text-foreground/40 font-normal italic text-[11px]">· tidak ada data</span>}
             {hasActs && <span className="text-foreground/60 font-semibold">· {am.activities.length} aktivitas</span>}
