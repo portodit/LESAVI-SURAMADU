@@ -382,22 +382,23 @@ export default function PerformaVis() {
         (filterSnapshotId === null || p.importId === filterSnapshotId);
     });
 
-    // Latest importId per (nik, month) to avoid double-counting multiple uploads
+    // Latest importId per (nik, month, divisi) to avoid double-counting multiple uploads.
+    // Key includes divisi so that partial re-uploads per divisi are handled independently.
     const latestImportPerNikMonth = new Map<string, number>();
     for (const r of allRows) {
-      const k = `${r.nik}__${r.bulan}`;
+      const k = `${r.nik}__${r.bulan}__${r.divisi}`;
       if (!latestImportPerNikMonth.has(k) || r.importId > latestImportPerNikMonth.get(k)!) {
         latestImportPerNikMonth.set(k, r.importId);
       }
     }
-    const filteredRows = allRows.filter(r => latestImportPerNikMonth.get(`${r.nik}__${r.bulan}`) === r.importId);
+    const filteredRows = allRows.filter(r => latestImportPerNikMonth.get(`${r.nik}__${r.bulan}__${r.divisi}`) === r.importId);
 
-    // Group by NIK
-    const amMap = new Map<string, { cmRow: any; ytdTarget: number; ytdReal: number; allCustomers: any[] }>();
+    // Group by NIK. AMs with multi-divisi (e.g. DPS+DSS) get multiple cmRows — we combine them.
+    const amMap = new Map<string, { cmRows: any[]; ytdTarget: number; ytdReal: number; allCustomers: any[] }>();
 
     for (const r of filteredRows) {
       if (!amMap.has(r.nik)) {
-        amMap.set(r.nik, { cmRow: null, ytdTarget: 0, ytdReal: 0, allCustomers: [] });
+        amMap.set(r.nik, { cmRows: [], ytdTarget: 0, ytdReal: 0, allCustomers: [] });
       }
       const entry = amMap.get(r.nik)!;
       entry.ytdTarget += r.targetRevenue;
@@ -407,17 +408,14 @@ export default function PerformaVis() {
       entry.allCustomers.push(...customers);
 
       if (r.bulan === cmMonth) {
-        entry.cmRow = r;
+        entry.cmRows.push(r);
       }
     }
 
     // Build table rows
     let result = [...amMap.entries()].map(([nik, entry]) => {
-      const cmRow = entry.cmRow;
-      if (!cmRow) return null;
-
-      const ytdAch = entry.ytdTarget > 0 ? entry.ytdReal / entry.ytdTarget : 0;
-      const cmAch = getAchPct(cmRow.achRate);
+      const cmRows = entry.cmRows;
+      if (cmRows.length === 0) return null;
 
       // Filter by tipeRevenue — use new per-type columns if available, fallback to komponenDetail JSON
       // Check > 0 (not just != null) because schema defaults are 0, not null
@@ -433,11 +431,17 @@ export default function PerformaVis() {
         // fallback to JSON
         return sumKomponen(parseKomponen(row.komponenDetail), tipe);
       }
-      const cmSums = getTyped(cmRow, filterTipeRevenue);
-      let effectiveCmTarget = cmSums.target;
-      let effectiveCmReal = cmSums.real;
 
-      // For YTD, recalculate per-row
+      // Combine CM target/real across all divisi rows for this AM this month
+      let effectiveCmTarget = 0;
+      let effectiveCmReal = 0;
+      for (const cr of cmRows) {
+        const s = getTyped(cr, filterTipeRevenue);
+        effectiveCmTarget += s.target;
+        effectiveCmReal += s.real;
+      }
+
+      // For YTD, recalculate per-row (all months, all divisi)
       let effectiveYtdTarget = 0;
       let effectiveYtdReal = 0;
       for (const row of filteredRows.filter(r => r.nik === nik)) {
@@ -449,11 +453,20 @@ export default function PerformaVis() {
       const effectiveCmAch = effectiveCmTarget > 0 ? effectiveCmReal / effectiveCmTarget : 0;
       const effectiveYtdAch = effectiveYtdTarget > 0 ? effectiveYtdReal / effectiveYtdTarget : 0;
 
+      // Primary divisi: use the divisi with the largest CM target (dominant portfolio)
+      const primaryCmRow = cmRows.reduce((best, r) => {
+        const s = getTyped(r, filterTipeRevenue);
+        const bestS = getTyped(best, filterTipeRevenue);
+        return s.target > bestS.target ? r : best;
+      }, cmRows[0]);
+      const divisiAll = [...new Set(cmRows.map((r: any) => r.divisi as string))];
+
       return {
         nik,
-        namaAm: cmRow.namaAm,
-        divisi: cmRow.divisi,
-        statusWarna: cmRow.statusWarna,
+        namaAm: primaryCmRow.namaAm,
+        divisi: primaryCmRow.divisi,
+        divisiAll,
+        statusWarna: primaryCmRow.statusWarna,
         cmAch: effectiveCmAch,
         ytdAch: effectiveYtdAch,
         cmTarget: effectiveCmTarget,
@@ -464,8 +477,10 @@ export default function PerformaVis() {
       };
     }).filter(Boolean) as any[];
 
-    // Apply divisi filter
-    if (filterDivisi !== "all") result = result.filter(r => matchesDivisiPerforma(r.divisi, filterDivisi));
+    // Apply divisi filter — multi-divisi AMs appear when any of their divisi matches
+    if (filterDivisi !== "all") result = result.filter(r =>
+      (r.divisiAll as string[]).some((d: string) => matchesDivisiPerforma(d, filterDivisi))
+    );
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
 
     // Sort by filterTipeRank

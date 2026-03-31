@@ -2396,33 +2396,51 @@ export default function EmbedPerforma() {
     if (filterPeriodes.size > 0) {
       rows = rows.filter((p: any) => filterPeriodes.has(`${p.tahun}-${String(p.bulan).padStart(2, "0")}`));
     }
-    const amMap = new Map<string, { cmRow: any; filteredRows: any[] }>();
+    // Group by NIK. AMs with multi-divisi (e.g. DPS+DSS) get multiple cmRows — we combine them.
+    const amMap = new Map<string, { cmRows: any[]; filteredRows: any[] }>();
     for (const r of rows) {
-      if (!amMap.has(r.nik)) amMap.set(r.nik, { cmRow: null, filteredRows: [] });
+      if (!amMap.has(r.nik)) amMap.set(r.nik, { cmRows: [], filteredRows: [] });
       const e = amMap.get(r.nik)!;
       e.filteredRows.push(r);
-      if (r.bulan === cmMonth) e.cmRow = r;
+      if (r.bulan === cmMonth) e.cmRows.push(r);
     }
     let result = [...amMap.entries()].map(([nik, entry]) => {
-      const cmRow = entry.cmRow;
-      if (!cmRow) return null;
-      const cmSums = getTypedRevenue(cmRow, filterTipeRevenue);
+      const cmRows = entry.cmRows;
+      if (cmRows.length === 0) return null;
+      // Combine CM target/real across all divisi rows for this AM this month
+      let cmTarget = 0, cmReal = 0;
+      for (const cr of cmRows) {
+        const s = getTypedRevenue(cr, filterTipeRevenue);
+        cmTarget += s.target; cmReal += s.real;
+      }
       let ytdTarget = 0, ytdReal = 0;
       for (const r of entry.filteredRows) {
         const s = getTypedRevenue(r, filterTipeRevenue);
         ytdTarget += s.target; ytdReal += s.real;
       }
-      const effectiveCmAch = cmSums.target > 0 ? cmSums.real / cmSums.target : 0;
+      const effectiveCmAch = cmTarget > 0 ? cmReal / cmTarget : 0;
       const effectiveYtdAch = ytdTarget > 0 ? ytdReal / ytdTarget : 0;
+      // Primary divisi: AM with largest CM target is dominant
+      const primaryCmRow = cmRows.reduce((best: any, r: any) => {
+        const s = getTypedRevenue(r, filterTipeRevenue);
+        const bS = getTypedRevenue(best, filterTipeRevenue);
+        return s.target > bS.target ? r : best;
+      }, cmRows[0]);
+      const divisiAll = [...new Set(cmRows.map((r: any) => r.divisi as string))];
+      const allCustomers = cmRows.flatMap((cr: any) => parseKomponen(cr.komponenDetail));
       return {
-        nik, namaAm: cmRow.namaAm, divisi: cmRow.divisi, statusWarna: cmRow.statusWarna,
+        nik, namaAm: primaryCmRow.namaAm, divisi: primaryCmRow.divisi, divisiAll,
+        statusWarna: primaryCmRow.statusWarna,
         cmAch: effectiveCmAch, ytdAch: effectiveYtdAch,
-        cmTarget: cmSums.target, cmReal: cmSums.real,
+        cmTarget, cmReal,
         ytdTarget, ytdReal,
-        customers: parseKomponen(cmRow.komponenDetail),
+        customers: allCustomers,
       };
     }).filter(Boolean) as any[];
-    if (filterDivisi !== "all") result = result.filter(r => matchesDivisiPerforma(r.divisi, filterDivisi));
+    // Multi-divisi AMs appear when any of their divisi matches the filter
+    if (filterDivisi !== "all") result = result.filter(r =>
+      (r.divisiAll as string[]).some((d: string) => matchesDivisiPerforma(d, filterDivisi))
+    );
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
     result.sort((a, b) => {
       if (filterTipeRank === "Real Revenue") return b.cmReal - a.cmReal;
