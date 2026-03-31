@@ -404,7 +404,7 @@ export default function PerformaVis() {
       entry.ytdTarget += r.targetRevenue;
       entry.ytdReal += r.realRevenue;
 
-      const customers = parseKomponen(r.komponenDetail);
+      const customers = parseKomponen(r.komponenDetail).map((c: any) => ({ ...c, _divisi: r.divisi }));
       entry.allCustomers.push(...customers);
 
       if (r.bulan === cmMonth) {
@@ -942,7 +942,13 @@ export default function PerformaVis() {
                             <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               <div className="group relative flex items-center gap-1.5 w-fit">
                                 <span>{row.namaAm}</span>
-                                <span className="text-[10px] text-muted-foreground font-normal normal-case shrink-0">{row.divisi}</span>
+                                <span className="flex items-center gap-1 flex-wrap">
+                                  {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
+                                    <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
+                                      d === "DPS" ? "bg-blue-100 text-blue-700" : d === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                    )}>{d}</span>
+                                  ))}
+                                </span>
                                 {/* Hover tooltip */}
                                 <div className="pointer-events-none absolute left-0 top-full mt-1.5 z-[200] w-56 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                                   <div className="bg-card border border-border rounded-xl shadow-xl px-3 py-2.5 text-xs">
@@ -985,6 +991,9 @@ export default function PerformaVis() {
                                       <tr className="bg-rose-100 dark:bg-rose-950/30"
                                         style={{position:"sticky" as const, top:perfSectionHeaderH+perfTableHeaderH+perfAmRowH, zIndex:9}}>
                                         <th className="px-3 py-4 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
+                                        {filterDivisi === "LESA" && (
+                                          <th className="px-3 py-4 text-center text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Divisi</th>
+                                        )}
                                         <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
                                         <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
                                         <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
@@ -1003,6 +1012,15 @@ export default function PerformaVis() {
                                               <div>{c.pelanggan || "—"}</div>
                                               {c.nip && <div className="text-[10px] text-muted-foreground">{c.nip}</div>}
                                             </td>
+                                            {filterDivisi === "LESA" && (
+                                              <td className="px-3 py-1.5 text-center">
+                                                {c._divisi && (
+                                                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold",
+                                                    c._divisi === "DPS" ? "bg-blue-100 text-blue-700" : c._divisi === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                                                  )}>{c._divisi}</span>
+                                                )}
+                                              </td>
+                                            )}
                                             <td className="px-3 py-1.5 text-right tabular-nums">
                                               <div className="flex items-center justify-end gap-1.5">
                                                 <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">

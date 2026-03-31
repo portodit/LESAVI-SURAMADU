@@ -2960,7 +2960,7 @@ export default function EmbedPerforma() {
                           </td>
                           <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={{backgroundColor:bgCard}}>
                             <div className="group relative flex flex-col w-fit">
-                              <span className="text-sm font-extrabold">{row.namaAm}</span>
+                              <span className="text-sm font-bold">{row.namaAm}</span>
                               <span className="text-[10px] text-muted-foreground font-normal normal-case">{row.divisi}</span>
                             </div>
                           </td>
