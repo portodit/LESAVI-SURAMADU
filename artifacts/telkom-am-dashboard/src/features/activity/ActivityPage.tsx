@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { matchesDivisi, DIVISI_OPTIONS_WITH_ALL, DEFAULT_DIVISI } from "@/shared/lib/divisi";
+import { matchesDivisi, DIVISI_OPTIONS } from "@/shared/lib/divisi";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/shared/lib/utils";
 import { Search, ChevronDown, X, Target, Users, TrendingUp, AlertTriangle, CheckCircle2, Expand, Minimize2 } from "lucide-react";
@@ -13,6 +13,7 @@ interface ActivityItem {
   id: number;
   activityEndDate: string | null;
   activityType: string | null;
+  divisi: string | null;
   label: string | null;
   caName: string | null;
   picName: string | null;
@@ -511,8 +512,18 @@ function AmRowControlled({ am, kpiLabels, forceExpand }: {
         {/* Nama + divisi */}
         <div className="overflow-hidden pl-1">
           <div className="text-sm font-bold text-foreground truncate">{am.fullname}</div>
-          <div className="text-xs font-semibold text-foreground/70 mt-0.5 flex items-center gap-1">
-            <span>{am.divisi}</span>
+          <div className="text-xs font-semibold text-foreground/70 mt-0.5 flex items-center gap-1 flex-wrap">
+            {((am as any).activityDivisis as string[] | undefined)?.length
+              ? ((am as any).activityDivisis as string[]).map((d: string) => (
+                  <span key={d} className={cn(
+                    "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none",
+                    d === "DPS" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                    : d === "DSS" ? "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
+                    : "bg-secondary text-foreground/70"
+                  )}>{d}</span>
+                ))
+              : <span className="text-foreground/40 italic text-[10px]">{am.divisi}</span>
+            }
             {!hasActs && <span className="text-foreground/40 font-normal italic text-[11px]">· tidak ada data</span>}
             {hasActs && <span className="text-foreground/60 font-semibold">· {am.activities.length} aktivitas</span>}
           </div>
@@ -646,7 +657,7 @@ export default function ActivityPage() {
   const [snapshotId, setSnapshotId] = useState<string>("");
   const [year, setYear] = useState(String(now.getFullYear()));
   const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth() + 1)]));
-  const [divisi, setDivisi] = useState(DEFAULT_DIVISI);
+  const [divisi, setDivisi] = useState("LESA");
   const [search, setSearch] = useState("");
   const [selectedAms, setSelectedAms] = useState<Set<string> | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<Set<string> | null>(null);
@@ -705,13 +716,13 @@ export default function ActivityPage() {
 
   const effectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
 
-  const amOptions = useMemo(() =>
-    (data?.masterAms ?? [])
-      .filter(a => matchesDivisi(a.divisi, divisi))
+  const amOptions = useMemo(() => {
+    const byAmSet = new Set((data?.byAm ?? []).map(a => a.fullname));
+    return (data?.masterAms ?? [])
+      .filter(a => byAmSet.has(a.nama) || matchesDivisi(a.divisi, divisi))
       .map(a => a.nama)
-      .sort((a, b) => a.localeCompare(b)),
-    [data?.masterAms, divisi]
-  );
+      .sort((a, b) => a.localeCompare(b));
+  }, [data?.masterAms, data?.byAm, divisi]);
 
   // Kumpulkan semua label dari aktivitas (termasuk "Tanpa Pelanggan")
   const labelOptions = useMemo(() => {
@@ -748,7 +759,8 @@ export default function ActivityPage() {
     const q = search.toLowerCase().trim();
 
     const masterFiltered = (data.masterAms ?? [])
-      .filter(a => matchesDivisi(a.divisi, divisi))
+      // Include AMs that have activities in byAmMap (multi-divisi support) OR master divisi matches
+      .filter(a => byAmMap[a.nama] !== undefined || matchesDivisi(a.divisi, divisi))
       .filter(a => selectedAms === null || selectedAms.has(a.nama))
       .filter(a => {
         if (!q) return true;
@@ -770,6 +782,10 @@ export default function ActivityPage() {
       const existing = byAmMap[ma.nama];
       if (existing) {
         let acts = existing.activities;
+        // Per-activity divisi filter (multi-divisi AM: hide other-divisi rows when specific filter active)
+        if (divisi && divisi !== "all") {
+          acts = acts.filter(a => matchesDivisi(a.divisi, divisi));
+        }
         if (filterMonths.size > 0) {
           acts = acts.filter(a => {
             if (!a.activityEndDate) return false;
@@ -779,9 +795,12 @@ export default function ActivityPage() {
             } catch { return false; }
           });
         }
-        return { ...existing, activities: acts, kpiTarget: settingsKpi * effectiveMonths };
+        // Compute which divisis this AM actually has (for multi-divisi badge)
+        const activityDivisis = Array.from(new Set(acts.map(a => a.divisi).filter(Boolean))) as string[];
+        return { ...existing, activities: acts, kpiTarget: settingsKpi * effectiveMonths, activityDivisis };
       }
-      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi * effectiveMonths, activities: [] };
+      const activityDivisis = matchesDivisi(ma.divisi, divisi) ? [ma.divisi] : [];
+      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi * effectiveMonths, activities: [], activityDivisis };
     });
   }, [data, divisi, selectedAms, search, filterMonths, effectiveMonths, settingsKpi]);
 
@@ -833,14 +852,14 @@ export default function ActivityPage() {
         const isAmFiltered = selectedAms !== null && selectedAms.size < amOptions.length;
         const isLabelFiltered = selectedLabels !== null && selectedLabels.size < labelOptions.length;
         const isPeriodFiltered = filterMonths.size > 0;
-        const isDivisiFiltered = divisi !== DEFAULT_DIVISI;
+        const isDivisiFiltered = divisi !== "LESA";
         const hasActiveFilter = isPeriodFiltered || isAmFiltered || isLabelFiltered || isDivisiFiltered || search !== "";
 
         const resetAll = () => {
           const now2 = new Date();
           setFilterMonths(new Set([String(now2.getMonth() + 1)]));
           setYear(String(now2.getFullYear()));
-          setDivisi(DEFAULT_DIVISI);
+          setDivisi("LESA");
           setSelectedAms(null);
           labelsInitialized.current = false;
           setSelectedLabels(null);
@@ -873,7 +892,7 @@ export default function ActivityPage() {
                 label="Divisi"
                 value={divisi}
                 onChange={v => { setDivisi(v); setSelectedAms(null); }}
-                options={DIVISI_OPTIONS_WITH_ALL}
+                options={DIVISI_OPTIONS}
                 className="min-w-[130px]"
               />
 
@@ -917,7 +936,7 @@ export default function ActivityPage() {
                 {isDivisiFiltered && (
                   <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
                     Divisi: {divisi}
-                    <button onClick={() => setDivisi(DEFAULT_DIVISI)} className="hover:opacity-70"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setDivisi("LESA")} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {isAmFiltered && (
