@@ -2923,15 +2923,14 @@ export default function EmbedPerforma() {
                 </div>
               </div>
               <div className="p-3">
-              {/* ── Funnel-style multi-table: one global header table (sticky) + per-AM tables ── */}
-              <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 220px)"}}>
               {(() => {
                 const PERF_TB: React.CSSProperties = { minWidth: "800px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, width: "100%" };
                 const bgCard = "hsl(var(--card))";
                 return (
-                  <>
-                    {/* ① Global header table — sticky at top:0 of the overflow-auto scroll container */}
-                    <table style={{...PERF_TB, position:"sticky", top:0, zIndex:20, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
+                  <div className="border border-border rounded overflow-hidden">
+                    {/* ① Global header — outside scroll container so it never floats above the section toolbar */}
+                    <div className="overflow-x-auto">
+                    <table style={{...PERF_TB, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
                       <PerfColGroup/>
                       <thead ref={perfTheadCallbackRef}>
                         <tr className="bg-red-700 text-white">
@@ -2948,7 +2947,9 @@ export default function EmbedPerforma() {
                         </tr>
                       </thead>
                     </table>
-                    {/* ② Per-AM tables — mirrors renderAmTablesFS pattern from FunnelSlide */}
+                    </div>
+                    {/* ② Per-AM data + total — scroll container (header is outside, so sticky never escapes) */}
+                    <div className="overflow-auto" style={{maxHeight:"calc(100svh - 280px)"}}>
                     {filteredAmData.length === 0 ? (
                       <table style={PERF_TB}><PerfColGroup/>
                         <tbody><tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
@@ -3006,8 +3007,8 @@ export default function EmbedPerforma() {
                       // ── Expanded AM ──
                       return (
                         <div key={row.nik}>
-                          {/* Sticky AM name row — own table, sticks flush below global header */}
-                          <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:perfPresentTableHeaderH, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
+                          {/* Sticky AM name row — sticks at top:0 of the inner scroll container */}
+                          <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:0, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
                             <PerfColGroup/>
                             <tbody>
                               <tr className="cursor-pointer select-none"
@@ -3021,7 +3022,7 @@ export default function EmbedPerforma() {
                           {/* Customer detail table — inline rows, sub-header sticky below AM row */}
                           <table style={{...PERF_TB, borderLeft:`2px solid ${ring}`, borderRight:`2px solid ${ring}`}}>
                             <PerfColGroup/>
-                            <thead style={{position:"sticky", top:perfPresentTableHeaderH+perfPresentAmRowH, zIndex:15}}>
+                            <thead style={{position:"sticky", top:perfPresentAmRowH, zIndex:15}}>
                               <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"1px solid #fecdd3"}}>
                                 <th className="px-2 py-2 text-center text-xs font-black text-rose-700 uppercase tracking-wide">#</th>
                                 <th className="px-4 py-2 text-left text-xs font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
@@ -3120,10 +3121,10 @@ export default function EmbedPerforma() {
                         </tr>
                       </tbody>
                     </table>
-                  </>
+                    </div>
+                  </div>
                 );
               })()}
-              </div>
               </div>
             </div>
 
