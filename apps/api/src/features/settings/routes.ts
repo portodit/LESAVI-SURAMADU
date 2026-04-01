@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, appSettingsTable } from "@workspace/db";
+import { db, appSettingsTable, accountManagersTable } from "@workspace/db";
+import { eq, isNotNull } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 import { rescheduleGSheets } from "../gsheets/scheduler";
 import { rescheduleGDrive } from "../gdrive/scheduler";
@@ -85,6 +86,9 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
 
   updates.updatedAt = new Date();
 
+  // Simpan nilai KPI lama sebelum update (untuk reset per-AM override)
+  const oldKpiDefault = existing?.kpiActivityDefault ?? 30;
+
   let settings;
   if (existing) {
     [settings] = await db.update(appSettingsTable).set(updates).returning();
@@ -96,11 +100,40 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
     }).returning();
   }
 
+  // Jika KPI default berubah, reset semua AM yang override-nya = nilai lama ke NULL
+  // supaya mereka mengikuti default baru
+  if (kpiActivityDefault !== undefined && kpiActivityDefault !== oldKpiDefault) {
+    await db.update(accountManagersTable)
+      .set({ kpiActivity: null })
+      .where(eq(accountManagersTable.kpiActivity, oldKpiDefault));
+  }
+
   rescheduleGSheets();
   rescheduleGDrive();
   if (updates.telegramBotToken) rescheduleTelegramPoller(updates.telegramBotToken);
 
   res.json(buildSettingsResponse(settings));
+});
+
+// Reset manual: set semua kpi_activity yang sama dengan default ke NULL
+// supaya AM mengikuti default baru. AM dengan custom value berbeda dibiarkan.
+router.post("/settings/reset-kpi-overrides", requireAuth, async (_req, res): Promise<void> => {
+  const [settings] = await db.select({ kpiActivityDefault: appSettingsTable.kpiActivityDefault }).from(appSettingsTable).limit(1);
+  const currentDefault = settings?.kpiActivityDefault ?? 30;
+
+  // Ambil semua AM yang punya override
+  const ams = await db.select({ nik: accountManagersTable.nik, kpiActivity: accountManagersTable.kpiActivity })
+    .from(accountManagersTable)
+    .where(isNotNull(accountManagersTable.kpiActivity));
+
+  // Reset semua AM ke NULL (override dihapus, akan ikut default)
+  if (ams.length > 0) {
+    await db.update(accountManagersTable)
+      .set({ kpiActivity: null })
+      .where(isNotNull(accountManagersTable.kpiActivity));
+  }
+
+  res.json({ message: "KPI override per-AM berhasil direset ke default", kpiDefault: currentDefault, resetCount: ams.length });
 });
 
 export default router;
