@@ -895,10 +895,20 @@ export default function PerformaVis() {
                 <div ref={perfTableHeaderRef} onScroll={onPerfHeaderScroll}
                   className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 bg-card"
                   style={{ top: `${perfSectionHeaderH}px` }}>
-                  <table className="border-collapse" style={{ minWidth: "600px", width: "100%" }}>
+                  <table style={{ minWidth: "874px", width: "100%", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
+                    <colgroup>
+                      <col style={{width:"28px"}}/>
+                      <col style={{width:"220px"}}/>
+                      <col style={{width:"165px"}}/>
+                      <col style={{width:"165px"}}/>
+                      <col style={{width:"76px"}}/>
+                      <col style={{width:"76px"}}/>
+                      <col style={{width:"72px"}}/>
+                      <col style={{width:"72px"}}/>
+                    </colgroup>
                     <thead>
                       <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                        <th className="px-4 py-2.5 text-left w-6"></th>
+                        <th className="px-4 py-2.5 text-left"></th>
                         <th className="px-4 py-2.5 text-left">Nama AM</th>
                         <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
                         <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
@@ -914,7 +924,17 @@ export default function PerformaVis() {
                 </div>
                 {/* Scrollable body */}
                 <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll}>
-                <table className="w-full text-left text-xs" style={{ minWidth: "600px" }}>
+                <table className="w-full text-left text-xs" style={{ minWidth: "874px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
+                    <colgroup>
+                      <col style={{width:"28px"}}/>
+                      <col style={{width:"220px"}}/>
+                      <col style={{width:"165px"}}/>
+                      <col style={{width:"165px"}}/>
+                      <col style={{width:"76px"}}/>
+                      <col style={{width:"76px"}}/>
+                      <col style={{width:"72px"}}/>
+                      <col style={{width:"72px"}}/>
+                    </colgroup>
                   <thead className="sr-only" aria-hidden>
                     <tr>
                       <th className="w-6"></th><th>Nama AM</th><th>Target</th><th>Real</th><th>CM %</th><th>YTD %</th><th>Customer</th><th>Rank</th>
@@ -953,9 +973,9 @@ export default function PerformaVis() {
                               ) : null}
                             </td>
                             <td className="px-4 py-2.5 font-black text-foreground uppercase tracking-wide overflow-visible" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
-                              <div className="group relative flex items-center gap-1.5 w-fit">
-                                <span>{row.namaAm}</span>
-                                <span className="flex items-center gap-1 flex-wrap">
+                              <div className="group relative flex items-center gap-1.5">
+                                <span className="truncate max-w-[150px]">{row.namaAm}</span>
+                                <span className="flex items-center gap-1 flex-nowrap shrink-0">
                                   {((row.divisiAll as string[]) ?? [row.divisi]).map((d: string) => (
                                     <span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",
                                       d === "DPS" ? "bg-blue-100 text-blue-700" : d === "DSS" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
@@ -984,8 +1004,8 @@ export default function PerformaVis() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmTarget)}</td>
-                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmReal)}</td>
+                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmTarget)}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmReal)}</td>
                             <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
