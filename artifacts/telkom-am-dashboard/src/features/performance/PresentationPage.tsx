@@ -2286,6 +2286,7 @@ export default function EmbedPerforma() {
   const [filterTipeRevenue, setFilterTipeRevenue] = useState("Reguler");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [custViewMode, setCustViewMode] = useState<"perBulan" | "agregasi">("agregasi");
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2497,9 +2498,10 @@ export default function EmbedPerforma() {
       }, cmRows[0]);
       const divisiAll = [...new Set(cmRows.map((r: any) => r.divisi as string))];
       // Build customers from ALL selected periods (filteredRows), then merge duplicates
-      const custRaw = entry.filteredRows.flatMap((cr: any) =>
-        parseKomponen(cr.komponenDetail).map((c: any) => ({ ...c, _divisi: cr.divisi }))
-      );
+      const custRaw = entry.filteredRows.flatMap((cr: any) => {
+        const periodeStr = `${cr.tahun}-${String(cr.bulan).padStart(2, "0")}`;
+        return parseKomponen(cr.komponenDetail).map((c: any) => ({ ...c, _divisi: cr.divisi, _periode: periodeStr }));
+      });
       const custMap = new Map<string, any>();
       for (const c of custRaw) {
         const key = `${c.nip || c.pelanggan}__${c._divisi || ""}`;
@@ -2527,6 +2529,7 @@ export default function EmbedPerforma() {
         cmTarget, cmReal,
         ytdTarget, ytdReal,
         customers: mergedCustomers,
+        rawCustomers: custRaw,
       };
     }).filter(Boolean) as any[];
     // Multi-divisi AMs appear when any of their divisi matches the filter
@@ -3123,11 +3126,23 @@ export default function EmbedPerforma() {
                           </table>
 
                           {/* Customer detail table — inline rows, sub-header sticky below AM row */}
+                          {(() => {
+                            const isMultiPeriode = filterPeriodes.size > 1;
+                            const displayCusts = isMultiPeriode && custViewMode === "perBulan"
+                              ? (row.rawCustomers || row.customers)
+                              : row.customers;
+                            const showPeriodeCol = isMultiPeriode && custViewMode === "perBulan";
+                            const getCustRev = (c: any) => filterTipeRevenue === "Semua"
+                              ? customerTotal(c)
+                              : { target: c[filterTipeRevenue]?.target ?? 0, real: c[filterTipeRevenue]?.real ?? 0 };
+                            return (
+                              <>
                           <table style={{...PERF_TB, borderLeft:`2px solid ${ring}`, borderRight:`2px solid ${ring}`}}>
                             <colgroup>
                               <col style={{width:"28px"}}/>
                               <col />
                               <col style={{width:"82px"}}/>
+                              {showPeriodeCol && <col style={{width:"80px"}}/>}
                               {filterDivisi === "LESA" && <col style={{width:"68px"}}/>}
                               <col style={{width:"140px"}}/>
                               <col style={{width:"140px"}}/>
@@ -3135,22 +3150,33 @@ export default function EmbedPerforma() {
                             </colgroup>
                             <thead style={{position:"sticky", top:perfPresentAmRowH, zIndex:15}}>
                               <tr style={{background:"rgb(255,241,242)", borderTop:"1px solid #fecdd3", borderBottom:"2px solid #fecdd3"}}>
-                                <th className="px-2 py-3 text-center text-sm font-black text-rose-700 uppercase tracking-wide">#</th>
-                                <th className="px-4 py-3 text-left text-sm font-black text-rose-700 uppercase tracking-wide">Pelanggan / NIP</th>
-                                <th className="px-3 py-3 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
+                                <th className="px-2 py-2 text-center text-sm font-black text-rose-700 uppercase tracking-wide">#</th>
+                                <th className="px-4 py-2 text-left text-sm font-black text-rose-700 uppercase tracking-wide">
+                                  <div className="flex items-center gap-2">
+                                    <span>Pelanggan / NIP</span>
+                                    {isMultiPeriode && (
+                                      <span className="flex items-center rounded-full border border-rose-300 overflow-hidden text-[10px] font-bold ml-1">
+                                        <button onClick={(e) => { e.stopPropagation(); setCustViewMode("agregasi"); }}
+                                          className={cn("px-2 py-0.5 transition-colors", custViewMode === "agregasi" ? "bg-rose-700 text-white" : "text-rose-700 hover:bg-rose-200")}>Agregasi</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setCustViewMode("perBulan"); }}
+                                          className={cn("px-2 py-0.5 transition-colors", custViewMode === "perBulan" ? "bg-rose-700 text-white" : "text-rose-700 hover:bg-rose-200")}>Per Bulan</button>
+                                      </span>
+                                    )}
+                                  </div>
+                                </th>
+                                <th className="px-3 py-2 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Proporsi</th>
+                                {showPeriodeCol && <th className="px-3 py-2 text-center text-sm font-black text-rose-700 uppercase tracking-wide">Periode</th>}
                                 {filterDivisi === "LESA" && (
-                                  <th className="px-3 py-3 text-center text-sm font-black text-rose-700 uppercase tracking-wide">Divisi</th>
+                                  <th className="px-3 py-2 text-center text-sm font-black text-rose-700 uppercase tracking-wide">Divisi</th>
                                 )}
-                                <th className="px-4 py-3 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Target</th>
-                                <th className="px-4 py-3 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Real</th>
-                                <th className="px-3 py-3 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Ach %</th>
+                                <th className="px-4 py-2 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Target</th>
+                                <th className="px-4 py-2 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Real</th>
+                                <th className="px-3 py-2 text-right text-sm font-black text-rose-700 uppercase tracking-wide">Ach %</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {row.customers.map((c: any, ci: number) => {
-                                const { target: cTarget, real: cReal } = filterTipeRevenue === "Semua"
-                                  ? customerTotal(c)
-                                  : { target: c[filterTipeRevenue]?.target ?? 0, real: c[filterTipeRevenue]?.real ?? 0 };
+                              {displayCusts.map((c: any, ci: number) => {
+                                const { target: cTarget, real: cReal } = getCustRev(c);
                                 const prop = c.proporsi != null ? c.proporsi : 0;
                                 const cAch = cTarget > 0 ? cReal / cTarget * 100 : 0;
                                 return (
@@ -3168,6 +3194,13 @@ export default function EmbedPerforma() {
                                         <span className="text-xs font-semibold text-foreground tabular-nums whitespace-nowrap">{prop.toFixed(1)}%</span>
                                       </div>
                                     </td>
+                                    {showPeriodeCol && (
+                                      <td className="px-3 py-2 text-center">
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-100 text-rose-700 whitespace-nowrap">
+                                          {c._periode ? periodeLabel(c._periode) : "—"}
+                                        </span>
+                                      </td>
+                                    )}
                                     {filterDivisi === "LESA" && (
                                       <td className="px-3 py-2 text-center">
                                         {c._divisi && (
@@ -3194,6 +3227,7 @@ export default function EmbedPerforma() {
                               <col style={{width:"28px"}}/>
                               <col />
                               <col style={{width:"82px"}}/>
+                              {showPeriodeCol && <col style={{width:"80px"}}/>}
                               {filterDivisi === "LESA" && <col style={{width:"68px"}}/>}
                               <col style={{width:"140px"}}/>
                               <col style={{width:"140px"}}/>
@@ -3201,17 +3235,15 @@ export default function EmbedPerforma() {
                             </colgroup>
                             <tbody>
                               {(() => {
-                                const getCust = (c: any) => filterTipeRevenue === "Semua"
-                                  ? { t: c.targetTotal ?? 0, r: c.realTotal ?? 0 }
-                                  : { t: c[filterTipeRevenue]?.target ?? 0, r: c[filterTipeRevenue]?.real ?? 0 };
-                                const footTarget = row.customers.reduce((s: number, c: any) => s + getCust(c).t, 0);
-                                const footReal   = row.customers.reduce((s: number, c: any) => s + getCust(c).r, 0);
+                                const footTarget = displayCusts.reduce((s: number, c: any) => s + getCustRev(c).target, 0);
+                                const footReal   = displayCusts.reduce((s: number, c: any) => s + getCustRev(c).real, 0);
                                 const footAch    = footTarget > 0 ? footReal / footTarget : 0;
                                 return (
                                   <tr className="bg-rose-50 border-t border-rose-200 dark:border-rose-800/50">
                                     <td className="px-2 py-2" />
-                                    <td className="px-4 py-2"><span className="text-xs font-black text-rose-800 uppercase tracking-wide">{row.customers.length} Pelanggan — {row.namaAm}</span></td>
+                                    <td className="px-4 py-2"><span className="text-xs font-black text-rose-800 uppercase tracking-wide">{displayCusts.length} Pelanggan — {row.namaAm}</span></td>
                                     <td />
+                                    {showPeriodeCol && <td />}
                                     {filterDivisi === "LESA" && <td />}
                                     <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(footTarget)}</td>
                                     <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(footReal)}</td>
@@ -3223,6 +3255,9 @@ export default function EmbedPerforma() {
                               })()}
                             </tbody>
                           </table>
+                              </>
+                            );
+                          })()}
                         </div>
                       );
                     })}
