@@ -471,19 +471,27 @@ export default function PerformaVis() {
         return sumKomponen(parseKomponen(row.komponenDetail), tipe);
       }
 
-      // Combine CM target/real across all divisi rows for this AM this month
+      // When divisi filter is active, restrict CM rows to matching divisi only
+      const activeCmRows = (filterDivisi === "all" || filterDivisi === "LESA")
+        ? cmRows
+        : cmRows.filter((cr: any) => matchesDivisiPerforma(cr.divisi, filterDivisi));
+
+      // Combine CM target/real — only from activeCmRows (respects divisi filter)
       let effectiveCmTarget = 0;
       let effectiveCmReal = 0;
-      for (const cr of cmRows) {
+      for (const cr of activeCmRows) {
         const s = getTyped(cr, filterTipeRevenue);
         effectiveCmTarget += s.target;
         effectiveCmReal += s.real;
       }
 
-      // For YTD, recalculate per-row (all months, all divisi)
+      // For YTD, recalculate per-row — filter by divisi if active
       let effectiveYtdTarget = 0;
       let effectiveYtdReal = 0;
-      for (const row of filteredRows.filter(r => r.nik === nik)) {
+      const ytdRows = filteredRows.filter((r: any) => r.nik === nik &&
+        (filterDivisi === "all" || filterDivisi === "LESA" || matchesDivisiPerforma(r.divisi, filterDivisi))
+      );
+      for (const row of ytdRows) {
         const sums = getTyped(row, filterTipeRevenue);
         effectiveYtdTarget += sums.target;
         effectiveYtdReal += sums.real;
@@ -492,12 +500,12 @@ export default function PerformaVis() {
       const effectiveCmAch = effectiveCmTarget > 0 ? effectiveCmReal / effectiveCmTarget : 0;
       const effectiveYtdAch = effectiveYtdTarget > 0 ? effectiveYtdReal / effectiveYtdTarget : 0;
 
-      // Primary divisi: use the divisi with the largest CM target (dominant portfolio)
-      const primaryCmRow = cmRows.reduce((best, r) => {
+      // Primary divisi: use activeCmRows (filtered) for dominant portfolio; fall back to all cmRows
+      const primaryCmRow = (activeCmRows.length > 0 ? activeCmRows : cmRows).reduce((best: any, r: any) => {
         const s = getTyped(r, filterTipeRevenue);
         const bestS = getTyped(best, filterTipeRevenue);
         return s.target > bestS.target ? r : best;
-      }, cmRows[0]);
+      }, (activeCmRows.length > 0 ? activeCmRows : cmRows)[0]);
       const divisiAll = [...new Set(cmRows.map((r: any) => r.divisi as string))];
 
       return {
