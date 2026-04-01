@@ -151,8 +151,8 @@ function PerfColGroup() {
     <colgroup>
       <col style={{width:"28px"}}/>
       <col style={{width:"200px"}}/>
-      <col style={{width:"130px"}}/>
-      <col style={{width:"130px"}}/>
+      <col style={{width:"170px"}}/>
+      <col style={{width:"170px"}}/>
       <col style={{width:"78px"}}/>
       <col style={{width:"78px"}}/>
       <col style={{width:"78px"}}/>
@@ -3004,7 +3004,7 @@ export default function EmbedPerforma() {
               </div>
               <div className="p-3">
               {(() => {
-                const PERF_TB: React.CSSProperties = { minWidth: "800px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, width: "100%" };
+                const PERF_TB: React.CSSProperties = { minWidth: "880px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, width: "100%" };
                 const bgCard = "hsl(var(--card))";
                 return (
                   <div className="border border-border rounded overflow-hidden">
@@ -3058,8 +3058,8 @@ export default function EmbedPerforma() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmTarget)}</td>
+                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                           </td>
@@ -3156,8 +3156,8 @@ export default function EmbedPerforma() {
                                         )}
                                       </td>
                                     )}
-                                    <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums">{formatRupiahFull(cTarget)}</td>
-                                    <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums">{formatRupiahFull(cReal)}</td>
+                                    <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(cTarget)}</td>
+                                    <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(cReal)}</td>
                                     <td className={cn("px-3 py-2 text-right text-xs font-black tabular-nums", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
                                       {cAch.toFixed(1)}%
                                     </td>
@@ -3184,8 +3184,8 @@ export default function EmbedPerforma() {
                                 <td className="px-4 py-2"><span className="text-xs font-black text-rose-800 uppercase tracking-wide">{row.customers.length} Pelanggan — {row.namaAm}</span></td>
                                 <td />
                                 {filterDivisi === "LESA" && <td />}
-                                <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums">{formatRupiahFull(row.cmTarget)}</td>
-                                <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums">{formatRupiahFull(row.cmReal)}</td>
+                                <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(row.cmTarget)}</td>
+                                <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(row.cmReal)}</td>
                                 <td className={cn("px-3 py-2 text-right text-xs font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")}>
                                   {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                                 </td>
@@ -3204,8 +3204,8 @@ export default function EmbedPerforma() {
                         <tr className="bg-secondary/60" style={{borderTop:"2px solid hsl(var(--border))"}}>
                           <td className="px-2 py-3" />
                           <td className="px-4 py-3 font-bold text-sm text-foreground">Total ({amTableData.length} AM)</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiahFull(totals.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiahFull(totals.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiahFull(totals.cmTarget)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiahFull(totals.cmReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                             <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
