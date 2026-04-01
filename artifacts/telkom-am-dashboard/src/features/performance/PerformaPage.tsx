@@ -1016,12 +1016,8 @@ export default function PerformaVis() {
                                     <tbody className="divide-y divide-border/40">
                                       {visibleCustomers.map((c: any, ci: number) => {
                                         const { target: cTarget, real: cReal } = getCustRevTyped(c);
-                                        // Proporsi kontribusi: share dari total real tipe ini; fallback ke target jika belum ada real
-                                        const prop = totalRealTyped > 0
-                                          ? (cReal / totalRealTyped) * 100
-                                          : totalTargetTyped > 0
-                                            ? (cTarget / totalTargetTyped) * 100
-                                            : 0;
+                                        // Proporsi = nilai PROPORSI dari Excel (sudah disimpan ×100 di DB, misal 0.99 → 99)
+                                        const prop = c.proporsi ?? 0;
                                         const cAch = cTarget > 0 ? cReal / cTarget * 100 : 0;
                                         return (
                                           <tr key={ci} className={cn("transition-colors", ci % 2 === 0 ? "bg-white dark:bg-card" : "bg-rose-50/60 dark:bg-rose-950/20", "hover:bg-rose-100/60 dark:hover:bg-rose-900/20")}>
