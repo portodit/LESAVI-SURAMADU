@@ -46,6 +46,12 @@ app.use(
   })
 );
 
+// Disable HTTP caching for all public API routes so browsers always get fresh data
+app.use("/api/public", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
 app.use("/api", router);
 
 if (process.env.NODE_ENV === "production") {
