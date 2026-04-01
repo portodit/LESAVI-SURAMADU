@@ -92,10 +92,38 @@ export function parseRaw2DArray(rawRows: any[][]): ParsedRow[] {
     });
 }
 
-/** Parse comma-formatted Indonesian number string → number */
+/** Parse number string from Excel (handles Indonesian & US/standard formats) */
 export function parseIndonesianNumber(val: any): number {
   if (val === null || val === undefined || val === "") return 0;
-  const s = String(val).replace(/,/g, "").replace(/\./g, "");
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+
+  let s = String(val).trim().replace(/\s/g, "");
+  if (s === "") return 0;
+
+  const hasDot = s.includes(".");
+  const hasComma = s.includes(",");
+
+  if (hasDot && hasComma) {
+    const lastDot = s.lastIndexOf(".");
+    const lastComma = s.lastIndexOf(",");
+    if (lastComma > lastDot) {
+      // Indonesian format: 1.234.567,89 — remove dots, comma → dot
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // US/standard format: 1,234,567.89 — remove commas
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma && !hasDot) {
+    // Comma only: treat as decimal separator if it looks like one (e.g. "1234,56")
+    const parts = s.split(",");
+    if (parts.length === 2 && parts[1].length <= 3 && parts[0].length > 0) {
+      s = s.replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  }
+  // Only dots (or no separators): treat as-is — dot is decimal point
+
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
