@@ -2921,15 +2921,15 @@ export default function EmbedPerforma() {
                 title="TOP AM BY CURRENT MONTH"
                 subtitle={topCm ? `Divisi ${topCm.divisi} · CM ${cmPeriode ? periodeLabel(cmPeriode) : "—"}` : ""}
                 am={topCm} value={topCm ? `${(topCm.cmAch * 100).toFixed(1).replace(".", ",")}%` : "–"}
-                realValue={topCm ? formatRupiah(topCm.cmReal) : undefined}
-                targetValue={topCm ? formatRupiah(topCm.cmTarget) : undefined}
+                realValue={topCm ? formatRupiahFull(topCm.cmReal) : undefined}
+                targetValue={topCm ? formatRupiahFull(topCm.cmTarget) : undefined}
               />
               <TrophyCard colorScheme="blue"
                 title="TOP AM BY YEAR TO DATE"
                 subtitle={topYtd ? `Divisi ${topYtd.divisi} · YTD ${ytdPeriodeLabel}` : ""}
                 am={topYtd} value={topYtd ? `${(topYtd.ytdAch * 100).toFixed(1).replace(".", ",")}%` : "–"}
-                realValue={topYtd ? formatRupiah(topYtd.ytdReal) : undefined}
-                targetValue={topYtd ? formatRupiah(topYtd.ytdTarget) : undefined}
+                realValue={topYtd ? formatRupiahFull(topYtd.ytdReal) : undefined}
+                targetValue={topYtd ? formatRupiahFull(topYtd.ytdTarget) : undefined}
               />
               {/* Distribusi */}
               <div className="bg-card border border-border rounded-xl p-4">
@@ -3058,8 +3058,8 @@ export default function EmbedPerforma() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiah(row.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiah(row.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmTarget)}</td>
+                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                           </td>
@@ -3166,8 +3166,8 @@ export default function EmbedPerforma() {
                               <tr className="bg-rose-50 border-t border-rose-200 dark:border-rose-800/50">
                                 <td className="px-2 py-2" />
                                 <td className="px-4 py-2"><span className="text-xs font-black text-rose-800 uppercase tracking-wide">{row.customers.length} Pelanggan — {row.namaAm}</span></td>
-                                <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums">{formatRupiah(row.cmTarget)}</td>
-                                <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums">{formatRupiah(row.cmReal)}</td>
+                                <td className="px-4 py-2 text-right text-xs font-semibold text-foreground tabular-nums">{formatRupiahFull(row.cmTarget)}</td>
+                                <td className="px-4 py-2 text-right text-xs font-black text-foreground tabular-nums">{formatRupiahFull(row.cmReal)}</td>
                                 <td className={cn("px-3 py-2 text-right text-xs font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")}>
                                   {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                                 </td>
@@ -3187,8 +3187,8 @@ export default function EmbedPerforma() {
                         <tr className="bg-secondary/60" style={{borderTop:"2px solid hsl(var(--border))"}}>
                           <td className="px-2 py-3" />
                           <td className="px-4 py-3 font-bold text-sm text-foreground">Total ({amTableData.length} AM)</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiah(totals.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiah(totals.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiahFull(totals.cmTarget)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiahFull(totals.cmReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                             <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>

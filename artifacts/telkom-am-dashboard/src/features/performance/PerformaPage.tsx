@@ -984,8 +984,8 @@ export default function PerformaVis() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiah(row.cmTarget)}</td>
-                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiah(row.cmReal)}</td>
+                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmTarget)}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmReal)}</td>
                             <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
@@ -1042,8 +1042,8 @@ export default function PerformaVis() {
                                                 <span className="text-foreground font-medium">{prop.toFixed(1)}%</span>
                                               </div>
                                             </td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums text-foreground" title={formatRupiahFull(cTarget)}>{formatRupiah(cTarget)}</td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-foreground" title={formatRupiahFull(cReal)}>{formatRupiah(cReal)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{formatRupiahFull(cTarget)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-foreground">{formatRupiahFull(cReal)}</td>
                                             <td className="px-3 py-1.5 text-right tabular-nums text-xs">
                                               <span className={cn("font-semibold", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
                                                 {cAch.toFixed(1)}%
