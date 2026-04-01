@@ -1004,8 +1004,8 @@ export default function PerformaVis() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmTarget)}</td>
-                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.cmReal)}</td>
+                            <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.ytdTarget)}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.ytdReal)}</td>
                             <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                             </td>
@@ -1086,8 +1086,8 @@ export default function PerformaVis() {
                     <tr className="bg-secondary/60 border-t-2 border-border">
                       <td className="px-2 py-3" />
                       <td className="px-4 py-3 font-bold text-sm text-foreground">Total ({amTableData.length} AM)</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm">{formatRupiah(totals.cmTarget)}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm">{formatRupiah(totals.cmReal)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiah(totals.ytdTarget)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiah(totals.ytdReal)}</td>
                       <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                         <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>

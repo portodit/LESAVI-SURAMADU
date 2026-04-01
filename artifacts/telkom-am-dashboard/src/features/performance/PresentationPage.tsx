@@ -2593,7 +2593,7 @@ export default function EmbedPerforma() {
     const cmR = amTableData.reduce((s, r) => s + r.cmReal, 0);
     const ytdT = amTableData.reduce((s, r) => s + r.ytdTarget, 0);
     const ytdR = amTableData.reduce((s, r) => s + r.ytdReal, 0);
-    return { cmTarget: cmT, cmReal: cmR, cmAch: cmT > 0 ? cmR / cmT * 100 : 0, ytdAch: ytdT > 0 ? ytdR / ytdT * 100 : 0, ytdReal: ytdR };
+    return { cmTarget: cmT, cmReal: cmR, cmAch: cmT > 0 ? cmR / cmT * 100 : 0, ytdTarget: ytdT, ytdAch: ytdT > 0 ? ytdR / ytdT * 100 : 0, ytdReal: ytdR };
   }, [amTableData]);
 
   const filteredAmData = useMemo(() => {
@@ -3079,8 +3079,8 @@ export default function EmbedPerforma() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdTarget)}</td>
+                          <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
                           </td>
@@ -3235,8 +3235,8 @@ export default function EmbedPerforma() {
                         <tr className="bg-secondary/60" style={{borderTop:"2px solid hsl(var(--border))"}}>
                           <td className="px-2 py-3" />
                           <td className="px-4 py-3 font-bold text-sm text-foreground">Total ({amTableData.length} AM)</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiahFull(totals.cmTarget)}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiahFull(totals.cmReal)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdTarget)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdReal)}</td>
                           <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                             <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
