@@ -102,6 +102,43 @@ function sumKomponen(customers: any[], tipeRevenue: string): { target: number; r
   };
 }
 
+const BULAN_SHORT: Record<number, string> = {
+  1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mei", 6: "Jun",
+  7: "Jul", 8: "Agu", 9: "Sep", 10: "Okt", 11: "Nov", 12: "Des",
+};
+function formatPeriodLabel(periodeStr: string): string {
+  const [y, m] = periodeStr.split("-");
+  return `${BULAN_SHORT[parseInt(m)] ?? m} ${y}`;
+}
+
+function mergeCustomersByNip(customers: any[]): any[] {
+  const map = new Map<string, any>();
+  for (const c of customers) {
+    const key = `${c.nip}__${c._divisi ?? ""}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        ...c,
+        targetTotal: 0, realTotal: 0,
+        Reguler: { target: 0, real: 0 },
+        Sustain: { target: 0, real: 0 },
+        Scaling: { target: 0, real: 0 },
+        NGTMA: { target: 0, real: 0 },
+        _periode: null,
+      });
+    }
+    const m = map.get(key)!;
+    m.targetTotal += c.targetTotal ?? 0;
+    m.realTotal += c.realTotal ?? 0;
+    for (const tipe of ["Reguler", "Sustain", "Scaling", "NGTMA"]) {
+      if (c[tipe]) {
+        m[tipe].target += c[tipe].target ?? 0;
+        m[tipe].real += c[tipe].real ?? 0;
+      }
+    }
+  }
+  return [...map.values()];
+}
+
 // ─── Trophy Card ──────────────────────────────────────────────────────────────
 function TrophyCard({ title, period, am, value, realValue, targetValue, colorScheme }: {
   title: string; period: string; am: any; value: string;
@@ -313,6 +350,7 @@ export default function PerformaVis() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [custViewMode, setCustViewMode] = useState<"perBulan" | "agregasi">("agregasi");
 
   const { data: allPerfs, isLoading } = useListPerformance();
   const { data: importHistory } = useListImportHistory();
@@ -404,7 +442,8 @@ export default function PerformaVis() {
       entry.ytdTarget += r.targetRevenue;
       entry.ytdReal += r.realRevenue;
 
-      const customers = parseKomponen(r.komponenDetail).map((c: any) => ({ ...c, _divisi: r.divisi }));
+      const periodeLabel = `${r.tahun}-${String(r.bulan).padStart(2, "0")}`;
+      const customers = parseKomponen(r.komponenDetail).map((c: any) => ({ ...c, _divisi: r.divisi, _periode: periodeLabel }));
       entry.allCustomers.push(...customers);
 
       if (r.bulan === cmMonth) {
@@ -956,9 +995,15 @@ export default function PerformaVis() {
                         const typed = c[filterTipeRevenue];
                         return typed ? { target: typed.target ?? 0, real: typed.real ?? 0 } : { target: 0, real: 0 };
                       };
+                      // Multi-periode: toggle per-bulan / agregasi
+                      const isMultiPeriode = filterPeriodes.size > 1;
+                      const displayCustomers = isMultiPeriode && custViewMode === "agregasi"
+                        ? mergeCustomersByNip(visibleCustomers)
+                        : visibleCustomers;
+                      const showPeriodeCol = isMultiPeriode && custViewMode === "perBulan";
                       // Hitung total real & target (hanya tipe yang dipilih) untuk proporsi kontribusi
-                      const totalRealTyped = visibleCustomers.reduce((s: number, c: any) => s + getCustRevTyped(c).real, 0);
-                      const totalTargetTyped = visibleCustomers.reduce((s: number, c: any) => s + getCustRevTyped(c).target, 0);
+                      const totalRealTyped = displayCustomers.reduce((s: number, c: any) => s + getCustRevTyped(c).real, 0);
+                      const totalTargetTyped = displayCustomers.reduce((s: number, c: any) => s + getCustRevTyped(c).target, 0);
                       return (
                         <React.Fragment key={row.nik}>
                           <tr
@@ -1023,18 +1068,37 @@ export default function PerformaVis() {
                                     <thead>
                                       <tr className="bg-rose-100 dark:bg-rose-950/30"
                                         style={{position:"sticky" as const, top:perfSectionHeaderH+perfTableHeaderH+perfAmRowH, zIndex:9}}>
-                                        <th className="px-3 py-4 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Pelanggan / NIP</th>
-                                        {filterDivisi === "LESA" && (
-                                          <th className="px-3 py-4 text-center text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Divisi</th>
+                                        <th className="px-3 py-2 text-left text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                                          <div className="flex items-center gap-2">
+                                            <span>Pelanggan / NIP</span>
+                                            {isMultiPeriode && (
+                                              <span className="flex items-center rounded-full border border-rose-300 dark:border-rose-700 overflow-hidden text-[10px] font-bold ml-1">
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); setCustViewMode("agregasi"); }}
+                                                  className={cn("px-2 py-0.5 transition-colors", custViewMode === "agregasi" ? "bg-rose-700 text-white" : "text-rose-700 hover:bg-rose-200 dark:hover:bg-rose-800")}
+                                                >Agregasi</button>
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); setCustViewMode("perBulan"); }}
+                                                  className={cn("px-2 py-0.5 transition-colors", custViewMode === "perBulan" ? "bg-rose-700 text-white" : "text-rose-700 hover:bg-rose-200 dark:hover:bg-rose-800")}
+                                                >Per Bulan</button>
+                                              </span>
+                                            )}
+                                          </div>
+                                        </th>
+                                        {showPeriodeCol && (
+                                          <th className="px-3 py-2 text-center text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Periode</th>
                                         )}
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
+                                        {filterDivisi === "LESA" && (
+                                          <th className="px-3 py-2 text-center text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Divisi</th>
+                                        )}
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
+                                        <th className="px-3 py-2 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
-                                      {visibleCustomers.map((c: any, ci: number) => {
+                                      {displayCustomers.map((c: any, ci: number) => {
                                         const { target: cTarget, real: cReal } = getCustRevTyped(c);
                                         // Proporsi = nilai PROPORSI dari Excel (sudah disimpan ×100 di DB, misal 0.99 → 99)
                                         const prop = c.proporsi ?? 0;
@@ -1045,6 +1109,13 @@ export default function PerformaVis() {
                                               <div>{c.pelanggan || "—"}</div>
                                               {c.nip && <div className="text-[10px] text-muted-foreground">{c.nip}</div>}
                                             </td>
+                                            {showPeriodeCol && (
+                                              <td className="px-3 py-1.5 text-center">
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 whitespace-nowrap">
+                                                  {c._periode ? formatPeriodLabel(c._periode) : "—"}
+                                                </span>
+                                              </td>
+                                            )}
                                             {filterDivisi === "LESA" && (
                                               <td className="px-3 py-1.5 text-center">
                                                 {c._divisi && (
