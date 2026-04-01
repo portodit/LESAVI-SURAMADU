@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect as useEffectRef } from "react";
 import { matchesDivisiPerforma, DIVISI_OPTIONS, divisiFilterLabel } from "@/shared/lib/divisi";
 import { useListPerformance, useListImportHistory } from "@workspace/api-client-react";
-import { formatRupiah, formatPercent, getStatusColor, getAchPct, cn } from "@/shared/lib/utils";
+import { formatRupiah, formatRupiahFull, formatPercent, getStatusColor, getAchPct, cn } from "@/shared/lib/utils";
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   Line, ComposedChart, Legend, PieChart, Pie
@@ -1000,15 +1000,21 @@ export default function PerformaVis() {
                                           <th className="px-3 py-4 text-center text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Divisi</th>
                                         )}
                                         <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Proporsi</th>
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target</th>
-                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real</th>
+                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Target {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
+                                        <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Real {filterTipeRevenue !== "Semua" ? filterTipeRevenue : ""}</th>
                                         <th className="px-3 py-4 text-right text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-wide">Ach %</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
                                       {visibleCustomers.map((c: any, ci: number) => {
-                                        const cReal = c.realTotal ?? 0;
-                                        const cTarget = c.targetTotal ?? 0;
+                                        // Ikuti filterTipeRevenue: tampilkan target/real sesuai tipe yang dipilih
+                                        const getCustTyped = (): { target: number; real: number } => {
+                                          if (filterTipeRevenue === "Semua") return { target: c.targetTotal ?? 0, real: c.realTotal ?? 0 };
+                                          const typed = c[filterTipeRevenue];
+                                          if (typed) return { target: typed.target ?? 0, real: typed.real ?? 0 };
+                                          return { target: 0, real: 0 };
+                                        };
+                                        const { target: cTarget, real: cReal } = getCustTyped();
                                         const prop = totalReal > 0 ? (cReal / totalReal) * 100 : (c.proporsi != null ? c.proporsi : 0);
                                         const cAch = cTarget > 0 ? cReal / cTarget * 100 : 0;
                                         return (
@@ -1034,8 +1040,8 @@ export default function PerformaVis() {
                                                 <span className="text-foreground font-medium">{prop.toFixed(1)}%</span>
                                               </div>
                                             </td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{formatRupiah(cTarget)}</td>
-                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-foreground">{formatRupiah(cReal)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums text-foreground" title={formatRupiahFull(cTarget)}>{formatRupiah(cTarget)}</td>
+                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-foreground" title={formatRupiahFull(cReal)}>{formatRupiah(cReal)}</td>
                                             <td className="px-3 py-1.5 text-right tabular-nums text-xs">
                                               <span className={cn("font-semibold", cAch >= 100 ? "text-green-600" : cAch >= 80 ? "text-orange-500" : "text-red-500")}>
                                                 {cAch.toFixed(1)}%
