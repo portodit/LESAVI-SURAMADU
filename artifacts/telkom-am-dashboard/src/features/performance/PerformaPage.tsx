@@ -102,6 +102,43 @@ function sumKomponen(customers: any[], tipeRevenue: string): { target: number; r
   };
 }
 
+const BULAN_SHORT: Record<number, string> = {
+  1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mei", 6: "Jun",
+  7: "Jul", 8: "Agu", 9: "Sep", 10: "Okt", 11: "Nov", 12: "Des",
+};
+function formatPeriodLabel(periodeStr: string): string {
+  const [y, m] = periodeStr.split("-");
+  return `${BULAN_SHORT[parseInt(m)] ?? m} ${y}`;
+}
+
+function mergeCustomersByNip(customers: any[]): any[] {
+  const map = new Map<string, any>();
+  for (const c of customers) {
+    const key = `${c.nip}__${c._divisi ?? ""}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        ...c,
+        targetTotal: 0, realTotal: 0,
+        Reguler: { target: 0, real: 0 },
+        Sustain: { target: 0, real: 0 },
+        Scaling: { target: 0, real: 0 },
+        NGTMA: { target: 0, real: 0 },
+        _periode: null,
+      });
+    }
+    const m = map.get(key)!;
+    m.targetTotal += c.targetTotal ?? 0;
+    m.realTotal += c.realTotal ?? 0;
+    for (const tipe of ["Reguler", "Sustain", "Scaling", "NGTMA"]) {
+      if (c[tipe]) {
+        m[tipe].target += c[tipe].target ?? 0;
+        m[tipe].real += c[tipe].real ?? 0;
+      }
+    }
+  }
+  return [...map.values()];
+}
+
 // ─── Trophy Card ──────────────────────────────────────────────────────────────
 function TrophyCard({ title, period, am, value, realValue, targetValue, colorScheme }: {
   title: string; period: string; am: any; value: string;
@@ -313,6 +350,7 @@ export default function PerformaVis() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [custViewMode, setCustViewMode] = useState<"perBulan" | "agregasi">("agregasi");
 
   const { data: allPerfs, isLoading } = useListPerformance();
   const { data: importHistory } = useListImportHistory();
@@ -404,7 +442,8 @@ export default function PerformaVis() {
       entry.ytdTarget += r.targetRevenue;
       entry.ytdReal += r.realRevenue;
 
-      const customers = parseKomponen(r.komponenDetail).map((c: any) => ({ ...c, _divisi: r.divisi }));
+      const periodeLabel = `${r.tahun}-${String(r.bulan).padStart(2, "0")}`;
+      const customers = parseKomponen(r.komponenDetail).map((c: any) => ({ ...c, _divisi: r.divisi, _periode: periodeLabel }));
       entry.allCustomers.push(...customers);
 
       if (r.bulan === cmMonth) {
