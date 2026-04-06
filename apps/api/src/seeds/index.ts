@@ -15,6 +15,7 @@
 
 import { seedAccounts } from "./seed-accounts.js";
 import { seedFunnelTargets } from "./seed-funnel-targets.js";
+import { seedAmFunnelTargets } from "./seed-am-funnel-targets.js";
 import { seedPerformance } from "./seed-performance.js";
 import { seedActivity } from "./seed-activity.js";
 import { seedFunnel } from "./seed-funnel.js";
@@ -26,6 +27,7 @@ const TARGET = ARGS.find((a) => !a.startsWith("--")) ?? "all";
 const MODULES: Record<string, () => Promise<void>> = {
   accounts: () => seedAccounts({ truncate: TRUNCATE }),
   "funnel-targets": () => seedFunnelTargets({ truncate: TRUNCATE }),
+  "am-funnel-targets": () => seedAmFunnelTargets({ truncate: TRUNCATE }),
   performance: () => seedPerformance({ truncate: TRUNCATE }),
   activity: () => seedActivity({ truncate: TRUNCATE }),
   funnel: () => seedFunnel({ truncate: TRUNCATE }),
