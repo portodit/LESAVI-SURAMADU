@@ -1256,7 +1256,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // ── Multi-table renderer: tiap fase = 1 tabel dengan <thead> 2 baris ─────────
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
   const FS_TB_STYLE:React.CSSProperties={minWidth:"800px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
-  function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"75px"}}/><col style={{width:"70px"}}/><col style={{width:"160px"}}/><col/><col style={{width:"120px"}}/></colgroup>);}
+  function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"110px"}}/><col style={{width:"82px"}}/><col style={{width:"185px"}}/><col/><col style={{width:"108px"}}/></colgroup>);}
   function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
