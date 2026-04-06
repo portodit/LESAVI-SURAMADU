@@ -1099,7 +1099,7 @@ export default function FunnelPage() {
                       <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Durasi</td>
                       <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
                       <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-4 py-2 text-xs font-black text-slate-800 uppercase tracking-wider text-right">Nilai</td>
+                      <td className="px-4 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Nilai</td>
                     </tr>
                     {lops.map((lop, idx) => (
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
@@ -1114,7 +1114,7 @@ export default function FunnelPage() {
                           <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
                         </td>
                         <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
+                        <td className="px-4 py-2.5 text-left tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
