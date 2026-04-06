@@ -996,8 +996,8 @@ export default function FunnelPage() {
                         <div className="h-full rounded-full transition-all" style={{width:`${pctBar}%`,background:barColor}} />
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-xs font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
-                        <span className="text-[10px] text-muted-foreground">capaian</span>
+                        <span className="text-sm font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
+                        <span className="text-xs font-bold text-muted-foreground">capaian</span>
                       </div>
                     </div>
                   )}
