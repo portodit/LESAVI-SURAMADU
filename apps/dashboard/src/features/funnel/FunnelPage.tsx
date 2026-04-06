@@ -1096,27 +1096,28 @@ export default function FunnelPage() {
                 {phaseExpanded && (
                   <>
                     {/* Sub-header for project detail columns */}
-                    <tr className="bg-slate-50 border-b border-slate-200" style={ringStyle({})}>
-                      <td className="px-4 py-1.5 pl-16 text-[10px] font-black text-slate-500 uppercase tracking-wide">Nama Proyek</td>
-                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Kategori</td>
-                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide" />
-                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Durasi · LOP ID</td>
-                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Pelanggan</td>
-                      <td className="px-4 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide text-right">Nilai</td>
+                    <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
+                      <td className="px-4 py-2 pl-16 text-xs font-black text-slate-800 uppercase tracking-wider">Nama Proyek</td>
+                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Kategori</td>
+                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Durasi</td>
+                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
+                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
+                      <td className="px-4 py-2 text-xs font-black text-slate-800 uppercase tracking-wider text-right">Nilai</td>
                     </tr>
                     {lops.map((lop, idx) => (
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
-                        <td className="px-4 py-2 pl-16">
+                        <td className="px-4 py-2.5 pl-16">
                           <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
                         </td>
-                        <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
-                        <td className="px-3 py-2" />
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 block">{formatDurasi(lop.monthSubs)}</span>
-                          <span className="font-mono text-[10px] text-muted-foreground">{lop.lopid}</span>
+                        <td className="px-3 py-2.5"><KontrakBadge k={lop.kategoriKontrak} /></td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="text-sm font-bold text-teal-700 dark:text-teal-400">{formatDurasi(lop.monthSubs)}</span>
                         </td>
-                        <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
