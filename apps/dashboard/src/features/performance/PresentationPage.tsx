@@ -1107,8 +1107,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── reusable tbody renderer for presentation split panels ──────────────────
   function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string) {
-    if (isLoading) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
-    if (ams.length===0) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
+    if (isLoading) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
+    if (ams.length===0) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
     return <>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
       const amExpanded=!!expandedAm[amKey];
@@ -1142,40 +1142,42 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             </td>
             {(()=>{
               const stickyCell:React.CSSProperties=amExpanded?{backgroundColor:"hsl(var(--card))",position:"sticky",top:fsFunnelTheadH,zIndex:15}:{};
-              const allAmLops=Array.from(am.phases.values()).flat();
-              const amPelanggan=new Set((allAmLops as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
               const f5Val=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
               const f345Val=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
               const cr=f345Val>0?f5Val/f345Val:null;
               const amTargetInfo=data?.amTargets?.[am.nikAm];
               const amTargetVal=amTargetInfo?.targetValue??0;
               const amTargetYr=data?.amTargetYear??new Date().getFullYear();
-              const pct=amTargetVal>0?Math.min((amTotal/amTargetVal)*100,100):0;
+              const pctRaw=amTargetVal>0?(amTotal/amTargetVal)*100:0;
+              const pctBar=Math.min(pctRaw,100);
+              const barColor=pctRaw>=100?"#10b981":pctRaw>=70?"#f97316":"#3b82f6";
               return(<>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
-                  <span className="text-xs font-black tabular-nums text-foreground">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span>
-                </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
-                  <span className="text-xs font-black tabular-nums text-foreground">{amPelanggan} <span className="font-normal text-muted-foreground">plg</span></span>
+                <td className="px-3 py-3 text-left whitespace-nowrap" style={stickyCell}>
+                  <span className="text-sm font-black tabular-nums text-foreground">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span>
                 </td>
                 <td className="px-3 py-3" style={stickyCell}>
                   {amTargetVal>0?(
-                    <div className="min-w-[100px]">
-                      <div className="flex justify-between items-baseline mb-0.5">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Target {amTargetYr}</span>
-                        <span className="text-xs font-black tabular-nums">{fmtCompactFS(amTargetVal)}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:pct>=100?"#10b981":pct>=70?"#f97316":"#3b82f6"}}/>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pct.toFixed(0)}%</div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTargetYr}</span>
+                      <span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>
                     </div>
                   ):<span className="text-muted-foreground text-xs">—</span>}
                 </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
-                  <span className="font-black text-foreground tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span>
+                <td className="px-3 py-3" style={stickyCell}>
+                  <span className="font-black tabular-nums text-sm whitespace-nowrap block text-foreground">{formatRupiahFull(amTotal)}</span>
+                  {amTargetVal>0&&(
+                    <div className="mt-1.5">
+                      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{width:`${pctBar}%`,background:barColor}}/>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-xs font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
+                        <span className="text-[10px] text-muted-foreground">capaian</span>
+                      </div>
+                    </div>
+                  )}
                 </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
+                <td className="px-4 py-3 text-right whitespace-nowrap" style={stickyCell}>
                   {cr!==null?<span className={cn("font-bold text-sm tabular-nums",cr>=0.7?"text-emerald-600":"text-red-600")}>{(cr*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}
                 </td>
               </>);
@@ -1187,6 +1189,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             const phaseExpanded=!!expandedPhase[phaseKey];
             const phaseTotal=lops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
             const c=FS_PHASE_COLORS[phase];
+            const phaseBg=phaseExpanded?"rgb(253,242,248)":"rgba(253,242,248,0.75)";
             return (
               <React.Fragment key={phaseKey}>
                 <tr className="cursor-pointer select-none hover:brightness-95 transition-all"
@@ -1195,8 +1198,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     ...ringStyle({}),
                   }}
                   onClick={()=>togglePhaseRow(phaseKey)}>
-                  <td className="px-4 py-2.5 pl-10"
-                    style={{background: phaseExpanded ? "rgb(253,242,248)" : "rgba(253,242,248,0.75)"}}>
+                  <td className="px-4 py-2.5 pl-10" style={{background:phaseBg}}>
                     <div className="flex items-center gap-2">
                       <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                       <span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span>
@@ -1204,26 +1206,35 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                   </td>
                   {phaseExpanded
-                    ? <td colSpan={5} className="px-3 py-2.5" style={{background:"rgb(253,242,248)"}}/>
-                    : <><td colSpan={4} className="px-3 py-2.5" style={{background:"rgba(253,242,248,0.75)"}}/>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{background:"rgba(253,242,248,0.75)"}}>
+                    ? <td colSpan={4} className="px-3 py-2.5" style={{background:phaseBg}}/>
+                    : <><td colSpan={3} className="px-3 py-2.5" style={{background:phaseBg}}/>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{background:phaseBg}}>
                           <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
                         </td></>}
                 </tr>
                 {phaseExpanded&&(
                   <>
+                    <tr className="bg-slate-50 border-b border-slate-200" style={ringStyle({})}>
+                      <td className="px-4 py-1.5 pl-16 text-[10px] font-black text-slate-500 uppercase tracking-wide">Nama Proyek</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Kategori</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Durasi · LOP ID</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Pelanggan</td>
+                      <td className="px-4 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide text-right">Nilai</td>
+                    </tr>
                     {lops.map((lop:any,idx:number)=>(
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
-                        <td className="px-4 py-2 pl-16" style={{minWidth:"320px"}}><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                        <td className="px-4 py-2 pl-16"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div></td>
                         <td className="px-3 py-2 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                        <td className="px-3 py-2 text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 block">{fsDurasi(lop.monthSubs)}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">{lop.lopid}</span>
+                        </td>
                         <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                         <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={5} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                      <td colSpan={4} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
                       <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
                     </tr>
                   </>
@@ -1233,7 +1244,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           })}
           {amExpanded&&(
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
-              <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
+              <td colSpan={4} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
               <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">{formatRupiahFull(amTotal)}</td>
             </tr>
           )}
@@ -1244,13 +1255,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── Multi-table renderer: tiap fase = 1 tabel dengan <thead> 2 baris ─────────
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
-  const FS_TB_STYLE:React.CSSProperties={minWidth:"964px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
-  function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"116px"}}/><col style={{width:"96px"}}/><col style={{width:"100px"}}/><col/><col style={{width:"200px"}}/></colgroup>);}
+  const FS_TB_STYLE:React.CSSProperties={minWidth:"800px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
+  function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"80px"}}/><col style={{width:"160px"}}/><col/><col style={{width:"120px"}}/></colgroup>);}
   function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
-    if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
-    if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
+    if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
+    if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
     const multiExpanded = Object.values(expandedAm).filter(Boolean).length > 1;
     return<>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
@@ -1262,33 +1273,34 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       const bgCard="hsl(var(--card))";
       const divBadges=((am as any).divisiAll?.length>0?(am as any).divisiAll:[resolveAmDivisi(am)].filter(Boolean)).map((d:string)=><span key={d} className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0",d==="DPS"?"bg-blue-100 text-blue-700":d==="DSS"?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-600")}>{d}</span>);
 
+      // Shared AM stats
+      const f5Val=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const f345Val=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const crAm=f345Val>0?f5Val/f345Val:null;
+      const amTgt=data?.amTargets?.[am.nikAm]?.targetValue??0;
+      const amTgtYr=data?.amTargetYear??new Date().getFullYear();
+      const pctRawAm=amTgt>0?(amTotal/amTgt)*100:0;
+      const pctBarAm=Math.min(pctRawAm,100);
+      const barColorAm=pctRawAm>=100?"#10b981":pctRawAm>=70?"#f97316":"#3b82f6";
+
       if(!amExpanded){return(
         <table key={amKey} className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
           <tbody>
             <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors" style={{borderTop:"2px solid transparent"}} onClick={()=>toggleAmRow(amKey)}>
               <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
-              {(()=>{
-                const allAmLopsC=Array.from(am.phases.values()).flat();
-                const amPelangganC=new Set((allAmLopsC as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
-                const f5ValC=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
-                const f345ValC=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
-                const crC=f345ValC>0?f5ValC/f345ValC:null;
-                const amTgtC=data?.amTargets?.[am.nikAm]?.targetValue??0;
-                const amTgtYr=data?.amTargetYear??new Date().getFullYear();
-                const pctC=amTgtC>0?Math.min((amTotal/amTgtC)*100,100):0;
-                return(<>
-                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="text-xs font-black tabular-nums">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span></td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="text-xs font-black tabular-nums">{amPelangganC} <span className="font-normal text-muted-foreground">plg</span></span></td>
-                  <td className="px-3 py-3">{amTgtC>0?(<div className="min-w-[100px]"><div className="flex justify-between items-baseline mb-0.5"><span className="text-[10px] font-semibold text-muted-foreground uppercase">Target {amTgtYr}</span><span className="text-xs font-black tabular-nums">{fmtCompactFS(amTgtC)}</span></div><div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctC}%`,background:pctC>=100?"#10b981":pctC>=70?"#f97316":"#3b82f6"}}/></div><div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pctC.toFixed(0)}%</div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="font-black tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span></td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap">{crC!==null?<span className={cn("font-bold text-sm tabular-nums",crC>=0.7?"text-emerald-600":"text-red-600")}>{(crC*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
-                </>);
-              })()}
+              <td className="px-3 py-3 text-left whitespace-nowrap"><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
+              <td className="px-3 py-3">{amTgt>0?(<div><span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTgtYr}</span><span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-3">
+                <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
+                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-xs font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-[10px] text-muted-foreground">capaian</span></div></div>)}
+              </td>
+              <td className="px-4 py-3 text-right whitespace-nowrap">{crAm!==null?<span className={cn("font-bold text-sm tabular-nums",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
           </tbody>
         </table>
       );}
 
+      const bg={backgroundColor:bgCard};
       return(<div key={amKey}>
         {/* Sticky AM name row — own table so it sticks independently across all phase tables */}
         <table ref={fsFunnelAmTableCallbackRef} className="text-left text-sm" style={{...FS_TB_STYLE,position:"sticky",top:fsFunnelTheadH,zIndex:16,boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}><FSColGroup/>
@@ -1296,27 +1308,16 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <tr className="cursor-pointer select-none hover:brightness-95 transition-colors"
               style={{borderTop:`2px solid ${ring}`,borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:"none"}}
               onClick={()=>toggleAmRow(amKey)}>
-              <td className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
+              <td className="px-4 py-2.5 font-normal text-left" style={bg}>
                 <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="text-foreground text-sm uppercase tracking-wide font-bold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
               </td>
-              {(()=>{
-                const allAmLopsE=Array.from(am.phases.values()).flat();
-                const amPelangganE=new Set((allAmLopsE as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
-                const f5ValE=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
-                const f345ValE=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
-                const crE=f345ValE>0?f5ValE/f345ValE:null;
-                const amTgtE=data?.amTargets?.[am.nikAm]?.targetValue??0;
-                const amTgtYrE=data?.amTargetYear??new Date().getFullYear();
-                const pctE=amTgtE>0?Math.min((amTotal/amTgtE)*100,100):0;
-                const bg={backgroundColor:bgCard};
-                return(<>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="text-xs font-black tabular-nums">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span></td>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="text-xs font-black tabular-nums">{amPelangganE} <span className="font-normal text-muted-foreground">plg</span></span></td>
-                  <td className="px-3 py-2.5" style={bg}>{amTgtE>0?(<div className="min-w-[100px]"><div className="flex justify-between items-baseline mb-0.5"><span className="text-[10px] font-semibold text-muted-foreground uppercase">Target {amTgtYrE}</span><span className="text-xs font-black tabular-nums">{fmtCompactFS(amTgtE)}</span></div><div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctE}%`,background:pctE>=100?"#10b981":pctE>=70?"#f97316":"#3b82f6"}}/></div><div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pctE.toFixed(0)}%</div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="font-black tabular-nums text-sm">{formatRupiahFull(amTotal)}</span></td>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}>{crE!==null?<span className={cn("font-bold text-sm tabular-nums",crE>=0.7?"text-emerald-600":"text-red-600")}>{(crE*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
-                </>);
-              })()}
+              <td className="px-3 py-2.5 text-left whitespace-nowrap" style={bg}><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
+              <td className="px-3 py-2.5" style={bg}>{amTgt>0?(<div><span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTgtYr}</span><span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-2.5" style={bg}>
+                <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
+                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-xs font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-[10px] text-muted-foreground">capaian</span></div></div>)}
+              </td>
+              <td className="px-4 py-2.5 text-right whitespace-nowrap" style={bg}>{crAm!==null?<span className={cn("font-bold text-sm tabular-nums",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
           </tbody>
         </table>
@@ -1338,25 +1339,36 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
                   </th>
                   {phaseExpanded
-                    ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
-                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-4 py-2.5 text-right whitespace-nowrap font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></th></>
+                    ?<th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
+                    :<><th colSpan={3} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-4 py-2.5 text-right whitespace-nowrap font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></th></>
                   }
                 </tr>
+                {phaseExpanded&&(
+                  <tr className="bg-slate-50 border-b border-slate-200" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
+                    <th className="px-4 py-1.5 pl-16 text-[10px] font-black text-slate-500 uppercase tracking-wide font-normal text-left">Nama Proyek</th>
+                    <th className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide font-normal text-left">Kategori</th>
+                    <th className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide font-normal text-left">Durasi · LOP ID</th>
+                    <th className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide font-normal text-left">Pelanggan</th>
+                    <th className="px-4 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide font-normal text-right">Nilai</th>
+                  </tr>
+                )}
               </thead>
               <tbody className="divide-y divide-border/50">
                 {phaseExpanded&&lops.map((lop:any,idx:number)=>(
                   <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td className="px-4 py-2 pl-16" style={{minWidth:"320px"}}><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                    <td className="px-4 py-2 pl-16"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div></td>
                     <td className="px-3 py-2 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                    <td className="px-3 py-2 text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 block">{fsDurasi(lop.monthSubs)}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{lop.lopid}</span>
+                    </td>
                     <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                   </tr>
                 ))}
                 {phaseExpanded&&(
                   <tr className="bg-red-50 border-t border-red-200" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td colSpan={5} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                    <td colSpan={4} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
                     <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
                   </tr>
                 )}
@@ -1367,7 +1379,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
           <tbody>
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
-              <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
+              <td colSpan={4} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
               <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">{formatRupiahFull(amTotal)}</td>
             </tr>
           </tbody>
@@ -1540,12 +1552,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <FSColGroup/>
               <thead>
                 <tr className="text-white font-black uppercase tracking-wide text-xs">
-                  <th className="px-4 py-3 text-left" style={{background:"#B91C1C"}}>AM / Fase / Proyek</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>KATEGORI</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>KONTRAK</th>
-                  <th className="px-3 py-3 text-left font-mono whitespace-nowrap" style={{background:"#B91C1C"}}>LOP ID</th>
-                  <th className="px-3 py-3 text-left" style={{background:"#B91C1C"}}>Pelanggan</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Nilai Proyek</th>
+                  <th className="px-4 py-3 text-left" style={{background:"#B91C1C"}}>Account Manager</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>LOP</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>Target 2026</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>Nilai Proyek</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Conv. Rate</th>
                 </tr>
               </thead>
             </table>
@@ -1653,12 +1664,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
                     <thead>
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KONTRAK</th>
-                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
-                        <th className="px-3 py-2.5 min-w-[120px] text-left">Pelanggan</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[130px]">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 min-w-[280px] text-left">Account Manager</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap text-left">Target 2026</th>
+                        <th className="px-3 py-2.5 text-left whitespace-nowrap">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap">Conv. Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
