@@ -1140,16 +1140,46 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 </button>
               </div>
             </td>
-            <td className="px-3 py-3" colSpan={amExpanded?5:4}
-              style={{
-                backgroundColor: amExpanded ? "hsl(var(--card))" : undefined,
-                ...(amExpanded ? {position:"sticky" as const, top:fsFunnelTheadH, zIndex:15} : {})
-              }}>
-              <span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span>
-            </td>
-            {!amExpanded&&(<td className="px-4 py-3 text-right whitespace-nowrap">
-              <span className="font-black text-foreground tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span>
-            </td>)}
+            {(()=>{
+              const stickyCell:React.CSSProperties=amExpanded?{backgroundColor:"hsl(var(--card))",position:"sticky",top:fsFunnelTheadH,zIndex:15}:{};
+              const allAmLops=Array.from(am.phases.values()).flat();
+              const amPelanggan=new Set((allAmLops as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
+              const f5Val=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+              const f345Val=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+              const cr=f345Val>0?f5Val/f345Val:null;
+              const amTargetInfo=data?.amTargets?.[am.nikAm];
+              const amTargetVal=amTargetInfo?.targetValue??0;
+              const amTargetYr=data?.amTargetYear??new Date().getFullYear();
+              const pct=amTargetVal>0?Math.min((amTotal/amTargetVal)*100,100):0;
+              return(<>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
+                  <span className="text-xs font-black tabular-nums text-foreground">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span>
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
+                  <span className="text-xs font-black tabular-nums text-foreground">{amPelanggan} <span className="font-normal text-muted-foreground">plg</span></span>
+                </td>
+                <td className="px-3 py-3" style={stickyCell}>
+                  {amTargetVal>0?(
+                    <div className="min-w-[100px]">
+                      <div className="flex justify-between items-baseline mb-0.5">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Target {amTargetYr}</span>
+                        <span className="text-xs font-black tabular-nums">{fmtCompactFS(amTargetVal)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:pct>=100?"#10b981":pct>=70?"#f97316":"#3b82f6"}}/>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pct.toFixed(0)}%</div>
+                    </div>
+                  ):<span className="text-muted-foreground text-xs">—</span>}
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
+                  <span className="font-black text-foreground tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span>
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={stickyCell}>
+                  {cr!==null?<span className={cn("font-bold text-sm tabular-nums",cr>=0.7?"text-emerald-600":"text-red-600")}>{(cr*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}
+                </td>
+              </>);
+            })()}
           </tr>
           {amExpanded&&orderedPhases.map(phase=>{
             const lops=am.phases.get(phase)||[];
@@ -1237,8 +1267,23 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           <tbody>
             <tr className="cursor-pointer select-none bg-card hover:bg-secondary/30 transition-colors" style={{borderTop:"2px solid transparent"}} onClick={()=>toggleAmRow(amKey)}>
               <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
-              <td className="px-3 py-3" colSpan={4}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></td>
-              <td className="px-4 py-3 text-right whitespace-nowrap"><span className="font-black text-foreground tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span></td>
+              {(()=>{
+                const allAmLopsC=Array.from(am.phases.values()).flat();
+                const amPelangganC=new Set((allAmLopsC as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
+                const f5ValC=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+                const f345ValC=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+                const crC=f345ValC>0?f5ValC/f345ValC:null;
+                const amTgtC=data?.amTargets?.[am.nikAm]?.targetValue??0;
+                const amTgtYr=data?.amTargetYear??new Date().getFullYear();
+                const pctC=amTgtC>0?Math.min((amTotal/amTgtC)*100,100):0;
+                return(<>
+                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="text-xs font-black tabular-nums">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span></td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="text-xs font-black tabular-nums">{amPelangganC} <span className="font-normal text-muted-foreground">plg</span></span></td>
+                  <td className="px-3 py-3">{amTgtC>0?(<div className="min-w-[100px]"><div className="flex justify-between items-baseline mb-0.5"><span className="text-[10px] font-semibold text-muted-foreground uppercase">Target {amTgtYr}</span><span className="text-xs font-black tabular-nums">{fmtCompactFS(amTgtC)}</span></div><div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctC}%`,background:pctC>=100?"#10b981":pctC>=70?"#f97316":"#3b82f6"}}/></div><div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pctC.toFixed(0)}%</div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap"><span className="font-black tabular-nums text-sm whitespace-nowrap">{formatRupiahFull(amTotal)}</span></td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap">{crC!==null?<span className={cn("font-bold text-sm tabular-nums",crC>=0.7?"text-emerald-600":"text-red-600")}>{(crC*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+                </>);
+              })()}
             </tr>
           </tbody>
         </table>
@@ -1254,7 +1299,24 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <td className="px-4 py-2.5 font-normal text-left" style={{backgroundColor:bgCard}}>
                 <div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rotate-90"/><span className="text-foreground text-sm uppercase tracking-wide font-bold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Collapse semua proyek"><Minimize2 className="w-3 h-3"/></button></div>
               </td>
-              <td className="px-3 py-2.5 font-normal" colSpan={5} style={{backgroundColor:bgCard}}><span className="text-xs font-black text-foreground tracking-wide">TOTAL {amLopCount} LOP</span></td>
+              {(()=>{
+                const allAmLopsE=Array.from(am.phases.values()).flat();
+                const amPelangganE=new Set((allAmLopsE as any[]).map((l:any)=>l.pelanggan).filter(Boolean)).size;
+                const f5ValE=(am.phases.get("F5")as any[]||[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+                const f345ValE=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+                const crE=f345ValE>0?f5ValE/f345ValE:null;
+                const amTgtE=data?.amTargets?.[am.nikAm]?.targetValue??0;
+                const amTgtYrE=data?.amTargetYear??new Date().getFullYear();
+                const pctE=amTgtE>0?Math.min((amTotal/amTgtE)*100,100):0;
+                const bg={backgroundColor:bgCard};
+                return(<>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="text-xs font-black tabular-nums">{amLopCount} <span className="font-normal text-muted-foreground">lop</span></span></td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="text-xs font-black tabular-nums">{amPelangganE} <span className="font-normal text-muted-foreground">plg</span></span></td>
+                  <td className="px-3 py-2.5" style={bg}>{amTgtE>0?(<div className="min-w-[100px]"><div className="flex justify-between items-baseline mb-0.5"><span className="text-[10px] font-semibold text-muted-foreground uppercase">Target {amTgtYrE}</span><span className="text-xs font-black tabular-nums">{fmtCompactFS(amTgtE)}</span></div><div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctE}%`,background:pctE>=100?"#10b981":pctE>=70?"#f97316":"#3b82f6"}}/></div><div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pctE.toFixed(0)}%</div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}><span className="font-black tabular-nums text-sm">{formatRupiahFull(amTotal)}</span></td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap" style={bg}>{crE!==null?<span className={cn("font-bold text-sm tabular-nums",crE>=0.7?"text-emerald-600":"text-red-600")}>{(crE*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+                </>);
+              })()}
             </tr>
           </tbody>
         </table>

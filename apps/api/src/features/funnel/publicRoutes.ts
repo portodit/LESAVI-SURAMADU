@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, salesFunnelTable, salesFunnelTargetTable, dataImportsTable, accountManagersTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, salesFunnelTable, salesFunnelTargetTable, amFunnelTargetTable, dataImportsTable, accountManagersTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { matchesDivisi, expandDivisi } from "../../shared/divisi";
 
 const router: IRouter = Router();
@@ -163,6 +163,15 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
 
   const shortage = targetFullHoVal > 0 ? targetFullHoVal - totalNilai : 0;
 
+  // AM-level annual targets
+  const amTargetYear = tahun ? Number(tahun) : (() => {
+    const importPeriod = import_id ? null : null; // resolved below
+    return new Date().getFullYear();
+  })();
+  const amTargetRows = await db.select().from(amFunnelTargetTable).where(eq(amFunnelTargetTable.tahun, amTargetYear));
+  const amTargets: Record<string, { id: number; targetValue: number; tahun: number }> = {};
+  for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
+
   res.json({
     totalLop, totalNilai,
     targetHo: targetHoVal,
@@ -175,6 +184,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     unidentifiedLops: unidentifiedCount,
     byStatus: statusGroups,
     byAm: amGroups,
+    amTargets,
+    amTargetYear,
     lops: allLops.map(l => ({
       id: l.id,
       lopid: l.lopid,
