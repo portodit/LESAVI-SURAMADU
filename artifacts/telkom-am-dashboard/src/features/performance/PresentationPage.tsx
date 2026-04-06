@@ -640,7 +640,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
       {hasTarget&&(
         <div className="w-full space-y-0.5 text-xs">
           <div className="flex justify-between"><span className="text-muted-foreground">Real</span><span className="font-black tabular-nums" style={{color}}>{fmtRupiahFS(real)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">{mode==="ho"?"Target HO":"Full HO"}</span><span className="tabular-nums text-foreground">{fmtRupiahFS(activeTarget)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{mode==="ho"?"Target HO":"FULL (HO+BA)"}</span><span className="tabular-nums text-foreground">{fmtRupiahFS(activeTarget)}</span></div>
           <div className="flex justify-between pt-0.5 border-t border-border">
             <span className={cn("font-bold",real>=activeTarget?"text-emerald-600":"text-foreground")}>{real>=activeTarget?"Lebih":"Kurang"}</span>
             <span className={cn("font-black tabular-nums",real>=activeTarget?"text-emerald-600":"text-foreground")}>{real>=activeTarget?"+":"-"}{fmtRupiahFS(Math.abs(activeTarget-real))}</span>
@@ -678,7 +678,7 @@ function FSGauge({ pct, targetHo, targetFullHo, real, mode, compact, divisi }: {
         {hasTarget&&(
           <>
             <div className="flex justify-between items-baseline gap-1">
-              <span className="text-muted-foreground whitespace-nowrap shrink-0">{mode==="ho"?"Target HO":"Target Full HO"}</span>
+              <span className="text-muted-foreground whitespace-nowrap shrink-0">{mode==="ho"?"Target HO":"Target FULL (HO+BA)"}</span>
               <span className="tabular-nums text-foreground truncate text-right ml-1">{fmtRupiahFS(activeTarget)}</span>
             </div>
             <div className="pt-1.5 border-t border-border flex justify-between items-baseline gap-1">
@@ -946,7 +946,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[filteredLops]);
 
   useEffect(()=>{
-    onTitleChange?.(filterMode==="ho"?"HO":"FULL HO");
+    onTitleChange?.(filterMode==="ho"?"HO":"FULL (HO+BA)");
   },[filterMode,onTitleChange]);
 
   // ── Split mode state + computed ─────────────────────────────────────────────
@@ -1336,7 +1336,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         className="w-44 shrink-0"/>
       <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
       <FSSelectDropdown label="Target" value={filterMode} onChange={v=>setFilterMode(v as "ho"|"fullho")}
-        options={[{value:"ho",label:"HO"},{value:"fullho",label:"Full HO"}]}
+        options={[{value:"ho",label:"HO"},{value:"fullho",label:"FULL (HO+BA)"}]}
         className="w-28 shrink-0"/>
       {kontrakOptions.length>0&&(
         <FSCheckboxDropdown label="Kategori Kontrak" options={kontrakOptions} selected={filterKontrak} onChange={setFilterKontrak}
@@ -1366,7 +1366,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </span>
         {/* Target mode — always shows */}
         <span className="inline-flex shrink-0 items-center gap-1 bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
-          Target: {filterMode === "ho" ? "HO" : "Full HO"}
+          Target: {filterMode === "ho" ? "HO" : "FULL (HO+BA)"}
         </span>
         {filterKontrak.size > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
@@ -1540,7 +1540,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   </div>
                   <div className="shrink-0 flex flex-col items-center justify-center px-3 py-2">
                     <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center mb-0.5">
-                      Capaian {filterMode==="ho"?"HO":"Full HO"}
+                      Capaian {filterMode==="ho"?"HO":"FULL (HO+BA)"}
                     </div>
                     <FSGauge
                       compact

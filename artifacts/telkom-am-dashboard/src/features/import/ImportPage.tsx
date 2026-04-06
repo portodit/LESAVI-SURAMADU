@@ -471,6 +471,7 @@ export default function ImportData() {
       toast({ title: "Tersimpan", description: `${editRowData.divisi} ${editRowData.tahun}` });
       refetchTargets();
       qc.invalidateQueries({ queryKey: ["funnel-data"] });
+      qc.invalidateQueries({ queryKey: ["funnel-data-pres"] });
       setEditRowId(null);
       setFocusField(null);
     } catch (e: any) {
@@ -487,6 +488,7 @@ export default function ImportData() {
       setTDelConfirm(null);
       refetchTargets();
       qc.invalidateQueries({ queryKey: ["funnel-data"] });
+      qc.invalidateQueries({ queryKey: ["funnel-data-pres"] });
     } catch (e: any) {
       toast({ title: "Gagal Menghapus", description: e.message, variant: "destructive" });
     }
@@ -810,7 +812,7 @@ export default function ImportData() {
                       <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Tahun</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Divisi</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target HO</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target Full HO</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target FULL (HO+BA)</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase text-right w-24">Aksi</th>
                     </tr>
                   </thead>
@@ -880,10 +882,12 @@ export default function ImportData() {
                             )}
                           </td>
                           {/* TARGET HO */}
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-1.5 text-right"
+                            onDoubleClick={e => { e.stopPropagation(); if (!isEditing) { setEditRowId(t.id); setEditRowData({ tahun: String(t.tahun), divisi: t.divisi || "DPS", targetHo: String(t.targetHo || ""), targetFullHo: String(t.targetFullHo || "") }); } setFocusField("targetHo"); }}>
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
+                                autoFocus={focusField === "targetHo"}
                                 value={editRowData.targetHo}
                                 onChange={e => setEditRowData(p => ({ ...p, targetHo: e.target.value }))}
                                 onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
@@ -894,10 +898,12 @@ export default function ImportData() {
                             )}
                           </td>
                           {/* TARGET FULL HO */}
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-1.5 text-right"
+                            onDoubleClick={e => { e.stopPropagation(); if (!isEditing) { setEditRowId(t.id); setEditRowData({ tahun: String(t.tahun), divisi: t.divisi || "DPS", targetHo: String(t.targetHo || ""), targetFullHo: String(t.targetFullHo || "") }); } setFocusField("targetFullHo"); }}>
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
+                                autoFocus={focusField === "targetFullHo"}
                                 value={editRowData.targetFullHo}
                                 onChange={e => setEditRowData(p => ({ ...p, targetFullHo: e.target.value }))}
                                 onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
