@@ -1171,8 +1171,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                         <div className="h-full rounded-full transition-all" style={{width:`${pctBar}%`,background:barColor}}/>
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-xs font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
-                        <span className="text-[10px] text-muted-foreground">capaian</span>
+                        <span className="text-sm font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
+                        <span className="text-xs font-bold text-muted-foreground">capaian</span>
                       </div>
                     </div>
                   )}
@@ -1292,7 +1292,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <td className="px-3 py-3">{amTgt>0?(<div><span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTgtYr}</span><span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-3">
                 <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
-                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-xs font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-[10px] text-muted-foreground">capaian</span></div></div>)}
+                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
               <td className="px-4 py-3 text-right whitespace-nowrap">{crAm!==null?<span className={cn("font-bold text-sm tabular-nums",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
@@ -1315,7 +1315,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <td className="px-3 py-2.5" style={bg}>{amTgt>0?(<div><span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTgtYr}</span><span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-2.5" style={bg}>
                 <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
-                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-xs font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-[10px] text-muted-foreground">capaian</span></div></div>)}
+                {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
               <td className="px-4 py-2.5 text-right whitespace-nowrap" style={bg}>{crAm!==null?<span className={cn("font-bold text-sm tabular-nums",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
