@@ -836,8 +836,10 @@ export default function ImportData() {
                             "transition-colors group",
                             isDeleting ? "bg-red-50" : isEditing ? "bg-yellow-50" : "hover:bg-secondary/20"
                           )}
-                          onDoubleClick={() => {
+                          onDoubleClick={(e) => {
                             if (isEditing) return;
+                            const td = (e.target as Element).closest("td");
+                            const idx = td ? Array.from(td.parentElement!.children).indexOf(td) : -1;
                             setEditRowId(t.id);
                             setEditRowData({
                               tahun: String(t.tahun),
@@ -845,7 +847,9 @@ export default function ImportData() {
                               targetHo: String(t.targetHo || ""),
                               targetFullHo: String(t.targetFullHo || ""),
                             });
-                            setFocusField(null);
+                            if (idx === 2) setFocusField("targetHo");
+                            else if (idx === 3) setFocusField("targetFullHo");
+                            else setFocusField(null);
                           }}
                         >
                           {/* TAHUN */}
@@ -882,8 +886,7 @@ export default function ImportData() {
                             )}
                           </td>
                           {/* TARGET HO */}
-                          <td className="px-2 py-1.5 text-right"
-                            onDoubleClick={e => { e.stopPropagation(); if (!isEditing) { setEditRowId(t.id); setEditRowData({ tahun: String(t.tahun), divisi: t.divisi || "DPS", targetHo: String(t.targetHo || ""), targetFullHo: String(t.targetFullHo || "") }); } setFocusField("targetHo"); }}>
+                          <td className="px-2 py-1.5 text-right">
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
@@ -898,8 +901,7 @@ export default function ImportData() {
                             )}
                           </td>
                           {/* TARGET FULL HO */}
-                          <td className="px-2 py-1.5 text-right"
-                            onDoubleClick={e => { e.stopPropagation(); if (!isEditing) { setEditRowId(t.id); setEditRowData({ tahun: String(t.tahun), divisi: t.divisi || "DPS", targetHo: String(t.targetHo || ""), targetFullHo: String(t.targetFullHo || "") }); } setFocusField("targetFullHo"); }}>
+                          <td className="px-2 py-1.5 text-right">
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
