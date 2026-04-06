@@ -1216,12 +1216,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 {phaseExpanded&&(
                   <>
                     <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
-                      <td className="px-4 py-2 pl-16 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">Nama Proyek</td>
-                      <td className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">Kategori</td>
-                      <td className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">Durasi</td>
-                      <td className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-4 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">Nilai</td>
+                      <td className="px-4 py-2 pl-16 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Nama Proyek</td>
+                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Kategori</td>
+                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Durasi</td>
+                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">LOP ID</td>
+                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Pelanggan</td>
+                      <td className="px-4 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Nilai</td>
                     </tr>
                     {lops.map((lop:any,idx:number)=>(
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
