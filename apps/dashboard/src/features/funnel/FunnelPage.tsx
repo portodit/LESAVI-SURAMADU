@@ -985,12 +985,9 @@ export default function FunnelPage() {
                 </td>
                 {/* Target 2026 */}
                 <td className="px-3 py-3" style={amCellSticky}>
-                  {amTargetVal>0 ? (
-                    <div>
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTargetYr}</span>
-                      <span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>
-                    </div>
-                  ) : <span className="text-muted-foreground text-xs">—</span>}
+                  {amTargetVal>0
+                    ? <span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>
+                    : <span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 {/* Nilai Proyek + progress bar */}
                 <td className="px-3 py-3" style={amCellSticky}>
