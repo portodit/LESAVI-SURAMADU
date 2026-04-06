@@ -858,7 +858,7 @@ export default function ImportData() {
                               <input
                                 type="number" min="2020" max="2099"
                                 value={editRowData.tahun}
-                                autoFocus={focusField === "tahun" || focusField === null}
+                                ref={el => { if (el && (focusField === "tahun" || focusField === null)) { el.focus(); el.select(); } }}
                                 onChange={e => setEditRowData(p => ({ ...p, tahun: e.target.value }))}
                                 onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
                                 className="w-full h-8 px-2 bg-white border-2 border-primary rounded text-sm font-mono focus:outline-none"
@@ -890,7 +890,7 @@ export default function ImportData() {
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
-                                autoFocus={focusField === "targetHo"}
+                                ref={el => { if (el && focusField === "targetHo") { el.focus(); el.select(); } }}
                                 value={editRowData.targetHo}
                                 onChange={e => setEditRowData(p => ({ ...p, targetHo: e.target.value }))}
                                 onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
@@ -905,7 +905,7 @@ export default function ImportData() {
                             {isEditing ? (
                               <input
                                 type="text" placeholder="0"
-                                autoFocus={focusField === "targetFullHo"}
+                                ref={el => { if (el && focusField === "targetFullHo") { el.focus(); el.select(); } }}
                                 value={editRowData.targetFullHo}
                                 onChange={e => setEditRowData(p => ({ ...p, targetFullHo: e.target.value }))}
                                 onKeyDown={e => { if (e.key === "Enter") handleSaveTargetRow(); if (e.key === "Escape") { setEditRowId(null); setFocusField(null); } }}
