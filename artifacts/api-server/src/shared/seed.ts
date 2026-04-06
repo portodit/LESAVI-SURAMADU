@@ -1,5 +1,6 @@
 import { db, accountManagersTable, appSettingsTable, salesFunnelTargetTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { seedAmFunnelTargets } from "../seeds/seed-am-funnel-targets";
 
 // Default Google Drive folder IDs (TREG3 Suramadu production folders)
 const DEFAULT_GDRIVE_FOLDERS = {
@@ -98,4 +99,7 @@ export async function ensureDefaultSeed(): Promise<void> {
   if (existingTargets.length === 0) {
     await db.insert(salesFunnelTargetTable).values(DEFAULT_FUNNEL_TARGETS);
   }
+
+  // Seed AM-level funnel targets (upsert — safe to run every startup)
+  await seedAmFunnelTargets();
 }
