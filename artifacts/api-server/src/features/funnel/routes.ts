@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salesFunnelTable, salesFunnelTargetTable, dataImportsTable, accountManagersTable } from "@workspace/db";
+import { db, salesFunnelTable, salesFunnelTargetTable, amFunnelTargetTable, dataImportsTable, accountManagersTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../../shared/auth";
 import { matchesDivisi, expandDivisi } from "../../shared/divisi";
@@ -59,6 +59,36 @@ router.post("/funnel/targets", requireAuth, async (req, res): Promise<void> => {
 
 router.delete("/funnel/targets/:id", requireAuth, async (req, res): Promise<void> => {
   await db.delete(salesFunnelTargetTable).where(eq(salesFunnelTargetTable.id, Number(req.params.id)));
+  res.json({ ok: true });
+});
+
+// ── AM Funnel Targets (per-AM annual) ─────────────────────────────────────────
+router.get("/funnel/am-targets", requireAuth, async (req, res): Promise<void> => {
+  const { tahun } = req.query;
+  let rows = await db.select().from(amFunnelTargetTable).orderBy(desc(amFunnelTargetTable.tahun));
+  if (tahun) rows = rows.filter(r => r.tahun === Number(tahun));
+  res.json(rows);
+});
+
+router.post("/funnel/am-targets", requireAuth, async (req, res): Promise<void> => {
+  const { nikAm, tahun, targetValue } = req.body;
+  if (!nikAm || !tahun) { res.status(400).json({ error: "nikAm dan tahun wajib diisi" }); return; }
+  const existing = await db.select().from(amFunnelTargetTable)
+    .where(and(eq(amFunnelTargetTable.nikAm, String(nikAm)), eq(amFunnelTargetTable.tahun, Number(tahun))));
+  if (existing.length > 0) {
+    const [updated] = await db.update(amFunnelTargetTable)
+      .set({ targetValue: Number(targetValue) || 0, updatedAt: new Date() })
+      .where(eq(amFunnelTargetTable.id, existing[0].id)).returning();
+    res.json(updated);
+  } else {
+    const [inserted] = await db.insert(amFunnelTargetTable)
+      .values({ nikAm: String(nikAm), tahun: Number(tahun), targetValue: Number(targetValue) || 0 }).returning();
+    res.json(inserted);
+  }
+});
+
+router.delete("/funnel/am-targets/:id", requireAuth, async (req, res): Promise<void> => {
+  await db.delete(amFunnelTargetTable).where(eq(amFunnelTargetTable.id, Number(req.params.id)));
   res.json({ ok: true });
 });
 
@@ -196,6 +226,16 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
 
   const shortage = targetFullHoVal > 0 ? targetFullHoVal - totalNilai : 0;
 
+  // AM-level annual targets
+  const selectedYear = tahun ? Number(tahun) : null;
+  const importPeriodForAm = import_id
+    ? (await db.select().from(dataImportsTable).where(eq(dataImportsTable.id, Number(import_id))))[0]?.period
+    : null;
+  const lookupYearForAm = selectedYear || (importPeriodForAm ? Number(importPeriodForAm.slice(0, 4)) : new Date().getFullYear());
+  const amTargetRows = await db.select().from(amFunnelTargetTable).where(eq(amFunnelTargetTable.tahun, lookupYearForAm));
+  const amTargets: Record<string, { id: number; targetValue: number; tahun: number }> = {};
+  for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
+
   res.json({
     totalLop, totalNilai,
     targetHo: targetHoVal,
@@ -208,6 +248,8 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     unidentifiedLops: unidentifiedCount,
     byStatus: statusGroups,
     byAm: amGroups,
+    amTargets,
+    amTargetYear: lookupYearForAm,
     masterAms: masterAms.filter(m => m.aktif && m.role === "AM" && m.nik).map(m => ({ nik: m.nik, nama: m.nama, divisi: m.divisi })),
     lops: allLops.map(l => ({
       id: l.id,

@@ -27,6 +27,8 @@ interface FunnelData {
   byStatus: { status: string; count: number; totalNilai: number }[];
   byAm: { namaAm: string; nik: string; divisi: string; totalLop: number; totalNilai: number; byStatus: any[] }[];
   masterAms?: MasterAm[];
+  amTargets?: Record<string, { id: number; targetValue: number; tahun: number }>;
+  amTargetYear?: number;
   lops: LopRow[];
 }
 
@@ -956,18 +958,55 @@ export default function FunnelPage() {
                 )}
               </div>
             </td>
-            <td className="px-3 py-3 whitespace-nowrap" colSpan={amExpanded ? 5 : 4} style={amCellSticky}>
-              <span className={cn("text-xs font-black tracking-wide", hasData ? "text-foreground" : "text-muted-foreground")}>
-                {hasData ? `TOTAL ${amLopCount} LOP` : "BELUM ADA DATA"}
-              </span>
-            </td>
-            {!amExpanded && (
-              <td className="px-4 py-3 text-right whitespace-nowrap">
-                <span className={cn("font-black tabular-nums text-sm whitespace-nowrap", hasData ? "text-foreground" : "text-muted-foreground")}>
-                  {hasData ? formatRupiahFull(amTotal) : "—"}
-                </span>
-              </td>
-            )}
+            {(()=>{
+              const allAmLops = Array.from(am.phases.values()).flat();
+              const amPelanggan = new Set(allAmLops.map(l=>l.pelanggan).filter(Boolean)).size;
+              const f5Val = (am.phases.get("F5")||[]).reduce((s,l)=>s+(l.nilaiProyek||0),0);
+              const f345Val = ["F3","F4","F5"].flatMap(p=>am.phases.get(p)||[]).reduce((s,l)=>s+(l.nilaiProyek||0),0);
+              const cr = f345Val>0 ? f5Val/f345Val : null;
+              const amTargetInfo = data?.amTargets?.[am.nikAm];
+              const amTargetVal = amTargetInfo?.targetValue ?? 0;
+              const amTargetYr = data?.amTargetYear ?? new Date().getFullYear();
+              const pct = amTargetVal>0 ? Math.min((amTotal/amTargetVal)*100,100) : 0;
+              return (<>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
+                  <span className={cn("text-xs font-black tabular-nums", hasData?"text-foreground":"text-muted-foreground")}>
+                    {hasData ? <>{amLopCount} <span className="font-normal text-muted-foreground">lop</span></> : "—"}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
+                  <span className={cn("text-xs font-black tabular-nums", hasData?"text-foreground":"text-muted-foreground")}>
+                    {hasData ? <>{amPelanggan} <span className="font-normal text-muted-foreground">plg</span></> : "—"}
+                  </span>
+                </td>
+                <td className="px-3 py-3" style={amCellSticky}>
+                  {amTargetVal>0 ? (
+                    <div className="min-w-[100px]">
+                      <div className="flex justify-between items-baseline mb-0.5">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Target {amTargetYr}</span>
+                        <span className="text-xs font-black tabular-nums">{fmtCompact(amTargetVal)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background: pct>=100?"#10b981":pct>=70?"#f97316":"#3b82f6"}} />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pct.toFixed(0)}%</div>
+                    </div>
+                  ) : <span className="text-muted-foreground text-xs">—</span>}
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
+                  <span className={cn("font-black tabular-nums text-sm whitespace-nowrap", hasData?"text-foreground":"text-muted-foreground")}>
+                    {hasData ? formatRupiahFull(amTotal) : "—"}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
+                  {cr!==null ? (
+                    <span className={cn("font-bold text-sm tabular-nums", cr>=0.7?"text-emerald-600":"text-red-600")}>
+                      {(cr*100).toFixed(1)}%
+                    </span>
+                  ) : <span className="text-muted-foreground text-xs">—</span>}
+                </td>
+              </>);
+            })()}
           </tr>
           {amExpanded && !hasData && (
             <tr style={ringStyle({})}>

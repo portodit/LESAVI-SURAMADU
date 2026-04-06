@@ -24,6 +24,7 @@ const TABS = [
   { id: "funnel",      label: "Sales Funnel",  icon: Filter,    type: "funnel" },
   { id: "activity",   label: "Sales Activity", icon: Activity,  type: "activity" },
   { id: "target-ho",  label: "Target HO",      icon: Target,    type: "target" },
+  { id: "target-am",  label: "Target AM",      icon: Users,     type: "target-am" },
 ];
 
 const MONTHS_FULL = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -310,6 +311,25 @@ export default function ImportData() {
     queryFn: () => apiFetch("/api/funnel/targets"),
     staleTime: 30_000,
   });
+
+  // Target AM state
+  const [amTahun, setAmTahun] = useState(String(curYear));
+  const [amTargetSaving, setAmTargetSaving] = useState(false);
+  const [amTargetDelConfirm, setAmTargetDelConfirm] = useState<number | null>(null);
+  const [amTargetEditId, setAmTargetEditId] = useState<string | null>(null);
+  const [amTargetEditVal, setAmTargetEditVal] = useState("");
+  const { data: masterAmsRaw = [] } = useQuery<any[]>({
+    queryKey: ["master-am"],
+    queryFn: () => apiFetch("/api/master-am"),
+    staleTime: 60_000,
+  });
+  const masterAmsActive = masterAmsRaw.filter((m: any) => m.aktif && m.role === "AM" && m.nik);
+  const { data: amTargetsDB = [], refetch: refetchAmTargets } = useQuery<any[]>({
+    queryKey: ["funnel-am-targets", amTahun],
+    queryFn: () => apiFetch(`/api/funnel/am-targets?tahun=${amTahun}`),
+    staleTime: 0,
+  });
+  const amTargetMap = Object.fromEntries(Array.isArray(amTargetsDB) ? amTargetsDB.map((r: any) => [r.nikAm, r]) : []);
 
   // Google Drive sync state
   const [driveListLoading, setDriveListLoading] = useState<Record<string, boolean>>({});
@@ -1064,8 +1084,121 @@ export default function ImportData() {
           </div>
         )}
 
+        {/* ── Target AM Section ─────────────────────────────────────────────── */}
+        {activeTab === "target-am" && (
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div>
+                <h3 className="font-bold text-base">Target Nilai Proyek per AM</h3>
+                <p className="text-xs text-muted-foreground">Target tahunan setiap Account Manager — disinkronkan otomatis ke kolom Target di tabel Sales Funnel.</p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-semibold">Tahun</span>
+                <select value={amTahun} onChange={e => setAmTahun(e.target.value)}
+                  className="border border-border rounded-lg px-2 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-red-500">
+                  {[curYear+1, curYear, curYear-1, curYear-2].map(y => <option key={y} value={String(y)}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-red-700 text-white">
+                      <th className="px-4 py-2.5 text-xs font-black uppercase">Account Manager</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase w-20">Divisi</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right min-w-[160px]">Target {amTahun} (Rp)</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right w-20">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {masterAmsActive.length === 0 && (
+                      <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-sm">Belum ada data Account Manager aktif</td></tr>
+                    )}
+                    {masterAmsActive.map((am: any) => {
+                      const existing = amTargetMap[am.nik];
+                      const isEditing = amTargetEditId === am.nik;
+                      return (
+                        <tr key={am.nik} className="hover:bg-secondary/30 transition-colors">
+                          <td className="px-4 py-2.5 font-semibold text-sm">{am.nama}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", am.divisi==="DPS"?"bg-blue-100 text-blue-700":am.divisi==="DSS"?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-600")}>{am.divisi}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            {isEditing ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                value={amTargetEditVal}
+                                onChange={e => setAmTargetEditVal(e.target.value)}
+                                onKeyDown={async e => {
+                                  if (e.key === "Escape") { setAmTargetEditId(null); setAmTargetEditVal(""); return; }
+                                  if (e.key === "Enter") {
+                                    setAmTargetSaving(true);
+                                    try {
+                                      await apiFetch("/api/funnel/am-targets", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ nikAm: am.nik, tahun: Number(amTahun), targetValue: Number(amTargetEditVal)||0 }) });
+                                      await refetchAmTargets();
+                                      toast({ title: "Target disimpan", description: `${am.nama} — Target ${amTahun}` });
+                                    } finally { setAmTargetSaving(false); setAmTargetEditId(null); setAmTargetEditVal(""); }
+                                  }
+                                }}
+                                onBlur={async () => {
+                                  setAmTargetSaving(true);
+                                  try {
+                                    await apiFetch("/api/funnel/am-targets", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ nikAm: am.nik, tahun: Number(amTahun), targetValue: Number(amTargetEditVal)||0 }) });
+                                    await refetchAmTargets();
+                                  } finally { setAmTargetSaving(false); setAmTargetEditId(null); setAmTargetEditVal(""); }
+                                }}
+                                className="w-full border border-primary rounded px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-background tabular-nums"
+                                placeholder="0"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => { setAmTargetEditId(am.nik); setAmTargetEditVal(existing ? String(existing.targetValue) : ""); }}
+                                className="group/cell w-full flex items-center justify-end gap-2 hover:text-red-600 transition-colors">
+                                <span className="font-mono tabular-nums text-sm">
+                                  {existing ? `Rp ${(existing.targetValue/1e9).toFixed(2)}M` : <span className="text-muted-foreground italic text-xs">Belum diset</span>}
+                                </span>
+                                <Pencil className="w-3 h-3 text-muted-foreground group-hover/cell:text-red-600 shrink-0" />
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            {existing && (
+                              amTargetDelConfirm === existing.id ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <button onClick={async () => {
+                                    setAmTargetSaving(true);
+                                    try {
+                                      await apiFetch(`/api/funnel/am-targets/${existing.id}`, { method: "DELETE" });
+                                      await refetchAmTargets();
+                                      toast({ title: "Target dihapus" });
+                                    } finally { setAmTargetSaving(false); setAmTargetDelConfirm(null); }
+                                  }} className="text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded font-bold hover:bg-red-700">Ya</button>
+                                  <button onClick={() => setAmTargetDelConfirm(null)} className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-bold hover:bg-secondary">Batal</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setAmTargetDelConfirm(existing.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {masterAmsActive.length > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">Klik nilai target untuk mengedit · Enter untuk simpan · Esc untuk batal</p>
+            )}
+          </div>
+        )}
+
         {/* File-based tabs content */}
-        {activeTab !== "target-ho" && (() => {
+        {activeTab !== "target-ho" && activeTab !== "target-am" && (() => {
           const typeMap: Record<string, string> = { performansi: "performance", funnel: "funnel", activity: "activity" };
           const driveType = typeMap[activeTab];
           const driveHasFolder = driveType === "performance" ? !!appSettings?.gDriveFolderPerformance
@@ -1494,7 +1627,7 @@ export default function ImportData() {
       </div>
 
       {/* History Table — only for file-import tabs */}
-      {activeTab !== "target-ho" && (
+      {activeTab !== "target-ho" && activeTab !== "target-am" && (
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-border flex items-center gap-3">
           <History className="w-4 h-4 text-muted-foreground" />

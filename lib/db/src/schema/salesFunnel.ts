@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, real, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -35,6 +35,19 @@ export const salesFunnelTargetTable = pgTable("sales_funnel_target", {
   targetHo: real("target_ho").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const amFunnelTargetTable = pgTable("am_funnel_target", {
+  id: serial("id").primaryKey(),
+  nikAm: text("nik_am").notNull(),
+  tahun: integer("tahun").notNull(),
+  targetValue: real("target_value").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [unique("am_funnel_target_nik_tahun").on(t.nikAm, t.tahun)]);
+
+export const insertAmFunnelTargetSchema = createInsertSchema(amFunnelTargetTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAmFunnelTarget = z.infer<typeof insertAmFunnelTargetSchema>;
+export type AmFunnelTarget = typeof amFunnelTargetTable.$inferSelect;
 
 export const insertSalesFunnelSchema = createInsertSchema(salesFunnelTable).omit({ id: true, createdAt: true });
 export type InsertSalesFunnel = z.infer<typeof insertSalesFunnelSchema>;

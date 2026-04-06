@@ -1,0 +1,36 @@
+ok lanjut saya mau bahas soal table detail funnel per AM di /presentation slide kedua maupun di /visualisasi/funnel nah kita tahu bahwa header Utama berisikan:
+AM / Fase / Proyek	KATEGORI	KONTRAK	LOP ID	Pelanggan	Nilai Proyek
+
+
+nah seharusnya kolom kolom ini kan ada beberapa yang terkait proyek jadi mungkin gausah dimunculin di header Utama 
+
+jadi header Utama yang merah yang dimunculkan itu hanya 
+
+ACCOUNT MANAGER (menggantikan AM/FASE/PROYEK) lalu TOTAL LOP, TOTAL PELANGGAN,  TARGET X, NILAI PROYEK, CONVERSION RATE
+
+nah kamu bisat ada 2 kolom baru yah (TARGET X) dan NILAI PROYEK 
+
+
+Nah nantinya buat TARGET X itu definisinya adalah TARGET FULL HO + HO yang dimiliki oleh setiap am jadi versi breakdown per am gitu loh nah seharusnya perlu ada table lagi sih nanti ditaruh di sebelah tab Target HO nah nanti bahwa target X dimana x itu adalah tahun
+
+
+jadi nanti kita perlu record data tahun dimana tahun ini akan disinkronkan dengan data tahun di sales funnel, missal target X itu adalah target 2026 maka ini relevan untuk semua bulan di tahun 2026 untuk data sales funnel (saja)
+
+
+nah nanti kolomnya itu adalah nama account manager nilai target udah gitu aja dan ini berlaku untuk 1 tahun jadi tiap bulan sama si
+
+
+nah datanya bisa kamu lihat Digambar pertama yang saya kasih (baca kolom Total Target FY 2026)
+NANTI pake mainannya relasi foreign key aja ambil data baca data dari account manager yang sudah ada akunnya 
+
+
+ terus nanti nilai target ini kamu sajikan yah di header Utama table sales funnel 
+
+
+terus untuk conversion rate itu pake rumus ini Conversion Ratenya=F5/(F3+F4+F5)
+
+
+ini nilai conversion rate untuk per am jadi tiap baris nama am ada nilai ini dimana f5 itu berarti total nilai proyek semua list di f5 setiap am dibagi kombinasi nilai proyek semua list di f3 f4 f5 pake persentase dimana 70% yang baik dibawah 70% merah 
+
+
+terus nanti yang target itu dibandingkan engan nilai total proyek am semua fase, nanti pakein progress bar kaya sales activity apakah bisa?
