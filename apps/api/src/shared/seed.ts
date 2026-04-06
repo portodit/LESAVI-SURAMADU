@@ -1,5 +1,5 @@
 import { db, accountManagersTable, appSettingsTable, salesFunnelTargetTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { seedAmFunnelTargets } from "../seeds/seed-am-funnel-targets";
 
 // Default Google Drive folder IDs (TREG3 Suramadu production folders)
@@ -40,8 +40,8 @@ const DEFAULT_MANAGER = {
 };
 
 const DEFAULT_FUNNEL_TARGETS = [
-  { divisi: "DPS", tahun: 2026, targetFullHo: 97076000000, targetHo: 70257000000 },
-  { divisi: "DSS", tahun: 2026, targetFullHo: 73780000000, targetHo: 60048000000 },
+  { divisi: "DPS", tahun: 2026, targetFullHo: 97076000000, targetHo: 95973000000 },
+  { divisi: "DSS", tahun: 2026, targetFullHo: 73780000000, targetHo: 57036000000 },
 ];
 
 export async function ensureDefaultSeed(): Promise<void> {
@@ -95,9 +95,19 @@ export async function ensureDefaultSeed(): Promise<void> {
     }
   }
 
-  const existingTargets = await db.select({ id: salesFunnelTargetTable.id }).from(salesFunnelTargetTable).limit(1);
-  if (existingTargets.length === 0) {
-    await db.insert(salesFunnelTargetTable).values(DEFAULT_FUNNEL_TARGETS);
+  // Upsert sales funnel targets (divisi+tahun) — always update nilai agar production ikut dev
+  for (const t of DEFAULT_FUNNEL_TARGETS) {
+    const existing = await db.select({ id: salesFunnelTargetTable.id })
+      .from(salesFunnelTargetTable)
+      .where(and(eq(salesFunnelTargetTable.divisi, t.divisi), eq(salesFunnelTargetTable.tahun, t.tahun)))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(salesFunnelTargetTable).values(t);
+    } else {
+      await db.update(salesFunnelTargetTable)
+        .set({ targetFullHo: t.targetFullHo, targetHo: t.targetHo })
+        .where(eq(salesFunnelTargetTable.id, existing[0].id));
+    }
   }
 
   // Seed AM-level funnel targets (upsert — safe to run every startup)
