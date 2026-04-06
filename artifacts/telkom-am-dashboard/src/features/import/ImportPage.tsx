@@ -295,6 +295,16 @@ export default function ImportData() {
   const [editRowId, setEditRowId] = useState<number | "new" | null>(null);
   const [editRowData, setEditRowData] = useState({ tahun: String(curYear), divisi: "DPS", targetHo: "", targetFullHo: "" });
   const [focusField, setFocusField] = useState<string | null>(null);
+  const [labelHo, setLabelHo] = useState(() => localStorage.getItem("label_target_ho") || "Target HO");
+  const [labelFullHo, setLabelFullHo] = useState(() => localStorage.getItem("label_target_full_ho") || "Target FULL (HO+BA)");
+  const [editingHeader, setEditingHeader] = useState<"ho" | "fullho" | null>(null);
+  const [headerEditVal, setHeaderEditVal] = useState("");
+  const saveHeaderLabel = (field: "ho" | "fullho", val: string) => {
+    const trimmed = val.trim() || (field === "ho" ? "Target HO" : "Target FULL (HO+BA)");
+    if (field === "ho") { localStorage.setItem("label_target_ho", trimmed); setLabelHo(trimmed); }
+    else { localStorage.setItem("label_target_full_ho", trimmed); setLabelFullHo(trimmed); }
+    setEditingHeader(null);
+  };
   const { data: targets = [], refetch: refetchTargets } = useQuery<any[]>({
     queryKey: ["funnel-targets"],
     queryFn: () => apiFetch("/api/funnel/targets"),
@@ -811,8 +821,40 @@ export default function ImportData() {
                     <tr className="bg-red-700 text-white">
                       <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Tahun</th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase w-24">Divisi</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target HO</th>
-                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">Target FULL (HO+BA)</th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">
+                        {editingHeader === "ho" ? (
+                          <input autoFocus value={headerEditVal}
+                            onChange={e => setHeaderEditVal(e.target.value)}
+                            onBlur={() => saveHeaderLabel("ho", headerEditVal)}
+                            onKeyDown={e => { if (e.key === "Enter") saveHeaderLabel("ho", headerEditVal); if (e.key === "Escape") setEditingHeader(null); }}
+                            className="bg-transparent border-b border-white text-white text-xs font-black uppercase text-right w-full focus:outline-none placeholder-white/50"
+                            placeholder="Target HO"
+                          />
+                        ) : (
+                          <button onClick={() => { setHeaderEditVal(labelHo); setEditingHeader("ho"); }}
+                            className="inline-flex items-center gap-1 hover:opacity-70 transition-opacity group/hdr">
+                            {labelHo}
+                            <Pencil className="w-2.5 h-2.5 opacity-50 group-hover/hdr:opacity-100" />
+                          </button>
+                        )}
+                      </th>
+                      <th className="px-4 py-2.5 text-xs font-black uppercase text-right">
+                        {editingHeader === "fullho" ? (
+                          <input autoFocus value={headerEditVal}
+                            onChange={e => setHeaderEditVal(e.target.value)}
+                            onBlur={() => saveHeaderLabel("fullho", headerEditVal)}
+                            onKeyDown={e => { if (e.key === "Enter") saveHeaderLabel("fullho", headerEditVal); if (e.key === "Escape") setEditingHeader(null); }}
+                            className="bg-transparent border-b border-white text-white text-xs font-black uppercase text-right w-full focus:outline-none placeholder-white/50"
+                            placeholder="Target FULL (HO+BA)"
+                          />
+                        ) : (
+                          <button onClick={() => { setHeaderEditVal(labelFullHo); setEditingHeader("fullho"); }}
+                            className="inline-flex items-center gap-1 hover:opacity-70 transition-opacity group/hdr">
+                            {labelFullHo}
+                            <Pencil className="w-2.5 h-2.5 opacity-50 group-hover/hdr:opacity-100" />
+                          </button>
+                        )}
+                      </th>
                       <th className="px-4 py-2.5 text-xs font-black uppercase text-right w-24">Aksi</th>
                     </tr>
                   </thead>
@@ -935,7 +977,7 @@ export default function ImportData() {
                               </div>
                             ) : (
                               <Button size="sm" variant="ghost" onClick={() => setTDelConfirm(t.id)}
-                                className="h-7 px-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-opacity">
+                                className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             )}
