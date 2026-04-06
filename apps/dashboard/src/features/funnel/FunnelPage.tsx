@@ -437,7 +437,7 @@ function Gauge({ pct, targetHo, targetFullHo, real, mode, divisi }: { pct: numbe
         {hasTarget && (
           <>
             <div className="flex justify-between items-center gap-2">
-              <span className="text-xs font-semibold text-foreground">{mode === "ho" ? "Target HO" : "Target Full HO"}</span>
+              <span className="text-xs font-semibold text-foreground">{mode === "ho" ? "Target HO" : "Target FULL (HO+BA)"}</span>
               <span className="font-black tabular-nums text-foreground">{formatRupiah(activeTarget)}</span>
             </div>
             <div className="pt-2 border-t-2 border-border flex justify-between items-center gap-2">
@@ -1124,7 +1124,7 @@ export default function FunnelPage() {
           <CheckboxDropdown label="Status Funnel" options={PHASES} selected={filterStatus} onChange={setFilterStatus}
             placeholder="Semua status" labelFn={p => `${p} – ${PHASE_LABELS[p]}`} summaryLabel="status" className="w-32 shrink-0" />
           <SelectDropdown label="Target" value={filterTarget} onChange={v => setFilterTarget(v as "ho" | "fullho")}
-            options={[{ value: "fullho", label: "Target Full HO" }, { value: "ho", label: "Target HO" }]}
+            options={[{ value: "fullho", label: "Target FULL (HO+BA)" }, { value: "ho", label: "Target HO" }]}
             className="w-32 shrink-0" />
 
         </div>
@@ -1149,7 +1149,7 @@ export default function FunnelPage() {
           </span>
           {/* Target — always shows */}
           <span className="inline-flex items-center gap-1 bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1 rounded-full border border-border">
-            Target: {filterTarget === "ho" ? "HO" : "Full HO"}
+            Target: {filterTarget === "ho" ? "HO" : "FULL (HO+BA)"}
           </span>
           {filterKontrak.size > 0 && (
             <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-violet-200 dark:border-violet-800">
