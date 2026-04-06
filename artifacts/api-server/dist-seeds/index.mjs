@@ -12121,11 +12121,13 @@ var schema_exports = {};
 __export(schema_exports, {
   accountManagersTable: () => accountManagersTable,
   adminUsersTable: () => adminUsersTable,
+  amFunnelTargetTable: () => amFunnelTargetTable,
   appSettingsTable: () => appSettingsTable,
   dataImportsTable: () => dataImportsTable,
   driveReadLogsTable: () => driveReadLogsTable,
   insertAccountManagerSchema: () => insertAccountManagerSchema,
   insertAdminUserSchema: () => insertAdminUserSchema,
+  insertAmFunnelTargetSchema: () => insertAmFunnelTargetSchema,
   insertAppSettingsSchema: () => insertAppSettingsSchema,
   insertDataImportSchema: () => insertDataImportSchema,
   insertDriveReadLogSchema: () => insertDriveReadLogSchema,
@@ -23560,7 +23562,7 @@ var accountManagersTable = pgTable("account_managers", {
   telegramChatId: text("telegram_chat_id"),
   telegramCode: text("telegram_code"),
   telegramCodeExpiry: timestamp("telegram_code_expiry", { withTimezone: true }),
-  kpiActivity: integer("kpi_activity").notNull().default(30),
+  kpiActivity: integer("kpi_activity"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 var insertAccountManagerSchema = createInsertSchema(accountManagersTable).omit({ id: true, createdAt: true });
@@ -23611,6 +23613,7 @@ var salesFunnelTable = pgTable("sales_funnel", {
   statusProyek: text("status_proyek"),
   kategoriKontrak: text("kategori_kontrak"),
   estimateBulan: text("estimate_bulan"),
+  monthSubs: integer("month_subs"),
   namaAm: text("nama_am"),
   nikAm: text("nik_am"),
   reportDate: text("report_date"),
@@ -23628,6 +23631,15 @@ var salesFunnelTargetTable = pgTable("sales_funnel_target", {
   targetHo: real("target_ho").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
+var amFunnelTargetTable = pgTable("am_funnel_target", {
+  id: serial("id").primaryKey(),
+  nikAm: text("nik_am").notNull(),
+  tahun: integer("tahun").notNull(),
+  targetValue: real("target_value").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (t) => [unique("am_funnel_target_nik_tahun").on(t.nikAm, t.tahun)]);
+var insertAmFunnelTargetSchema = createInsertSchema(amFunnelTargetTable).omit({ id: true, createdAt: true, updatedAt: true });
 var insertSalesFunnelSchema = createInsertSchema(salesFunnelTable).omit({ id: true, createdAt: true });
 
 // ../../lib/db/src/schema/salesActivity.ts
@@ -23898,6 +23910,50 @@ async function seedFunnelTargets(opts = {}) {
   console.log("  [funnel-targets] Done.");
 }
 
+// src/seeds/seed-am-funnel-targets.ts
+var AM_FUNNEL_TARGETS_2026 = [
+  { nikAm: "870022", tahun: 2026, targetValue: 30550846344 },
+  // HAVEA PERTIWI
+  { nikAm: "910017", tahun: 2026, targetValue: 29986552880 },
+  // SAFIRINA FEBRYANTI
+  { nikAm: "910024", tahun: 2026, targetValue: 20271671597 },
+  // VIVIN VIOLITA
+  { nikAm: "920064", tahun: 2026, targetValue: 18168530766 },
+  // ERVINA HANDAYANI
+  { nikAm: "896661", tahun: 2026, targetValue: 16919356769 },
+  // NI MADE NOVI WIRANA
+  { nikAm: "980067", tahun: 2026, targetValue: 15051479565 },
+  // HANDIKA DAGNA NEVANDA
+  { nikAm: "404429", tahun: 2026, targetValue: 12150696868 },
+  // WILDAN ARIEF
+  { nikAm: "401431", tahun: 2026, targetValue: 10517836089 },
+  // NYARI KUSUMANINGRUM
+  { nikAm: "403613", tahun: 2026, targetValue: 9265052740 },
+  // NADYA ZAHROTUL HAYATI
+  { nikAm: "405690", tahun: 2026, targetValue: 9232103467 },
+  // CAESAR RIO ANGGINA TORUAN
+  { nikAm: "402478", tahun: 2026, targetValue: 2386441454 }
+  // ANA RUKMANA
+];
+async function seedAmFunnelTargets(opts = {}) {
+  if (opts.truncate) {
+    console.log("  [am-funnel-targets] Truncating am_funnel_target...");
+    await db.delete(amFunnelTargetTable);
+  }
+  console.log(`  [am-funnel-targets] Seeding ${AM_FUNNEL_TARGETS_2026.length} target(s)...`);
+  for (const t of AM_FUNNEL_TARGETS_2026) {
+    const existing = await db.select({ id: amFunnelTargetTable.id }).from(amFunnelTargetTable).where(and(eq(amFunnelTargetTable.nikAm, t.nikAm), eq(amFunnelTargetTable.tahun, t.tahun))).limit(1);
+    if (existing.length === 0 || opts.truncate) {
+      await db.insert(amFunnelTargetTable).values(t);
+      console.log(`    [am-funnel-targets] Inserted: NIK ${t.nikAm} tahun ${t.tahun}`);
+    } else {
+      await db.update(amFunnelTargetTable).set({ targetValue: t.targetValue, updatedAt: /* @__PURE__ */ new Date() }).where(eq(amFunnelTargetTable.id, existing[0].id));
+      console.log(`    [am-funnel-targets] Updated: NIK ${t.nikAm} tahun ${t.tahun}`);
+    }
+  }
+  console.log("  [am-funnel-targets] Done.");
+}
+
 // src/seeds/seed-performance.ts
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -24099,6 +24155,7 @@ var TARGET = ARGS.find((a) => !a.startsWith("--")) ?? "all";
 var MODULES = {
   accounts: () => seedAccounts({ truncate: TRUNCATE }),
   "funnel-targets": () => seedFunnelTargets({ truncate: TRUNCATE }),
+  "am-funnel-targets": () => seedAmFunnelTargets({ truncate: TRUNCATE }),
   performance: () => seedPerformance({ truncate: TRUNCATE }),
   activity: () => seedActivity({ truncate: TRUNCATE }),
   funnel: () => seedFunnel({ truncate: TRUNCATE })
