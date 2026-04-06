@@ -474,23 +474,23 @@ function FaseBarChart({ data }: { data: FunnelData | undefined }) {
   const maxCount = Math.max(...PHASES.map(p => phaseMap[p].count), 1);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {PHASES.map(phase => {
         const d = phaseMap[phase];
         const pct = (d.count / maxCount) * 100;
         const c = PHASE_COLORS[phase];
         return (
           <div key={phase} className="flex items-center gap-2">
-            <div className="w-6 shrink-0">
-              <span className="text-xs font-black font-mono" style={{ color: c.text }}>{phase}</span>
+            <div className="w-7 shrink-0">
+              <span className="text-sm font-bold" style={{ color: c.text, fontFamily: "Inter, sans-serif" }}>{phase}</span>
             </div>
-            <div className="flex-1 bg-secondary rounded h-6 overflow-hidden">
+            <div className="flex-1 bg-secondary rounded h-5 overflow-hidden">
               <div className="h-full rounded transition-all duration-500" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: c.bar }} />
             </div>
-            <span className="text-xs font-black font-mono w-16 shrink-0" style={{ color: c.text }}>
-              {d.count} proyek
+            <span className="text-sm font-bold w-20 shrink-0 tabular-nums" style={{ color: c.text, fontFamily: "Inter, sans-serif" }}>
+              {d.count} <span className="font-normal text-xs opacity-70">lop</span>
             </span>
-            <span className="text-xs font-bold font-mono text-muted-foreground w-20 text-right shrink-0">{fmtCompact(d.nilai)}</span>
+            <span className="text-sm font-bold text-muted-foreground w-20 text-right shrink-0 tabular-nums" style={{ fontFamily: "Inter, sans-serif" }}>{fmtCompact(d.nilai)}</span>
           </div>
         );
       })}
@@ -906,8 +906,8 @@ export default function FunnelPage() {
 
   // ── Reusable AM tbody renderer (used in all-mode and split-mode) ─────────────
   function renderAmTbodyContent(ams: typeof groupedByAm, emptyMsg?: string) {
-    if (isLoading) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
-    if (ams.length === 0) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg ?? "Belum ada data"}</td></tr>;
+    if (isLoading) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
+    if (ams.length === 0) return <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg ?? "Belum ada data"}</td></tr>;
     const bgCard = "hsl(var(--card))";
     // Semua sticky pada z-index yang sama (tidak berlapis-lapis)
     const STICKY_Z = 10;
@@ -960,45 +960,50 @@ export default function FunnelPage() {
             </td>
             {(()=>{
               const allAmLops = Array.from(am.phases.values()).flat();
-              const amPelanggan = new Set(allAmLops.map(l=>l.pelanggan).filter(Boolean)).size;
               const f5Val = (am.phases.get("F5")||[]).reduce((s,l)=>s+(l.nilaiProyek||0),0);
               const f345Val = ["F3","F4","F5"].flatMap(p=>am.phases.get(p)||[]).reduce((s,l)=>s+(l.nilaiProyek||0),0);
               const cr = f345Val>0 ? f5Val/f345Val : null;
               const amTargetInfo = data?.amTargets?.[am.nikAm];
               const amTargetVal = amTargetInfo?.targetValue ?? 0;
               const amTargetYr = data?.amTargetYear ?? new Date().getFullYear();
-              const pct = amTargetVal>0 ? Math.min((amTotal/amTargetVal)*100,100) : 0;
+              const pctRaw = amTargetVal>0 ? (amTotal/amTargetVal)*100 : 0;
+              const pctBar = Math.min(pctRaw, 100);
+              const barColor = pctRaw>=100?"#10b981":pctRaw>=70?"#f97316":"#3b82f6";
               return (<>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
-                  <span className={cn("text-xs font-black tabular-nums", hasData?"text-foreground":"text-muted-foreground")}>
-                    {hasData ? <>{amLopCount} <span className="font-normal text-muted-foreground">lop</span></> : "—"}
+                {/* LOP count */}
+                <td className="px-3 py-3 text-left whitespace-nowrap" style={amCellSticky}>
+                  <span className={cn("text-sm font-black tabular-nums", hasData?"text-foreground":"text-muted-foreground")}>
+                    {hasData ? <>{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></> : "—"}
                   </span>
                 </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
-                  <span className={cn("text-xs font-black tabular-nums", hasData?"text-foreground":"text-muted-foreground")}>
-                    {hasData ? <>{amPelanggan} <span className="font-normal text-muted-foreground">plg</span></> : "—"}
-                  </span>
-                </td>
+                {/* Target 2026 */}
                 <td className="px-3 py-3" style={amCellSticky}>
                   {amTargetVal>0 ? (
-                    <div className="min-w-[100px]">
-                      <div className="flex justify-between items-baseline mb-0.5">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Target {amTargetYr}</span>
-                        <span className="text-xs font-black tabular-nums">{fmtCompact(amTargetVal)}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background: pct>=100?"#10b981":pct>=70?"#f97316":"#3b82f6"}} />
-                      </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{pct.toFixed(0)}%</div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block">Target {amTargetYr}</span>
+                      <span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>
                     </div>
                   ) : <span className="text-muted-foreground text-xs">—</span>}
                 </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
-                  <span className={cn("font-black tabular-nums text-sm whitespace-nowrap", hasData?"text-foreground":"text-muted-foreground")}>
+                {/* Nilai Proyek + progress bar */}
+                <td className="px-3 py-3" style={amCellSticky}>
+                  <span className={cn("font-black tabular-nums text-sm whitespace-nowrap block", hasData?"text-foreground":"text-muted-foreground")}>
                     {hasData ? formatRupiahFull(amTotal) : "—"}
                   </span>
+                  {amTargetVal>0 && hasData && (
+                    <div className="mt-1.5">
+                      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{width:`${pctBar}%`,background:barColor}} />
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-xs font-black tabular-nums" style={{color:barColor}}>{pctRaw.toFixed(0)}%</span>
+                        <span className="text-[10px] text-muted-foreground">capaian</span>
+                      </div>
+                    </div>
+                  )}
                 </td>
-                <td className="px-3 py-3 text-right whitespace-nowrap" style={amCellSticky}>
+                {/* Conversion Rate */}
+                <td className="px-4 py-3 text-right whitespace-nowrap" style={amCellSticky}>
                   {cr!==null ? (
                     <span className={cn("font-bold text-sm tabular-nums", cr>=0.7?"text-emerald-600":"text-red-600")}>
                       {(cr*100).toFixed(1)}%
@@ -1010,7 +1015,7 @@ export default function FunnelPage() {
           </tr>
           {amExpanded && !hasData && (
             <tr style={ringStyle({})}>
-              <td colSpan={6} className="px-4 py-4 pl-10 bg-slate-50">
+              <td colSpan={5} className="px-4 py-4 pl-10 bg-slate-50">
                 <p className="text-sm text-muted-foreground italic">
                   Belum ditemukan data list proyek untuk AM ini. Pastikan data sudah diimport dan nama/NIK AM sesuai dengan data master.
                 </p>
@@ -1046,9 +1051,9 @@ export default function FunnelPage() {
                     </div>
                   </td>
                   {phaseExpanded
-                    ? <td colSpan={5} className="px-3 py-2.5" style={phaseCellSticky} />
+                    ? <td colSpan={4} className="px-3 py-2.5" style={phaseCellSticky} />
                     : <>
-                        <td colSpan={4} className="px-3 py-2.5" style={phaseCellSticky} />
+                        <td colSpan={3} className="px-3 py-2.5" style={phaseCellSticky} />
                         <td className="px-4 py-2.5 text-right whitespace-nowrap" style={phaseCellSticky}>
                           <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
                         </td>
@@ -1057,20 +1062,30 @@ export default function FunnelPage() {
                 </tr>
                 {phaseExpanded && (
                   <>
+                    {/* Sub-header for project detail columns */}
+                    <tr className="bg-slate-50 border-b border-slate-200" style={ringStyle({})}>
+                      <td className="px-4 py-1.5 pl-16 text-[10px] font-black text-slate-500 uppercase tracking-wide">Nama Proyek</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Kategori</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Durasi · LOP ID</td>
+                      <td className="px-3 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide">Pelanggan</td>
+                      <td className="px-4 py-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wide text-right">Nilai</td>
+                    </tr>
                     {lops.map((lop, idx) => (
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
                         <td className="px-4 py-2 pl-16">
                           <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
                         </td>
                         <td className="px-3 py-2"><KontrakBadge k={lop.kategoriKontrak} /></td>
-                        <td className="px-3 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 whitespace-nowrap">{formatDurasi(lop.monthSubs)}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{lop.lopid}</td>
-                        <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 block">{formatDurasi(lop.monthSubs)}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">{lop.lopid}</span>
+                        </td>
+                        <td className="px-3 py-2 text-sm text-foreground font-bold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                         <td className="px-4 py-2 text-right tabular-nums text-base font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={5} className="px-4 py-2 pl-16">
+                      <td colSpan={4} className="px-4 py-2 pl-16">
                         <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
@@ -1224,8 +1239,8 @@ export default function FunnelPage() {
           {isLesa ? (
             <>
               {/* LESA: LOP per Fase full-width, lalu 2 gauge DPS | DSS */}
-              <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
+              <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
+                <h3 className="text-sm font-display font-bold text-foreground mb-2">LOP per Fase</h3>
                 <FaseBarChart data={data ? { ...data, byStatus: periodStats.byStatus } : undefined} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1252,8 +1267,8 @@ export default function FunnelPage() {
           ) : (
             /* Non-LESA: LOP per Fase | 1 gauge side-by-side */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
+              <div className="bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
+                <h3 className="text-sm font-display font-bold text-foreground mb-2">LOP per Fase</h3>
                 <FaseBarChart data={data ? { ...data, byStatus: periodStats.byStatus } : undefined} />
               </div>
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
@@ -1309,18 +1324,16 @@ export default function FunnelPage() {
           <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
             <table className="text-left text-sm w-full" style={{minWidth:"640px",tableLayout:"auto",borderCollapse:"collapse"}}>
               <colgroup>
-                {/* Kolom adaptif: col 1 mengambil sisa ruang, kolom lain fixed di layar lebar */}
-                <col style={{minWidth:"200px"}}/><col style={{width:"100px"}}/><col style={{width:"108px"}}/>
-                <col style={{minWidth:"120px"}}/><col style={{width:"180px"}}/>
+                <col style={{minWidth:"200px"}}/><col style={{width:"80px"}}/><col style={{width:"160px"}}/>
+                <col style={{minWidth:"180px"}}/><col style={{width:"120px"}}/>
               </colgroup>
               <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
-                  <th className="px-4 py-3 text-left whitespace-nowrap">AM / Fase / Proyek</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap">KATEGORI</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap">KONTRAK</th>
-                  <th className="px-3 py-3 text-left font-mono whitespace-nowrap">LOP ID</th>
-                  <th className="px-3 py-3 text-left whitespace-nowrap">Pelanggan</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">Nilai Proyek</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">Account Manager</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">LOP</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">Target 2026</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">Nilai Proyek</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Conv. Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -1412,12 +1425,11 @@ export default function FunnelPage() {
                   <table className="w-full text-left text-sm border-collapse" style={{ minWidth: "600px" }}>
                     <thead>
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[280px] text-left">AM / Fase / Proyek</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KATEGORI</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap w-20 text-left">KONTRAK</th>
-                        <th className="px-3 py-2.5 font-mono whitespace-nowrap w-20 text-left">LOP ID</th>
-                        <th className="px-3 py-2.5 min-w-[140px] text-left">Pelanggan</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap min-w-[140px]">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 min-w-[200px] text-left">Account Manager</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap w-16 text-left">LOP</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap min-w-[140px] text-left">Target 2026</th>
+                        <th className="px-3 py-2.5 min-w-[160px] text-left">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap w-24">Conv. Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
