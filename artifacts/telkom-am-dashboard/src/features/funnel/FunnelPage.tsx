@@ -662,7 +662,7 @@ export default function FunnelPage() {
       return apiFetch(`/api/funnel?${p.toString()}`);
     },
     enabled: importId !== null || snapshots.length === 0,
-    staleTime: 30_000,
+    staleTime: 0,
   });
 
   // Available years derived from loaded data

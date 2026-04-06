@@ -858,7 +858,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     queryKey:["funnel-data-pres",funnelParams],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}/api/public/funnel?${funnelParams}`);if(!r.ok)return null;return r.json();},
     enabled:importId!==null||(Array.isArray(snapshots)&&snapshots.length===0),
-    staleTime:30_000,
+    staleTime:0,
   });
 
   // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
