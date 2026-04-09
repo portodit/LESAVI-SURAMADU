@@ -1597,16 +1597,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
                 return (
                   <div className="mt-3 pt-3 border-t border-border/60">
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex gap-1.5">
                       {FS_PHASES.map(phase=>{
                         const d=pm[phase];const c=FS_PHASE_COLORS[phase];
                         return (
-                          <div key={phase} className="bg-secondary/60 rounded-lg px-2.5 py-2 border border-border/50">
-                            <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">TOTAL {phase}</div>
-                            <div className="flex items-baseline gap-1.5 flex-wrap">
-                              <span className="text-[15px] font-black tabular-nums leading-tight" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
-                              <span className="text-[10px] font-bold text-muted-foreground tabular-nums whitespace-nowrap">({d.count} LOP)</span>
-                            </div>
+                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2 py-1.5 border border-border/50 flex flex-col gap-0.5">
+                            <span className="text-[10px] font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
+                            <span className="text-[12px] font-black tabular-nums leading-none text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                            <span className="text-[9px] text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
                           </div>
                         );
                       })}
