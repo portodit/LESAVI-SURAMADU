@@ -35,6 +35,30 @@ const OFFICER_DATA = [
     email: "bliadiitdev@gmail.com",
     passwordHash: "$2b$10$ucAam8hy6a5YHcMbJ6yUv.ncLN/AUskcX4YpRilQG0Hy9v3HU3zHi",
   },
+  {
+    nik: "950160",
+    nama: "DIAN ING TYAS DANANJAYA",
+    slug: "dian-ing-tyas-dananjaya",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
+  {
+    nik: "980134",
+    nama: "AYU KIRANA",
+    slug: "ayu-kirana",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
 ];
 
 export async function seedAccounts(opts: { truncate?: boolean } = {}) {
