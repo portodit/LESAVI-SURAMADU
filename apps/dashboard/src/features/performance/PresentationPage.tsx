@@ -764,7 +764,7 @@ function FSMiniSparkline({ color, fill }: { color: string; fill: string }) {
 }
 
 type CRDivisiStat = { f5: number; denom: number; cr: number | null };
-function FSKpiGrid({ data, crStats }: { data:any; crStats?: { dps: CRDivisiStat; dss: CRDivisiStat } }) {
+function FSKpiGrid({ data }: { data:any }) {
   if(!data) return null;
   const kpis = [
     {label:"Total LOP",value:data.totalLop?.toLocaleString("id-ID"),sub:(data.unidentifiedLops||0)>0?`${data.unidentifiedLops} tdk teridentifikasi`:"proyek aktif",color:"text-foreground",spark:{color:"#10b981",fill:"#10b981"}},
@@ -773,7 +773,7 @@ function FSKpiGrid({ data, crStats }: { data:any; crStats?: { dps: CRDivisiStat;
     {label:"Jumlah Pelanggan",value:data.pelangganCount?.toLocaleString("id-ID"),sub:"unique customer",color:"text-amber-600",spark:{color:"#f59e0b",fill:"#f59e0b"}},
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {kpis.map(k=>(
         <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-center gap-3 overflow-hidden">
           <div className="flex-1 min-w-0">
@@ -786,51 +786,75 @@ function FSKpiGrid({ data, crStats }: { data:any; crStats?: { dps: CRDivisiStat;
           </div>
         </div>
       ))}
-      {crStats && (
-        <div className="bg-secondary/50 border border-border rounded-xl p-4 overflow-hidden col-span-2 md:col-span-1">
-          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Conv. Rate</div>
-          <div className="flex items-stretch gap-3">
-            {(["DPS","DSS"] as const).map((div,i)=>{
-              const c = div==="DPS" ? crStats.dps : crStats.dss;
-              const cr = c.cr;
-              const isGood = cr !== null && cr >= 0.7;
-              return (
-                <div key={div} className={cn("flex-1 min-w-0",i===0&&"border-r border-border pr-3")}>
-                  <div className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-0.5">{div}</div>
-                  <div className="relative inline-block group">
-                    <div className={cn("text-2xl font-black tabular-nums leading-tight cursor-help",
-                      cr!==null?(isGood?"text-emerald-600":"text-red-600"):"text-muted-foreground")}>
-                      {cr!==null?`${(cr*100).toFixed(1)}%`:"—"}
-                    </div>
-                    {cr!==null&&(
-                      <div className="absolute left-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"230px"}}>
-                        <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left">
-                          <div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate — {div}</div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span>
-                              <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.f5)}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span>
-                              <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.denom)}</span>
-                            </div>
-                            <div className="border-t border-border pt-1.5 flex items-center justify-between gap-4">
-                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span>
-                              <span className={cn("text-xs font-black tabular-nums whitespace-nowrap",isGood?"text-emerald-600":"text-red-600")}>= {(cr*100).toFixed(1)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">F5÷(F3+F4+F5)</div>
-                </div>
-              );
-            })}
-          </div>
+    </div>
+  );
+}
+
+function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:number|null; divisi:"DPS"|"DSS" }) {
+  const pct = cr !== null ? cr * 100 : 0;
+  const clamp = Math.min(Math.max(pct, 0), 100);
+  const r=54,cx=80,cy=70;
+  const startAngle=-210,endAngle=30,totalDeg=endAngle-startAngle;
+  const fillDeg=(clamp/100)*totalDeg;
+  const thresholdDeg=(70/100)*totalDeg;
+  const toRad=(d:number)=>(d*Math.PI)/180;
+  const arc=(start:number,end:number,radius:number)=>{
+    const s=toRad(start),e=toRad(end);
+    const x1=cx+radius*Math.cos(s),y1=cy+radius*Math.sin(s);
+    const x2=cx+radius*Math.cos(e),y2=cy+radius*Math.sin(e);
+    const large=end-start>180?1:0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
+  };
+  const isGood = cr !== null && cr >= 0.7;
+  const color = cr===null ? "#9ca3af" : isGood ? "#10b981" : "#CC0000";
+  const startX=cx+r*Math.cos(toRad(startAngle));
+  const startY=cy+r*Math.sin(toRad(startAngle));
+  const endX=cx+r*Math.cos(toRad(endAngle));
+  const endY=cy+r*Math.sin(toRad(endAngle));
+  const thAngle=startAngle+thresholdDeg;
+  const thInnerX=cx+(r-14)*Math.cos(toRad(thAngle));
+  const thInnerY=cy+(r-14)*Math.sin(toRad(thAngle));
+  const thOuterX=cx+(r+5)*Math.cos(toRad(thAngle));
+  const thOuterY=cy+(r+5)*Math.sin(toRad(thAngle));
+  const divColor = divisi==="DPS" ? "#3b82f6" : "#10b981";
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-3">
+      <div className="shrink-0 mx-auto">
+        <svg width="150" height="108" viewBox="0 0 160 115">
+          <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
+          {cr!==null&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
+          <line x1={thInnerX} y1={thInnerY} x2={thOuterX} y2={thOuterY} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"/>
+          {cr!==null?(
+            <>
+              <text x={cx} y={cy-6} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{(cr*100).toFixed(1)}%</text>
+              <text x={cx} y={cy+10} textAnchor="middle" fontSize="8.5" fill="#6b7280">CONV. RATE</text>
+            </>
+          ):(
+            <text x={cx} y={cy+3} textAnchor="middle" fontSize="10" fill="#9ca3af">No data</text>
+          )}
+          <text x={startX} y={startY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
+          <text x={endX} y={endY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
+          <text x={cx+(r+9)*Math.cos(toRad(thAngle))} y={cy+(r+9)*Math.sin(toRad(thAngle))-8} textAnchor="middle" fontSize="7" fill="#f59e0b" fontWeight="700">70%</text>
+        </svg>
+      </div>
+      <div className="flex-1 w-full min-w-0 space-y-1.5" style={{fontSize:"clamp(9px,1.05vw,12px)"}}>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">F5 (Closed Won)</span>
+          <span className="font-bold tabular-nums truncate text-right ml-1" style={{color:divColor}}>{fmtRupiahFS(f5)}</span>
         </div>
-      )}
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">F3 + F4 + F5</span>
+          <span className="tabular-nums text-foreground">{fmtRupiahFS(denom)}</span>
+        </div>
+        <div className="flex justify-between items-baseline gap-1 pt-0.5 border-t border-border">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">Threshold</span>
+          <span className="font-bold text-amber-500">≥ 70%</span>
+        </div>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className={cn("font-bold whitespace-nowrap shrink-0",isGood?"text-emerald-600":"text-red-600")}>{isGood?"Tercapai":"Belum Tercapai"}</span>
+          <span className={cn("font-black tabular-nums",isGood?"text-emerald-600":"text-red-600")}>{cr!==null?`${(cr*100).toFixed(1)}%`:"—"}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1574,6 +1598,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               const tgtFull=div==="DPS"?dpsTgtFullHo:dssTgtFullHo;
               const real   =div==="DPS"?dpsStats.totalNilai:dssStats.totalNilai;
               const divPct =div==="DPS"?dpsPct:dssPct;
+              const crDiv  =crStats?.[div==="DPS"?"dps":"dss"];
               return (
                 <div key={div} className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
                   <h3 className="text-base font-display font-bold text-foreground mb-2 flex items-center gap-2">
@@ -1583,6 +1608,18 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     )}>{div}</span>
                   </h3>
                   <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode} divisi={div}/>
+                  {crDiv&&(
+                    <>
+                      <div className="border-t border-border my-3"/>
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        Conv. Rate
+                        <span className={cn("text-xs font-black px-2 py-0.5 rounded",
+                          div==="DPS"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"
+                        )}>{div}</span>
+                      </h4>
+                      <FSCRGauge f5={crDiv.f5} denom={crDiv.denom} cr={crDiv.cr} divisi={div}/>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -1590,7 +1627,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           {/* KPI Ringkasan using period stats */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-display font-semibold text-foreground mb-3">Ringkasan</h3>
-            <FSKpiGrid data={data?{...data,totalLop:periodStats.totalLop,totalNilai:periodStats.totalNilai,pelangganCount:periodStats.pelangganCount}:undefined} crStats={crStats}/>
+            <FSKpiGrid data={data?{...data,totalLop:periodStats.totalLop,totalNilai:periodStats.totalNilai,pelangganCount:periodStats.pelangganCount}:undefined}/>
           </div>
         </div>
       ))}
