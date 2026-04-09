@@ -125,10 +125,13 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     allLops = [...lopMap.values()];
   }
 
-  // Filter by report_date year — this matches Power BI's Date filter behaviour
+  // Filter by tahun_anggaran field; fallback to report_date year for older rows
   if (tahun) {
     const yr = Number(tahun);
-    allLops = allLops.filter(l => l.reportDate && new Date(l.reportDate as string).getFullYear() === yr);
+    allLops = allLops.filter(l => {
+      const ta = l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null);
+      return ta === yr;
+    });
   }
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));

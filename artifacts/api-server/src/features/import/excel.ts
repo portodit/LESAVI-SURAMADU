@@ -235,6 +235,7 @@ export interface CleanedFunnelRow {
   nikAm: string;
   reportDate: string;
   createdDate: string;
+  tahunAnggaran: number | null;
 }
 
 export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: boolean; strictIsReport?: boolean; skipIsReportFilter?: boolean; skipWitelFilter?: boolean; preferPembuat?: boolean; pembuatOnly?: boolean }): CleanedFunnelRow[] {
@@ -305,6 +306,14 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
 
     const reportDate = parseDate(r.report_date);
 
+    // Tahun Anggaran: try explicit column first, fallback to report_date year
+    const taParsed = parseInt(String(
+      r.TAHUN_ANGGARAN ?? r.tahun_anggaran ?? r["Tahun Anggaran"] ?? r["TAHUN ANGGARAN"] ?? ""
+    ).trim(), 10);
+    const tahunAnggaran: number | null = !isNaN(taParsed) && taParsed > 2000
+      ? taParsed
+      : (reportDate ? parseInt(reportDate.slice(0, 4), 10) || null : null);
+
     passed.push({
       lopid,
       judulProyek: clean(r.judul_proyek),
@@ -333,6 +342,7 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
       nikAm,
       reportDate,
       createdDate: parseDate(r.created_date) || clean(r.created_date),
+      tahunAnggaran,
     });
   }
 

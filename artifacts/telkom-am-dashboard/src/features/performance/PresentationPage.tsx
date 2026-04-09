@@ -814,11 +814,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   });
 
   const yearOptions = useMemo(()=>{
+    // Prefer tahun_anggaran from API response (based on actual LOP data)
+    const taYears = Array.isArray(data?.availableTahunAnggaran) ? (data.availableTahunAnggaran as number[]) : [];
+    if(taYears.length>0) return taYears.map(y=>({value:String(y),label:String(y)}));
+    // Fallback: from import snapshot periods
     const snapsArr = Array.isArray(snapshots) ? snapshots : [];
     const years=[...new Set(snapsArr.map((s:any)=>s.period.slice(0,4)))].sort().reverse() as string[];
     if(years.length===0) return [{value:"2026",label:"2026"}];
     return years.map(y=>({value:y,label:y}));
-  },[snapshots]);
+  },[data,snapshots]);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
   const [mobilePortalEl, setMobilePortalEl] = useState<HTMLElement | null>(null);
@@ -865,14 +869,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
-      if(!l.reportDate) return false;
-      const rd=String(l.reportDate).slice(0,10);
-      const yr=rd.slice(0,4);
-      if(yr!==filterYear) return false;
-      if(filterMonths.size>0&&!filterMonths.has(rd.slice(5,7))) return false;
+      // API already filters by tahun_anggaran — only apply months filter here
+      if(filterMonths.size>0&&l.reportDate){
+        const mo=String(l.reportDate).slice(5,7);
+        if(!filterMonths.has(mo)) return false;
+      }
       return true;
     });
-  },[data,filterYear,filterMonths]);
+  },[data,filterMonths]);
 
   const periodStats = useMemo(()=>{
     const lops=periodFilteredLops;
@@ -908,12 +912,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   const filteredLops = useMemo(()=>{
     const q=search.toLowerCase();
+    const allApiLops:any[] = data?.lops||[];
+    // When searching: bypass all filters — search across ALL lops for current tahun anggaran
+    if(q) {
+      return allApiLops.filter((l:any)=>{
+        const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
     const base=periodFilteredLops.filter((l:any)=>{
       if(filterAm.size>0&&(!l.nikAm||!filterAm.has(l.nikAm))) return false;
       if(filterStatus.size>0&&(!l.statusF||!filterStatus.has(l.statusF))) return false;
       if(filterKontrak.size>0&&(!l.kategoriKontrak||!filterKontrak.has(l.kategoriKontrak))) return false;
       if(filterDurasi==="multi_year"&&!(l.monthSubs!=null&&l.monthSubs>12)) return false;
-      if(q){const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();if(!hay.includes(q))return false;}
       return true;
     });
     if(filterDurasi==="all") return base;
@@ -923,7 +934,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(!m||m<12) return l; // < 12 bulan dianggap 1 tahun → nilai penuh
       return {...l, nilaiProyek: Math.round(l.nilaiProyek*12/m)};
     });
-  },[periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
+  },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
@@ -1534,6 +1545,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <FSSelectDropdown label="" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
               className="w-44 shrink-0"/>
+            <FSSelectDropdown label="" value={filterYear} onChange={v=>setFilterYear(v)}
+              options={yearOptions}
+              className="w-28 shrink-0"/>
             <div className="relative shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
               <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
