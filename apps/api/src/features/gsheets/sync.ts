@@ -3,7 +3,7 @@ import {
   salesFunnelTable, salesActivityTable, performanceDataTable,
   accountManagersTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify } from "../import/excel";
 import type { ParsedRow } from "../import/excel";
 import { logger } from "../../shared/logger";
@@ -280,6 +280,21 @@ async function importFunnelSheet(
         }))
       );
     }
+
+    // ── Back-fill NULL tahun_anggaran: prefer snapshot_date year, fallback to report_date year
+    await db.execute(sql`
+      UPDATE sales_funnel
+      SET tahun_anggaran = COALESCE(
+        CASE WHEN snapshot_date IS NOT NULL AND snapshot_date ~ '^[0-9]{4}'
+          THEN EXTRACT(YEAR FROM snapshot_date::date)::integer
+        END,
+        CASE WHEN report_date IS NOT NULL AND report_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+          THEN EXTRACT(YEAR FROM report_date::date)::integer
+        END
+      )
+      WHERE import_id = ${imp.id}
+        AND tahun_anggaran IS NULL
+    `);
 
     const count2026 = deduped.filter(r => r.reportDate?.startsWith("2026")).length;
     return {
