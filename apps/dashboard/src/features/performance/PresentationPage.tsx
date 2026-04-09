@@ -929,7 +929,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const {data,isLoading} = useQuery<any>({
     queryKey:["funnel-data-pres",funnelParams],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}/api/public/funnel?${funnelParams}`);if(!r.ok)return null;return r.json();},
-    enabled:importId!==null||(Array.isArray(snapshots)&&snapshots.length===0),
+    enabled:importId!==null||(Array.isArray(snapshots)&&(snapshots.length===0||snapshotOptions.length===0)),
     staleTime:0,
   });
 
@@ -941,6 +941,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[data,yearOptions]);
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
+  // merged year list for Periode dropdown — snapshot years + all distinct tahun_anggaran from data
+  const periodeAvailableYears = useMemo(()=>{
+    const fromSnap = yearOptions.map(o=>o.value);
+    const fromData = tahunAnggaranStringOptions;
+    return [...new Set([...fromSnap,...fromData])].sort().reverse();
+  },[yearOptions,tahunAnggaranStringOptions]);
 
   // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
   const periodFilteredLops = useMemo(()=>{
@@ -1676,11 +1682,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <div className="w-px h-5 bg-border/60 shrink-0"/>
             <FSPeriodeTreeDropdown label=""
               filterYear={filterYear} filterMonths={filterMonths}
-              availableYears={yearOptions.map(o=>o.value)}
+              availableYears={periodeAvailableYears}
               onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
               className="w-44 shrink-0"/>
             <FSCheckboxDropdown label="" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
-              placeholder="Semua T. Anggaran" summaryLabel="T. Anggaran" className="w-44 shrink-0"/>
+              placeholder="Pilih Tahun Anggaran" summaryLabel="T. Anggaran" className="w-48 shrink-0"/>
             <div className="relative shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
               <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
