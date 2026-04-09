@@ -59,6 +59,18 @@ const OFFICER_DATA = [
     aktif: true,
     crossWitel: false,
   },
+  {
+    nik: "940094",
+    nama: "KARENDIYA KINASIH",
+    slug: "karendiya-kinasih",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
 ];
 
 export async function seedAccounts(opts: { truncate?: boolean } = {}) {
