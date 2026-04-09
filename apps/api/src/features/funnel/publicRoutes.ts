@@ -59,9 +59,21 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     allLops = [...lopMap.values()];
   }
 
+  // Compute available Tahun Anggaran from all active-AM lops (before tahun filter)
+  const availableTahunAnggaran = [...new Set(
+    allLops
+      .filter(l => l.nikAm && activeNikSet.has(l.nikAm))
+      .map(l => l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null))
+      .filter((y): y is number => y != null && y > 2000)
+  )].sort((a, b) => b - a);
+
   if (tahun) {
+    // Filter by tahun_anggaran field; fallback to report_date year for rows without tahun_anggaran
     const yr = Number(tahun);
-    allLops = allLops.filter(l => l.reportDate && new Date(l.reportDate as string).getFullYear() === yr);
+    allLops = allLops.filter(l => {
+      const ta = l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null);
+      return ta === yr;
+    });
   }
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
@@ -186,6 +198,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     byAm: amGroups,
     amTargets,
     amTargetYear,
+    availableTahunAnggaran,
     lops: allLops.map(l => ({
       id: l.id,
       lopid: l.lopid,
@@ -203,6 +216,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       namaAm: l.namaAm,
       nikAm: l.nikAm,
       reportDate: l.reportDate,
+      tahunAnggaran: l.tahunAnggaran,
     })),
   });
 });
