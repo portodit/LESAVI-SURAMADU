@@ -722,8 +722,8 @@ function FSFaseBarChart({ data, compact }: { data:any; compact?: boolean }) {
         const tooltip=`${phase}: ${d.count} proyek · ${fmtCompactFS(d.nilai)}`;
         return (
           <div key={phase} className="flex items-center gap-2 group" title={tooltip}>
-            <div className={compact?"w-5 shrink-0":"w-6 shrink-0"}>
-              <span className={compact?"text-[10px] font-black font-mono":"text-xs font-black font-mono"} style={{color:c.text}}>{phase}</span>
+            <div className={compact?"w-5 shrink-0":"w-7 shrink-0"}>
+              <span className={compact?"text-[10px] font-black":"text-sm font-black"} style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
             </div>
             <div className={`flex-1 bg-secondary rounded overflow-hidden relative ${compact?"h-4":"h-5"}`}>
               <div className="h-full rounded transition-all duration-500" style={{width:`${Math.max(pct,2)}%`,backgroundColor:c.bar}}/>
@@ -731,8 +731,8 @@ function FSFaseBarChart({ data, compact }: { data:any; compact?: boolean }) {
                 <span className="text-[10px] font-black text-white drop-shadow-sm whitespace-nowrap">{d.count} proyek · {fmtCompactFS(d.nilai)}</span>
               </div>
             </div>
-            <span className={compact?"text-[10px] font-black font-mono w-14 shrink-0 text-right":"text-xs font-black font-mono w-14 shrink-0 text-right"} style={{color:c.text}}>
-              {d.count} <span className="font-normal text-muted-foreground text-[9px]">LOP</span>
+            <span className={compact?"text-[10px] font-black w-14 shrink-0 text-right":"text-sm font-black w-16 shrink-0 text-right"} style={{color:c.text,fontFamily:"Inter,sans-serif"}}>
+              {d.count} <span className="font-semibold text-muted-foreground text-[10px]">LOP</span>
             </span>
           </div>
         );
@@ -820,7 +820,7 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
   return (
     <div className="flex items-center gap-3">
       <div className="shrink-0">
-        <svg width="110" height="80" viewBox="0 0 160 115">
+        <svg width="145" height="105" viewBox="0 0 160 115">
           <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
           {cr!==null&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
           <line x1={thInnerX} y1={thInnerY} x2={thOuterX} y2={thOuterY} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"/>
@@ -1597,14 +1597,16 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
                 return (
                   <div className="mt-3 pt-3 border-t border-border/60">
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {FS_PHASES.map(phase=>{
                         const d=pm[phase];const c=FS_PHASE_COLORS[phase];
                         return (
-                          <div key={phase} className="bg-secondary/60 rounded-lg px-2 py-1.5 border border-border/50">
-                            <div className="text-[10px] font-black font-mono mb-0.5" style={{color:c.text}}>{phase}</div>
-                            <div className="text-[13px] font-black tabular-nums leading-tight text-foreground">{fmtCompactFS(d.nilai)||"—"}</div>
-                            <div className="text-[9px] text-muted-foreground tabular-nums mt-0.5">{d.count} LOP</div>
+                          <div key={phase} className="bg-secondary/60 rounded-lg px-2.5 py-2 border border-border/50">
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">TOTAL {phase}</div>
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="text-[15px] font-black tabular-nums leading-tight" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground tabular-nums whitespace-nowrap">({d.count} LOP)</span>
+                            </div>
                           </div>
                         );
                       })}
