@@ -773,7 +773,7 @@ function FSKpiGrid({ data, crStats }: { data:any; crStats?: { dps: CRDivisiStat;
     {label:"Jumlah Pelanggan",value:data.pelangganCount?.toLocaleString("id-ID"),sub:"unique customer",color:"text-amber-600",spark:{color:"#f59e0b",fill:"#f59e0b"}},
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
       {kpis.map(k=>(
         <div key={k.label} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-center gap-3 overflow-hidden">
           <div className="flex-1 min-w-0">
@@ -786,59 +786,51 @@ function FSKpiGrid({ data, crStats }: { data:any; crStats?: { dps: CRDivisiStat;
           </div>
         </div>
       ))}
-      {crStats && (["DPS","DSS"] as const).map(div=>{
-        const c = div==="DPS" ? crStats.dps : crStats.dss;
-        const cr = c.cr;
-        const isGood = cr !== null && cr >= 0.7;
-        const barPct = cr !== null ? Math.min(cr * 100, 100) : 0;
-        return (
-          <div key={`cr-${div}`} className="bg-secondary/50 border border-border rounded-xl p-4 flex items-center gap-3 overflow-hidden">
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">Conv. Rate {div}</div>
-              <div className="relative inline-block group">
-                <div className={cn("text-3xl font-black tabular-nums leading-tight tracking-tight cursor-help",
-                  cr !== null ? (isGood ? "text-emerald-600" : "text-red-600") : "text-muted-foreground")}>
-                  {cr !== null ? `${(cr*100).toFixed(1)}%` : "—"}
-                </div>
-                {cr !== null && (
-                  <div className="absolute left-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"230px"}}>
-                    <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left">
-                      <div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate — {div}</div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span>
-                          <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.f5)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span>
-                          <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.denom)}</span>
-                        </div>
-                        <div className="border-t border-border pt-1.5 flex items-center justify-between gap-4">
-                          <span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span>
-                          <span className={cn("text-xs font-black tabular-nums whitespace-nowrap",isGood?"text-emerald-600":"text-red-600")}>= {(cr*100).toFixed(1)}%</span>
+      {crStats && (
+        <div className="bg-secondary/50 border border-border rounded-xl p-4 overflow-hidden col-span-2 md:col-span-1">
+          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Conv. Rate</div>
+          <div className="flex items-stretch gap-3">
+            {(["DPS","DSS"] as const).map((div,i)=>{
+              const c = div==="DPS" ? crStats.dps : crStats.dss;
+              const cr = c.cr;
+              const isGood = cr !== null && cr >= 0.7;
+              return (
+                <div key={div} className={cn("flex-1 min-w-0",i===0&&"border-r border-border pr-3")}>
+                  <div className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-0.5">{div}</div>
+                  <div className="relative inline-block group">
+                    <div className={cn("text-2xl font-black tabular-nums leading-tight cursor-help",
+                      cr!==null?(isGood?"text-emerald-600":"text-red-600"):"text-muted-foreground")}>
+                      {cr!==null?`${(cr*100).toFixed(1)}%`:"—"}
+                    </div>
+                    {cr!==null&&(
+                      <div className="absolute left-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"230px"}}>
+                        <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left">
+                          <div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate — {div}</div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span>
+                              <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.f5)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span>
+                              <span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(c.denom)}</span>
+                            </div>
+                            <div className="border-t border-border pt-1.5 flex items-center justify-between gap-4">
+                              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span>
+                              <span className={cn("text-xs font-black tabular-nums whitespace-nowrap",isGood?"text-emerald-600":"text-red-600")}>= {(cr*100).toFixed(1)}%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">F5 ÷ (F3+F4+F5)</div>
-            </div>
-            <div className="shrink-0 flex flex-col items-center gap-1.5">
-              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0"
-                style={{borderColor: isGood ? "#10b981" : "#ef4444", background: isGood ? "#d1fae5" : "#fee2e2"}}>
-                <span className="text-[9px] font-black" style={{color: isGood ? "#065f46" : "#991b1b"}}>
-                  {isGood ? "≥70" : "<70"}
-                </span>
-              </div>
-              <div className="w-1.5 h-14 bg-border/50 rounded-full overflow-hidden">
-                <div className="w-full rounded-full transition-all duration-500"
-                  style={{height:`${barPct}%`, background: isGood ? "#10b981" : "#ef4444", marginTop:`${100-barPct}%`}}/>
-              </div>
-            </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">F5÷(F3+F4+F5)</div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
