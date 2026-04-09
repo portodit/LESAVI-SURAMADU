@@ -867,16 +867,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     staleTime:60_000,
   });
 
+  // yearOptions: from import snapshot periods (must be before useEffect that uses it)
   const yearOptions = useMemo(()=>{
-    // Prefer tahun_anggaran from API response (based on actual LOP data)
-    const taYears = Array.isArray(data?.availableTahunAnggaran) ? (data.availableTahunAnggaran as number[]) : [];
-    if(taYears.length>0) return taYears.map(y=>({value:String(y),label:String(y)}));
-    // Fallback: from import snapshot periods
     const snapsArr = Array.isArray(snapshots) ? snapshots : [];
     const years=[...new Set(snapsArr.map((s:any)=>s.period.slice(0,4)))].sort().reverse() as string[];
     if(years.length===0) return [{value:"2026",label:"2026"}];
     return years.map(y=>({value:y,label:y}));
-  },[data,snapshots]);
+  },[snapshots]);
 
   const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(null);
   const [mobilePortalEl, setMobilePortalEl] = useState<HTMLElement | null>(null);
@@ -918,6 +915,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     enabled:importId!==null||(Array.isArray(snapshots)&&snapshots.length===0),
     staleTime:0,
   });
+
+  // tahunAnggaranOptions: for the table-level Tahun Anggaran dropdown — uses real LOP data from API
+  const tahunAnggaranOptions = useMemo(()=>{
+    const taYears = Array.isArray(data?.availableTahunAnggaran) ? (data.availableTahunAnggaran as number[]) : [];
+    if(taYears.length>0) return taYears.map(y=>({value:String(y),label:String(y)}));
+    return yearOptions; // fallback to snapshot years
+  },[data,yearOptions]);
 
   // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
   const periodFilteredLops = useMemo(()=>{
@@ -1612,7 +1616,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
               className="w-44 shrink-0"/>
             <FSSelectDropdown label="" value={filterYear} onChange={v=>setFilterYear(v)}
-              options={yearOptions}
+              options={tahunAnggaranOptions}
               className="w-28 shrink-0"/>
             <div className="relative shrink-0">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
