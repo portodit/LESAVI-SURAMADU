@@ -271,6 +271,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
       namaAm: l.namaAm,
       nikAm: l.nikAm,
       reportDate: l.reportDate,
+      tahunAnggaran: l.tahunAnggaran ?? null,
     })),
   });
 });

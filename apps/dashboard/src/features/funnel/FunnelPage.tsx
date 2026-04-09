@@ -16,6 +16,7 @@ interface LopRow {
   divisi: string; segmen: string | null; statusF: string | null; proses: string | null;
   statusProyek: string | null; kategoriKontrak: string | null; estimateBulan: string | null;
   monthSubs: number | null; namaAm: string | null; nikAm: string | null; reportDate: string | null;
+  tahunAnggaran: number | null;
 }
 
 interface MasterAm { nik: string; nama: string; divisi: string; }
@@ -667,29 +668,41 @@ export default function FunnelPage() {
     staleTime: 0,
   });
 
-  // Available years derived from loaded data
+  // Available years derived from loaded data — prefers tahunAnggaran, falls back to reportDate year
   const availableYears = useMemo(() => {
     if (!data) return [...filterYears];
     const yearSet = new Set<string>();
     for (const l of data.lops) {
-      if (!l.reportDate) continue;
-      const yr = String(l.reportDate).slice(0, 4);
-      if (/^\d{4}$/.test(yr)) yearSet.add(yr);
+      if (l.tahunAnggaran != null) {
+        yearSet.add(String(l.tahunAnggaran));
+      } else if (l.reportDate) {
+        const yr = String(l.reportDate).slice(0, 4);
+        if (/^\d{4}$/.test(yr)) yearSet.add(yr);
+      }
     }
     const sorted = [...yearSet].sort().reverse();
     return sorted.length > 0 ? sorted : [...filterYears];
   }, [data]);
 
-  // Period-filtered LOPs: filter by selected years + months (months only for single year)
+  // Period-filtered LOPs: year = tahunAnggaran (fallback reportDate year), month = reportDate month
   const periodFilteredLops = useMemo(() => {
     if (!data) return [];
     const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
     return data.lops.filter(l => {
-      if (!l.reportDate) return false;
-      const rd = String(l.reportDate).slice(0, 10);
-      const yr = rd.slice(0, 4);
-      if (!filterYears.has(yr)) return false;
-      if (singleYear && filterMonths.size > 0 && !filterMonths.has(rd.slice(5, 7))) return false;
+      // Fiscal year: prefer tahunAnggaran, fall back to reportDate year
+      const fiscalYear = l.tahunAnggaran != null
+        ? String(l.tahunAnggaran)
+        : l.reportDate
+          ? String(l.reportDate).slice(0, 4)
+          : null;
+      if (!fiscalYear) return false;
+      if (!filterYears.has(fiscalYear)) return false;
+      // Month filter: still based on reportDate month (LOPs with no reportDate pass through)
+      if (singleYear && filterMonths.size > 0) {
+        if (!l.reportDate) return true;
+        const mo = String(l.reportDate).slice(5, 7);
+        if (!filterMonths.has(mo)) return false;
+      }
       return true;
     });
   }, [data, filterYears, filterMonths]);
