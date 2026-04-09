@@ -952,14 +952,20 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
-      // API already filters by tahun_anggaran — only apply months filter here
-      if(filterMonths.size>0&&l.reportDate){
-        const mo=String(l.reportDate).slice(5,7);
-        if(!filterMonths.has(mo)) return false;
+      // Month filter hanya untuk LOP yang masuk via reportDate.year (primary match).
+      // LOP yang masuk via tahunAnggaran saja (reportDate di luar tahun filter) lolos semua bulan.
+      if(filterMonths.size>0){
+        const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
+        const matchesReportYear = rdYear === filterYear;
+        if(matchesReportYear){
+          const mo=String(l.reportDate).slice(5,7);
+          if(!filterMonths.has(mo)) return false;
+        }
+        // secondary match (tahunAnggaran=filterYear, reportDate bukan di filterYear): lolos
       }
       return true;
     });
-  },[data,filterMonths]);
+  },[data,filterMonths,filterYear]);
 
   const periodStats = useMemo(()=>{
     const lops=periodFilteredLops;

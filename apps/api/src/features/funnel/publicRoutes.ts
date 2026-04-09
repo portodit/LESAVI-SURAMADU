@@ -68,11 +68,12 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   )].sort((a, b) => b - a);
 
   if (tahun) {
-    // Filter by tahun_anggaran field; fallback to report_date year for rows without tahun_anggaran
+    // OR logic: LOP lolos jika reportDate.year = yr (primary) ATAU tahunAnggaran = yr (secondary)
     const yr = Number(tahun);
     allLops = allLops.filter(l => {
-      const ta = l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null);
-      return ta === yr;
+      const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
+      const ta = l.tahunAnggaran ?? null;
+      return rdYear === yr || ta === yr;
     });
   }
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
