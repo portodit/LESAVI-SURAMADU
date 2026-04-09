@@ -67,9 +67,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       .filter((y): y is number => y != null && y > 2000)
   )].sort((a, b) => b - a);
 
-  // When import_id is provided, skip tahun-based LOP filtering — snapshot already scopes the data;
-  // the client-side Tahun Anggaran multi-select handles year filtering for the user.
-  if (tahun && !import_id) {
+  if (tahun) {
+    // Filter by tahun_anggaran field; fallback to report_date year for rows without tahun_anggaran
     const yr = Number(tahun);
     allLops = allLops.filter(l => {
       const ta = l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null);
