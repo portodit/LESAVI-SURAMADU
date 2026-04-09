@@ -288,6 +288,11 @@ export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period:
 
   const toInsert = cleaned.map((row: any) => {
     const am = findAm(row.nik, row.namaAm);
+    // Tahun anggaran: use explicit value from Excel first, fallback to snapshot year, then report_date year
+    const taExplicit = typeof row.tahunAnggaran === "number" && row.tahunAnggaran > 2000 ? row.tahunAnggaran : null;
+    const snapshotYear = snapshotDate ? parseInt(snapshotDate.slice(0, 4), 10) : null;
+    const reportYear = row.reportDate ? parseInt(String(row.reportDate).slice(0, 4), 10) : null;
+    const tahunAnggaran = taExplicit ?? (snapshotYear && snapshotYear > 2000 ? snapshotYear : null) ?? (reportYear && reportYear > 2000 ? reportYear : null);
     return {
       lopid: safeStr(row.lopid)!,
       judulProyek: safeStr(row.judulProyek) || "",
@@ -307,6 +312,7 @@ export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period:
       reportDate: safeStr(row.reportDate),
       createdDate: safeStr(row.createdDate),
       snapshotDate,
+      tahunAnggaran,
     };
   }).filter((r: any) => r.lopid);
 
