@@ -31,7 +31,7 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
 router.get("/public/funnel", async (req, res): Promise<void> => {
   Object.entries(PUBLIC_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
-  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, durasi_filter } = req.query;
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, durasi_filter } = req.query;
 
   const masterAms = await db.select().from(accountManagersTable);
   const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
@@ -67,14 +67,19 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       .filter((y): y is number => y != null && y > 2000)
   )].sort((a, b) => b - a);
 
-  if (tahun) {
-    // OR logic: LOP lolos jika reportDate.year = yr (primary) ATAU tahunAnggaran = yr (secondary)
-    const yr = Number(tahun);
-    allLops = allLops.filter(l => {
-      const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
-      const ta = l.tahunAnggaran ?? null;
-      return rdYear === yr || ta === yr;
-    });
+  {
+    // Multi-year OR logic: tahun_list overrides tahun for LOP filtering
+    const listStr = tahun_list as string | undefined;
+    const yearNums: number[] = listStr
+      ? listStr.split(",").map(Number).filter(n => n > 2000)
+      : tahun ? [Number(tahun)] : [];
+    if (yearNums.length > 0) {
+      allLops = allLops.filter(l => {
+        const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
+        const ta = l.tahunAnggaran ?? null;
+        return yearNums.some(yr => rdYear === yr || ta === yr);
+      });
+    }
   }
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
