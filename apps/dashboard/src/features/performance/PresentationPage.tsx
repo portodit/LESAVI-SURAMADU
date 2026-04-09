@@ -818,16 +818,16 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
   const thOuterY=cy+(r+5)*Math.sin(toRad(thAngle));
   const divColor = divisi==="DPS" ? "#3b82f6" : "#10b981";
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-3">
-      <div className="shrink-0 mx-auto">
-        <svg width="150" height="108" viewBox="0 0 160 115">
+    <div className="flex items-center gap-3">
+      <div className="shrink-0">
+        <svg width="110" height="80" viewBox="0 0 160 115">
           <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
           {cr!==null&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
           <line x1={thInnerX} y1={thInnerY} x2={thOuterX} y2={thOuterY} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"/>
           {cr!==null?(
             <>
-              <text x={cx} y={cy-6} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{(cr*100).toFixed(1)}%</text>
-              <text x={cx} y={cy+10} textAnchor="middle" fontSize="8.5" fill="#6b7280">CONV. RATE</text>
+              <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{(cr*100).toFixed(1)}%</text>
+              <text x={cx} y={cy+11} textAnchor="middle" fontSize="8.5" fill="#6b7280">CONV. RATE</text>
             </>
           ):(
             <text x={cx} y={cy+3} textAnchor="middle" fontSize="10" fill="#9ca3af">No data</text>
@@ -837,7 +837,7 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
           <text x={cx+(r+9)*Math.cos(toRad(thAngle))} y={cy+(r+9)*Math.sin(toRad(thAngle))-8} textAnchor="middle" fontSize="7" fill="#f59e0b" fontWeight="700">70%</text>
         </svg>
       </div>
-      <div className="flex-1 w-full min-w-0 space-y-1.5" style={{fontSize:"clamp(9px,1.05vw,12px)"}}>
+      <div className="flex-1 min-w-0 space-y-1" style={{fontSize:"clamp(9px,1.05vw,12px)"}}>
         <div className="flex justify-between items-baseline gap-1">
           <span className="text-muted-foreground whitespace-nowrap shrink-0">F5 (Closed Won)</span>
           <span className="font-bold tabular-nums truncate text-right ml-1" style={{color:divColor}}>{fmtRupiahFS(f5)}</span>
