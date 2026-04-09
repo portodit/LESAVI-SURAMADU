@@ -1596,15 +1596,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
                 for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
                 return (
-                  <div className="mt-3 pt-3 border-t border-border/60">
-                    <div className="flex gap-1.5">
+                  <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
+                    <div className="flex-1 flex gap-1.5">
                       {FS_PHASES.map(phase=>{
                         const d=pm[phase];const c=FS_PHASE_COLORS[phase];
                         return (
-                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2 py-1.5 border border-border/50 flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
-                            <span className="text-[12px] font-black tabular-nums leading-none text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
-                            <span className="text-[9px] text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
+                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
+                            <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
+                            <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                            <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
                           </div>
                         );
                       })}
