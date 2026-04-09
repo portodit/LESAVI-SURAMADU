@@ -1017,7 +1017,7 @@ export default function FunnelPage() {
                       <div className="absolute right-0 bottom-full mb-2 z-[60] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
                         style={{minWidth:"220px"}}>
                         <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left">
-                          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-2">Perhitungan Conv. Rate</div>
+                          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div>
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-4">
                               <span className="text-xs text-muted-foreground whitespace-nowrap">F5 (Closed/Won)</span>
@@ -1367,7 +1367,7 @@ export default function FunnelPage() {
                   <th className="px-3 py-3 text-left whitespace-nowrap">Pelanggan</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">Target 2026</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">Nilai Proyek</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">Conv. Rate</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Conversion Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -1464,7 +1464,7 @@ export default function FunnelPage() {
                         <th className="px-3 py-2.5 whitespace-nowrap w-16 text-left">Pelanggan</th>
                         <th className="px-3 py-2.5 whitespace-nowrap min-w-[140px] text-left">Target 2026</th>
                         <th className="px-3 py-2.5 min-w-[160px] text-left">Nilai Proyek</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap w-24">Conv. Rate</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap w-24">Conversion Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
