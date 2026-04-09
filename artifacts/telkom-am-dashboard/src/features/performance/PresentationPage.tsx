@@ -1205,7 +1205,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const dpsPct=dpsTgt?(dpsStats.totalNilai/dpsTgt)*100:0;
   const dssPct=dssTgt?(dssStats.totalNilai/dssTgt)*100:0;
 
-  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterDurasi!=="all"||filterMonths.size>0||filterYear!==""||filterTahunAnggaran.size>0;
+  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterDurasi!=="all"||filterMonths.size>0||filterTahunAnggaran.size>0;
   const lopBadge=filteredLops.length!==(data?.totalLop||0)?`${filteredLops.length} / ${data?.totalLop||0}`:filteredLops.length.toLocaleString("id-ID");
 
 
@@ -1510,11 +1510,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       <FSSelectDropdown label="Snapshot" value={String(importId||"")} onChange={v=>setImportId(Number(v))}
         options={snapshotOptions.length>0?snapshotOptions:[{value:"",label:"Belum ada data"}]}
         disabled={snapshotOptions.length===0} className="w-36 shrink-0"/>
-      <FSPeriodeTreeDropdown label="Periode"
-        filterYear={filterYear} filterMonths={filterMonths}
-        availableYears={yearOptions.map(o=>o.value)}
-        onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
-        className="w-44 shrink-0"/>
       <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
       <FSSelectDropdown label="Target" value={filterMode} onChange={v=>setFilterMode(v as "ho"|"fullho")}
         options={[{value:"ho",label:"HO"},{value:"fullho",label:"FULL (HO+BA)"}]}
@@ -1573,7 +1568,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <button onClick={() => setFilterDurasi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
-        {(filterStatus.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all" || filterMonths.size > 0 || filterAm.size > 0) && (
+        {filterTahunAnggaran.size > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-1 bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-sky-200 dark:border-sky-800">
+            T. Anggaran: {filterTahunAnggaran.size === 1 ? [...filterTahunAnggaran][0] : `${filterTahunAnggaran.size} tahun`}
+            <button onClick={() => setFilterTahunAnggaran(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+          </span>
+        )}
+        {(filterStatus.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all" || filterMonths.size > 0 || filterAm.size > 0 || filterTahunAnggaran.size > 0) && (
           <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterDurasi("all"); setFilterMonths(new Set()); setFilterAm(new Set()); setFilterTahunAnggaran(new Set()); }}
             className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <X className="w-3 h-3"/> Reset filter
@@ -1671,6 +1672,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
             <FSSelectDropdown label="" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
+              className="w-44 shrink-0"/>
+            <div className="w-px h-5 bg-border/60 shrink-0"/>
+            <FSPeriodeTreeDropdown label=""
+              filterYear={filterYear} filterMonths={filterMonths}
+              availableYears={yearOptions.map(o=>o.value)}
+              onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
               className="w-44 shrink-0"/>
             <FSCheckboxDropdown label="" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
               placeholder="Semua T. Anggaran" summaryLabel="T. Anggaran" className="w-44 shrink-0"/>
