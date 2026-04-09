@@ -472,17 +472,18 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
 
 const FS_MONTH_NUMS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
-function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, onChange, className }: {
+function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYears, onChange, className }: {
   label?: string;
-  filterYear: string;
+  filterYears: Set<string>;
   filterMonths: Set<string>;
   availableYears: string[];
-  onChange: (year: string, months: Set<string>) => void;
+  onChange: (years: Set<string>, months: Set<string>) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([filterYear]));
+  const primaryYear = [...filterYears].sort().reverse()[0] || "";
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([primaryYear]));
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -497,10 +498,11 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
   },[]);
 
   useEffect(()=>{
-    setExpandedYears(prev=>new Set([...prev,filterYear]));
-  },[filterYear]);
+    const primary=[...filterYears].sort().reverse()[0];
+    if(primary) setExpandedYears(prev=>new Set([...prev,primary]));
+  },[filterYears]);
 
-  const years = availableYears.length > 0 ? availableYears : [filterYear];
+  const years = availableYears.length > 0 ? availableYears : [...filterYears].sort().reverse();
 
   const toggle = () => {
     if(triggerRef.current){
@@ -515,18 +517,32 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
     setExpandedYears(prev=>{ const n=new Set(prev); n.has(yr)?n.delete(yr):n.add(yr); return n; });
   };
 
-  const selectYear = (yr:string) => onChange(yr, new Set());
-
-  const toggleMonth = (yr:string, mo:string) => {
-    if(yr!==filterYear){ onChange(yr, new Set([mo])); return; }
-    const n=new Set(filterMonths); n.has(mo)?n.delete(mo):n.add(mo); onChange(yr,n);
+  const toggleYear = (yr:string) => {
+    const n=new Set(filterYears);
+    if(n.has(yr)){ if(n.size>1) n.delete(yr); }
+    else n.add(yr);
+    onChange(n, filterMonths);
   };
 
-  const displayText = filterMonths.size===0
-    ? `${filterYear} (semua bulan)`
-    : filterMonths.size===1
-    ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${filterYear}`
-    : `${filterYear} · ${filterMonths.size} bulan`;
+  const toggleMonth = (mo:string) => {
+    const n=new Set(filterMonths); n.has(mo)?n.delete(mo):n.add(mo);
+    onChange(filterYears, n);
+  };
+
+  const sortedSelected = [...filterYears].sort().reverse();
+  const displayText = filterYears.size===1
+    ? (filterMonths.size===0
+        ? `${primaryYear} (semua bulan)`
+        : filterMonths.size===1
+          ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${primaryYear}`
+          : `${primaryYear} · ${filterMonths.size} bulan`)
+    : filterYears.size===2
+      ? `${sortedSelected.join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
+      : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`;
+
+  const badgeCount = filterYears.size > 1 && filterMonths.size > 0
+    ? `${filterYears.size}yr·${filterMonths.size}mo`
+    : filterYears.size > 1 ? `${filterYears.size}yr` : filterMonths.size > 0 ? String(filterMonths.size) : null;
 
   return (
     <div className={cn("flex flex-col gap-1",className)} ref={triggerRef}>
@@ -534,23 +550,21 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
       <button type="button" onClick={toggle}
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left",open&&"border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
-        {filterMonths.size>0&&(
-          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{filterMonths.size}</span>
+        {badgeCount&&(
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{badgeCount}</span>
         )}
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",open&&"rotate-180")}/>
       </button>
       {open&&createPortal(
         <div ref={dropRef} style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:9999 }}
-          className="bg-card border border-border rounded-xl shadow-xl w-52 overflow-hidden">
+          className="bg-card border border-border rounded-xl shadow-xl w-56 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Periode</span>
-            <button onClick={()=>onChange(filterYear,new Set())} className="text-[11px] text-primary font-semibold hover:underline">Reset</button>
+            <button onClick={()=>onChange(new Set([years[0]||primaryYear]),new Set())} className="text-[11px] text-primary font-semibold hover:underline">Reset</button>
           </div>
           <div className="max-h-64 overflow-y-auto py-1">
             {years.map(yr=>{
-              const isActive=yr===filterYear;
-              const allSel=isActive&&filterMonths.size===0;
-              const someSel=isActive&&filterMonths.size>0;
+              const isSelected=filterYears.has(yr);
               const exp=expandedYears.has(yr);
               return (
                 <div key={yr}>
@@ -560,20 +574,19 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
                       <ChevronRight className={cn("w-3 h-3 transition-transform",exp&&"rotate-90")}/>
                     </button>
                     <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
-                      <input type="checkbox" checked={allSel}
-                        ref={el=>{if(el)el.indeterminate=someSel;}}
-                        onChange={()=>selectYear(yr)}
+                      <input type="checkbox" checked={isSelected}
+                        onChange={()=>toggleYear(yr)}
                         className="w-3.5 h-3.5 accent-primary cursor-pointer"/>
-                      <span className={cn("text-sm font-semibold",isActive?"text-primary":"text-foreground")}>{yr}</span>
+                      <span className={cn("text-sm font-semibold",isSelected?"text-primary":"text-foreground")}>{yr}</span>
                     </label>
                   </div>
                   {exp&&(
                     <div className="ml-6 pb-1">
                       {FS_MONTH_NUMS.map((mo,idx)=>{
-                        const checked=isActive&&filterMonths.has(mo);
+                        const checked=filterMonths.has(mo);
                         return (
                           <label key={mo} className="flex items-center gap-2 px-2 py-1 hover:bg-secondary/30 cursor-pointer rounded select-none">
-                            <input type="checkbox" checked={checked} onChange={()=>toggleMonth(yr,mo)}
+                            <input type="checkbox" checked={checked} onChange={()=>toggleMonth(mo)}
                               className="w-3.5 h-3.5 accent-primary cursor-pointer"/>
                             <span className={cn("text-sm",checked?"text-foreground font-medium":"text-muted-foreground")}>
                               {FS_MONTHS_ID[idx+1]}
@@ -860,8 +873,9 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
 }
 
 function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void }) {
-  const [filterYear,setFilterYear] = useState("2026");
+  const [filterYears,setFilterYears] = useState<Set<string>>(new Set(["2026"]));
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
+  const filterYear = useMemo(()=>[...filterYears].sort().reverse()[0]||"2026",[filterYears]);
   const [importId,setImportId] = useState<number|null>(null);
   const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
@@ -915,7 +929,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   ,[snapshots,filterYear,filterMonths]);
 
-  useEffect(()=>{if(yearOptions.length>0)setFilterYear(yearOptions[0].value);},[yearOptions.length]);
+  useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
 
 
@@ -923,8 +937,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
     p.set("tahun",filterYear);
+    if(filterYears.size>1) p.set("tahun_list",[...filterYears].sort().reverse().join(","));
     return p.toString();
-  },[importId,filterYear]);
+  },[importId,filterYear,filterYears]);
 
   const {data,isLoading} = useQuery<any>({
     queryKey:["funnel-data-pres",funnelParams],
@@ -948,24 +963,23 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return [...new Set([...fromSnap,...fromData])].sort().reverse();
   },[yearOptions,tahunAnggaranStringOptions]);
 
-  // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
+  // ── Period filtering on frontend — multi-year support ────────────────────────
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
-      // Month filter hanya untuk LOP yang masuk via reportDate.year (primary match).
-      // LOP yang masuk via tahunAnggaran saja (reportDate di luar tahun filter) lolos semua bulan.
-      if(filterMonths.size>0){
-        const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
-        const matchesReportYear = rdYear === filterYear;
-        if(matchesReportYear){
-          const mo=String(l.reportDate).slice(5,7);
-          if(!filterMonths.has(mo)) return false;
-        }
-        // secondary match (tahunAnggaran=filterYear, reportDate bukan di filterYear): lolos
+      // Year filter: LOP lolos jika reportDate.year atau tahunAnggaran ada di filterYears
+      const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
+      const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
+      const matchesAnyYear = (rdYear && filterYears.has(rdYear)) || (ta && filterYears.has(ta));
+      if(!matchesAnyYear) return false;
+      // Month filter: hanya berlaku untuk LOP yang masuk via reportDate.year (primary match)
+      if(filterMonths.size>0 && rdYear && filterYears.has(rdYear)){
+        const mo=String(l.reportDate).slice(5,7);
+        if(!filterMonths.has(mo)) return false;
       }
       return true;
     });
-  },[data,filterMonths,filterYear]);
+  },[data,filterYears,filterMonths]);
 
   const periodStats = useMemo(()=>{
     const lops=periodFilteredLops;
@@ -1545,11 +1559,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
         {/* Periode — always shows */}
         <span className="inline-flex shrink-0 items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
-          Periode: {filterMonths.size === 0
-            ? `${filterYear} (semua bulan)`
-            : filterMonths.size === 1
-              ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
-              : `${filterMonths.size} bulan`}
+          Periode: {filterYears.size===1
+            ? (filterMonths.size===0
+                ? `${filterYear} (semua bulan)`
+                : filterMonths.size===1
+                  ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
+                  : `${filterMonths.size} bulan`)
+            : filterYears.size===2
+              ? `${[...filterYears].sort().reverse().join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
+              : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`}
           {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Target mode — always shows */}
@@ -1687,10 +1705,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               className="w-44 shrink-0"/>
             <div className="w-px h-5 bg-border/60 shrink-0"/>
             <FSPeriodeTreeDropdown label=""
-              filterYear={filterYear} filterMonths={filterMonths}
+              filterYears={filterYears} filterMonths={filterMonths}
               availableYears={periodeAvailableYears}
-              onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
-              className="w-44 shrink-0"/>
+              onChange={(ys,ms)=>{setFilterYears(ys);setFilterMonths(ms);setImportId(null);}}
+              className="w-48 shrink-0"/>
             <FSCheckboxDropdown label="" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
               placeholder="Pilih Tahun Anggaran" summaryLabel="T. Anggaran" className="w-48 shrink-0"/>
             <div className="relative shrink-0">
