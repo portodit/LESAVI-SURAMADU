@@ -125,12 +125,13 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     allLops = [...lopMap.values()];
   }
 
-  // Filter by tahun_anggaran field; fallback to report_date year for older rows
+  // Filter: LOP lolos jika reportDate.year = yr (primary) ATAU tahunAnggaran = yr (secondary)
   if (tahun) {
     const yr = Number(tahun);
     allLops = allLops.filter(l => {
-      const ta = l.tahunAnggaran ?? (l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null);
-      return ta === yr;
+      const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
+      const ta = l.tahunAnggaran ?? null;
+      return rdYear === yr || ta === yr;
     });
   }
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
