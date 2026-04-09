@@ -1595,33 +1595,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 const pm:Record<string,{count:number;nilai:number}>={};
                 for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
                 for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
-                const total=FS_PHASES.reduce((sum,p)=>sum+pm[p].nilai,0);
                 return (
                   <div className="mt-3 pt-3 border-t border-border/60">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">Nilai Pipeline per Fase</div>
-                    <div className="space-y-0.5">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {FS_PHASES.map(phase=>{
                         const d=pm[phase];const c=FS_PHASE_COLORS[phase];
-                        const pct=total>0?(d.nilai/total)*100:0;
                         return (
-                          <div key={phase} className="flex items-center gap-1.5 text-[11px]">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{background:c.bar}}/>
-                            <span className="font-black font-mono w-5 shrink-0" style={{color:c.text}}>{phase}</span>
-                            <span className="text-muted-foreground tabular-nums shrink-0">{d.count} LOP</span>
-                            <div className="flex-1"/>
-                            <span className="font-semibold tabular-nums text-foreground">{fmtCompactFS(d.nilai)}</span>
-                            <span className="text-muted-foreground tabular-nums w-9 text-right">{pct.toFixed(1)}%</span>
+                          <div key={phase} className="bg-secondary/60 rounded-lg px-2 py-1.5 border border-border/50">
+                            <div className="text-[10px] font-black font-mono mb-0.5" style={{color:c.text}}>{phase}</div>
+                            <div className="text-[13px] font-black tabular-nums leading-tight text-foreground">{fmtCompactFS(d.nilai)||"—"}</div>
+                            <div className="text-[9px] text-muted-foreground tabular-nums mt-0.5">{d.count} LOP</div>
                           </div>
                         );
                       })}
-                      <div className="flex items-center gap-1.5 text-[11px] pt-1 mt-0.5 border-t border-border">
-                        <span className="w-2 h-2 shrink-0"/>
-                        <span className="font-black w-5 shrink-0 text-foreground">∑</span>
-                        <span className="text-muted-foreground shrink-0">{FS_PHASES.reduce((s,p)=>s+pm[p].count,0)} LOP</span>
-                        <div className="flex-1"/>
-                        <span className="font-black tabular-nums text-foreground">{fmtCompactFS(total)}</span>
-                        <span className="text-muted-foreground w-9 text-right">100%</span>
-                      </div>
                     </div>
                   </div>
                 );
