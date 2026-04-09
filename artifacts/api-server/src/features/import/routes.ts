@@ -461,6 +461,21 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
     await db.insert(salesFunnelTable).values(batch);
   }
 
+  // ── Back-fill NULL tahun_anggaran: prefer snapshot_date year, fallback to report_date year
+  await db.execute(sql`
+    UPDATE sales_funnel
+    SET tahun_anggaran = COALESCE(
+      CASE WHEN snapshot_date IS NOT NULL AND snapshot_date ~ '^[0-9]{4}'
+        THEN EXTRACT(YEAR FROM snapshot_date::date)::integer
+      END,
+      CASE WHEN report_date IS NOT NULL AND report_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        THEN EXTRACT(YEAR FROM report_date::date)::integer
+      END
+    )
+    WHERE import_id = ${imp.id}
+      AND tahun_anggaran IS NULL
+  `);
+
   // ── Back-fill empty nama_am from accounts
   const allMasterAms = await db.select().from(accountManagersTable);
   const masterNameByNik = new Map(allMasterAms.map(m => [m.nik, m.nama]));
