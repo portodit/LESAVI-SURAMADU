@@ -1768,7 +1768,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
         {/* Multi-table scroll container: tiap fase = tabel sendiri, thead-nya sticky bersama */}
         <div className="px-3 pb-3">
-          <div ref={funnelTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="border border-border rounded overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 210px)"}}>
+          <div ref={funnelTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="border border-border rounded overflow-y-auto overflow-x-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 210px)"}}>
             {/* Header kolom — sticky di atas, pisah dari tabel AM agar tidak saling tarik */}
             <table ref={fsFunnelTheadRef} className="text-left text-sm" style={{...FS_TB_STYLE,position:"sticky",top:0,zIndex:20}}>
               <FSColGroup/>
