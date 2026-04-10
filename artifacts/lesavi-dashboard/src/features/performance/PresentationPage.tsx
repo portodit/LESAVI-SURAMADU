@@ -1333,7 +1333,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2">
                       <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                       <span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span>
-                      <span className="text-xs font-black text-slate-900 bg-slate-300 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
+                      <span className="text-xs font-black text-slate-900 px-1.5 py-0.5 rounded-full" style={{background:"#f2f2f2"}}>{lops.length} proyek</span>
                     </div>
                   </td>
                   {phaseExpanded
@@ -1491,7 +1491,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
                   onClick={()=>togglePhaseRow(phaseKey)}>
                   <th className="px-4 py-2.5 pl-10 font-normal text-left" style={{background:phaseBg}}>
-                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-black text-slate-900 bg-slate-300 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
+                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-black text-slate-900 px-1.5 py-0.5 rounded-full" style={{background:"#f2f2f2"}}>{lops.length} proyek</span></div>
                   </th>
                   {phaseExpanded
                     ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
