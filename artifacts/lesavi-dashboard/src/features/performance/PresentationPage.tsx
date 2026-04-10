@@ -1333,7 +1333,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2">
                       <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                       <span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span>
-                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
+                      <span className="text-xs font-black text-slate-900 bg-slate-300 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
                     </div>
                   </td>
                   {phaseExpanded
@@ -1356,13 +1356,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                           <col style={{width:"26%"}}/>
                         </colgroup>
                         <thead>
-                          <tr className="bg-slate-100 border-y border-slate-300">
-                            <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Kategori</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Durasi</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">LOP ID</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          <tr className="bg-slate-200 border-y border-slate-400">
+                            <td className="px-4 py-2 pl-16 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
                           </tr>
                         </thead>
                         <tbody>
@@ -1491,7 +1491,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
                   onClick={()=>togglePhaseRow(phaseKey)}>
                   <th className="px-4 py-2.5 pl-10 font-normal text-left" style={{background:phaseBg}}>
-                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
+                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-black text-slate-900 bg-slate-300 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
                   </th>
                   {phaseExpanded
                     ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
@@ -1513,13 +1513,13 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                           <col style={{width:"26%"}}/>
                         </colgroup>
                         <thead>
-                          <tr className="bg-slate-100 border-y border-slate-300">
-                            <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Kategori</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Durasi</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">LOP ID</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
-                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          <tr className="bg-slate-200 border-y border-slate-400">
+                            <td className="px-4 py-2 pl-16 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
                           </tr>
                         </thead>
                         <tbody>
