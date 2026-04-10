@@ -1,5 +1,5 @@
 import { db, accountManagersTable, appSettingsTable, salesFunnelTargetTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { seedAmFunnelTargets } from "../seeds/seed-am-funnel-targets";
 
 // Default Google Drive folder IDs (TREG3 Suramadu production folders)
@@ -84,6 +84,19 @@ const DEFAULT_FUNNEL_TARGETS = [
 ];
 
 export async function ensureDefaultSeed(): Promise<void> {
+  // ── One-time cleanup: hapus AM non-aktif yang ditemukan dari import (bukan seed asli)
+  // Flag disimpan di app_settings.nonAktifAmsCleaned — hanya dijalankan sekali
+  const settingsForCleanup = await db.select({ id: appSettingsTable.id, nonAktifAmsCleaned: appSettingsTable.nonAktifAmsCleaned }).from(appSettingsTable).limit(1);
+  const shouldClean = settingsForCleanup.length === 0 || !settingsForCleanup[0].nonAktifAmsCleaned;
+  if (shouldClean) {
+    await db.delete(accountManagersTable).where(
+      and(eq(accountManagersTable.aktif, false), eq(accountManagersTable.role, "AM"))
+    );
+    if (settingsForCleanup.length > 0) {
+      await db.update(appSettingsTable).set({ nonAktifAmsCleaned: true }).where(eq(appSettingsTable.id, settingsForCleanup[0].id));
+    }
+  }
+
   // Always upsert all AMs — using onConflictDoNothing so we never overwrite user edits
   // but also never skip if admin/manager accounts already exist in the table
   for (const am of DEFAULT_AMS) {

@@ -368,7 +368,7 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
 
   // ── AM baru: langsung masuk accounts dengan aktif=false (tidak perlu konfirmasi)
   const newAmCount = await autoRegisterNewAms(
-    toInsert.map(r => ({ nik: r.nik, nama: r.namaAm, divisi: r.divisi, witel: "SURAMADU" })),
+    toInsert.map(r => ({ nik: r.nik, nama: r.namaAm, divisi: r.divisi, witel: (r as any).witelAm || (r as any).witel || "SURAMADU" })),
     "import_performance"
   );
 
@@ -420,7 +420,7 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
 
   // ── AM baru: langsung masuk accounts dengan aktif=false
   const newFunnelAmCount = await autoRegisterNewAms(
-    cleaned.filter(r => r.nikAm).map(r => ({ nik: r.nikAm!, nama: r.namaAm || r.nikAm!, divisi: r.divisi || "DPS" })),
+    cleaned.filter(r => r.nikAm).map(r => ({ nik: r.nikAm!, nama: r.namaAm || r.nikAm!, divisi: r.divisi || "DPS", witel: r.witel || "SURAMADU" })),
     "import_funnel"
   );
 
