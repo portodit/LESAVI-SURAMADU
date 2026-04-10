@@ -1111,12 +1111,13 @@ export default function FunnelPage() {
                   <>
                     {/* Sub-header for project detail columns */}
                     <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
-                      <td className="px-4 py-2 pl-16 text-xs font-black text-slate-800 uppercase tracking-wider">Nama Proyek</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Kategori</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Durasi</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-4 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Nilai</td>
+                      <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider">Nama Proyek</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Kategori</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Durasi</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Divisi CC</td>
+                      <td className="px-4 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Nilai</td>
                     </tr>
                     {lops.map((lop, idx) => (
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
@@ -1130,12 +1131,28 @@ export default function FunnelPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
                         </td>
-                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[180px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          {lop.divisi ? (
+                            <span className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase border",
+                              lop.divisi.toUpperCase() === "DPS"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : lop.divisi.toUpperCase() === "DSS"
+                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                : lop.divisi.toUpperCase() === "DGS"
+                                ? "bg-orange-50 text-orange-700 border-orange-200"
+                                : "bg-slate-100 text-slate-600 border-slate-300"
+                            )}>
+                              {lop.divisi}
+                            </span>
+                          ) : <span className="text-slate-300 text-xs">—</span>}
+                        </td>
                         <td className="px-4 py-2.5 text-left tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={5} className="px-4 py-2 pl-16">
+                      <td colSpan={6} className="px-4 py-2 pl-16">
                         <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
@@ -1147,7 +1164,7 @@ export default function FunnelPage() {
           })}
           {amExpanded && hasData && (
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: `2px solid ${ring}` } : {}}>
-              <td colSpan={5} className="px-4 py-2.5 pl-10">
+              <td colSpan={6} className="px-4 py-2.5 pl-10">
                 <span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span>
               </td>
               <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">{formatRupiahFull(amTotal)}</td>
