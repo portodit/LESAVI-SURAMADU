@@ -1237,8 +1237,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── reusable tbody renderer for presentation split panels ──────────────────
   function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string) {
-    if (isLoading) return <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
-    if (ams.length===0) return <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
+    if (isLoading) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
+    if (ams.length===0) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
     return <>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
       const amExpanded=!!expandedAm[amKey];
@@ -1337,47 +1337,66 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                   </td>
                   {phaseExpanded
-                    ? <td colSpan={6} className="px-3 py-2.5" style={{background:phaseBg}}/>
-                    : <><td colSpan={5} className="px-3 py-2.5" style={{background:phaseBg}}/>
+                    ? <td colSpan={5} className="px-3 py-2.5" style={{background:phaseBg}}/>
+                    : <><td colSpan={4} className="px-3 py-2.5" style={{background:phaseBg}}/>
                         <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{background:phaseBg}}>
                           <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
                         </td></>}
                 </tr>
                 {phaseExpanded&&(
-                  <>
-                    <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
-                      <td className="px-4 py-2 pl-16 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Nama Proyek</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Kategori</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Durasi</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Div</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider overflow-hidden">Nilai</td>
-                    </tr>
-                    {lops.map((lop:any,idx:number)=>(
-                      <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
-                        <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
-                        <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                        <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
-                        <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
-                        <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm text-foreground font-semibold truncate block" title={lop.pelanggan}>{lop.pelanggan}</span></td>
-                        <td className="px-3 py-2.5 overflow-hidden">{lop.divisi?<span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:<span className="text-slate-300 text-xs">—</span>}</td>
-                        <td className="px-3 py-2.5 text-left tabular-nums text-xs font-bold text-foreground overflow-hidden whitespace-nowrap" title={formatRupiahFull(lop.nilaiProyek)}>Rp {fmtCompactFS(lop.nilaiProyek||0)}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={6} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                      <td className="px-3 py-2 text-left tabular-nums text-sm font-black text-red-800 overflow-hidden whitespace-nowrap" title={formatRupiahFull(phaseTotal)}>Rp {fmtCompactFS(phaseTotal)}</td>
-                    </tr>
-                  </>
+                  <tr style={ringStyle({})}>
+                    <td colSpan={6} className="p-0 border-b border-slate-200">
+                      <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
+                        <colgroup>
+                          <col style={{width:"31%"}}/>
+                          <col style={{width:"11%"}}/>
+                          <col style={{width:"8%"}}/>
+                          <col style={{width:"13%"}}/>
+                          <col style={{width:"20%"}}/>
+                          <col style={{width:"17%"}}/>
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-slate-100 border-y border-slate-300">
+                            <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lops.map((lop:any,idx:number)=>(
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors border-b border-slate-100">
+                              <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                              <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                                  {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden" title={formatRupiahFull(lop.nilaiProyek)}>{fmtCompactFS(lop.nilaiProyek||0)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-red-50 border-t border-red-200">
+                            <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden" title={formatRupiahFull(phaseTotal)}>{fmtCompactFS(phaseTotal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
                 )}
               </React.Fragment>
             );
           })}
           {amExpanded&&(
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
-              <td colSpan={6} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-left tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
+              <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</td>
             </tr>
           )}
         </React.Fragment>
@@ -1388,12 +1407,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // ── Multi-table renderer: tiap fase = 1 tabel dengan <thead> 2 baris ─────────
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
   const FS_TB_STYLE:React.CSSProperties={minWidth:"800px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
-  function FSColGroup(){return(<colgroup><col style={{width:"30%"}}/><col style={{width:"110px"}}/><col style={{width:"82px"}}/><col style={{width:"160px"}}/><col/><col style={{width:"70px"}}/><col style={{width:"170px"}}/></colgroup>);}
+  function FSColGroup(){return(<colgroup><col style={{width:"30%"}}/><col style={{width:"100px"}}/><col style={{width:"82px"}}/><col style={{width:"150px"}}/><col/><col style={{width:"80px"}}/></colgroup>);}
   function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
-    if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
-    if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
+    if(isLoading) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr></tbody></table>);
+    if(ams.length===0) return(<table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/><tbody><tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr></tbody></table>);
     const multiExpanded = Object.values(expandedAm).filter(Boolean).length > 1;
     return<>{ams.map((am,amIdx)=>{
       const amKey=am.nikAm||am.namaAm;
@@ -1475,38 +1494,57 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
                   </th>
                   {phaseExpanded
-                    ?<th colSpan={6} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
-                    :<><th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-4 py-2.5 text-right whitespace-nowrap font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></th></>
+                    ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
+                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-4 py-2.5 text-right whitespace-nowrap font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></th></>
                   }
                 </tr>
-                {phaseExpanded&&(
-                  <tr className="bg-slate-100 border-y border-slate-300" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <th className="px-4 py-2 pl-16 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Nama Proyek</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Kategori</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Durasi</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">LOP ID</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Pelanggan</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Div</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left overflow-hidden">Nilai</th>
-                  </tr>
-                )}
               </thead>
-              <tbody className="divide-y divide-border/50">
-                {phaseExpanded&&lops.map((lop:any,idx:number)=>(
-                  <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
-                    <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                    <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
-                    <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
-                    <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm text-foreground font-semibold truncate block" title={lop.pelanggan}>{lop.pelanggan}</span></td>
-                    <td className="px-3 py-2.5 overflow-hidden">{lop.divisi?<span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:<span className="text-slate-300 text-xs">—</span>}</td>
-                    <td className="px-3 py-2.5 text-left tabular-nums text-xs font-bold text-foreground overflow-hidden whitespace-nowrap" title={formatRupiahFull(lop.nilaiProyek)}>Rp {fmtCompactFS(lop.nilaiProyek||0)}</td>
-                  </tr>
-                ))}
+              <tbody>
                 {phaseExpanded&&(
-                  <tr className="bg-red-50 border-t border-red-200" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td colSpan={6} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                    <td className="px-3 py-2 text-left tabular-nums text-sm font-black text-red-800 overflow-hidden whitespace-nowrap" title={formatRupiahFull(phaseTotal)}>Rp {fmtCompactFS(phaseTotal)}</td>
+                  <tr style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
+                    <td colSpan={6} className="p-0 border-b border-slate-200">
+                      <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
+                        <colgroup>
+                          <col style={{width:"31%"}}/>
+                          <col style={{width:"11%"}}/>
+                          <col style={{width:"8%"}}/>
+                          <col style={{width:"13%"}}/>
+                          <col style={{width:"20%"}}/>
+                          <col style={{width:"17%"}}/>
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-slate-100 border-y border-slate-300">
+                            <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lops.map((lop:any,idx:number)=>(
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors border-b border-slate-100">
+                              <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                              <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                                  {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden" title={formatRupiahFull(lop.nilaiProyek)}>{fmtCompactFS(lop.nilaiProyek||0)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-red-50 border-t border-red-200">
+                            <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden" title={formatRupiahFull(phaseTotal)}>{fmtCompactFS(phaseTotal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -1516,8 +1554,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <table className="text-left text-sm" style={FS_TB_STYLE}><FSColGroup/>
           <tbody>
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
-              <td colSpan={6} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-left tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
+              <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</td>
             </tr>
           </tbody>
         </table>
