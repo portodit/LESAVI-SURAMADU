@@ -1292,10 +1292,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   </span>
                 </td>
                 <td className="px-3 py-3 text-center overflow-hidden" style={stickyCell}>
-                  {amTargetVal>0?<span className="text-sm font-black tabular-nums text-foreground" title={formatRupiahFull(amTargetVal)}>{fmtCompactFS(amTargetVal)}</span>:<span className="text-muted-foreground text-xs">—</span>}
+                  {amTargetVal>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>:<span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 <td className="px-3 py-3" style={stickyCell}>
-                  <span className="font-black tabular-nums text-sm block text-foreground" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</span>
+                  <span className="font-black tabular-nums text-sm block text-foreground">{formatRupiahFull(amTotal)}</span>
                   {amTargetVal>0&&(
                     <div className="mt-1.5">
                       <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -1340,7 +1340,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     ? <td colSpan={5} className="px-3 py-2.5" style={{background:phaseBg}}/>
                     : <><td colSpan={4} className="px-3 py-2.5" style={{background:phaseBg}}/>
                         <td className="px-3 py-2.5 text-right overflow-hidden" style={{background:phaseBg}} title={formatRupiahFull(phaseTotal)}>
-                          <span className="text-sm font-black text-foreground tabular-nums">{fmtCompactFS(phaseTotal)}</span>
+                          <span className="text-sm font-black text-foreground tabular-nums">{formatRupiahFull(phaseTotal)}</span>
                         </td></>}
                 </tr>
                 {phaseExpanded&&(
@@ -1348,12 +1348,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <td colSpan={6} className="p-0 border-b border-slate-200">
                       <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
                         <colgroup>
-                          <col style={{width:"31%"}}/>
-                          <col style={{width:"11%"}}/>
-                          <col style={{width:"8%"}}/>
-                          <col style={{width:"13%"}}/>
-                          <col style={{width:"20%"}}/>
-                          <col style={{width:"17%"}}/>
+                          <col style={{width:"26%"}}/>
+                          <col style={{width:"10%"}}/>
+                          <col style={{width:"7%"}}/>
+                          <col style={{width:"12%"}}/>
+                          <col style={{width:"19%"}}/>
+                          <col style={{width:"26%"}}/>
                         </colgroup>
                         <thead>
                           <tr className="bg-slate-100 border-y border-slate-300">
@@ -1378,12 +1378,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                                   {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
                                 </div>
                               </td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden" title={formatRupiahFull(lop.nilaiProyek)}>{fmtCompactFS(lop.nilaiProyek||0)}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek||0)}</td>
                             </tr>
                           ))}
                           <tr className="bg-red-50 border-t border-red-200">
                             <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden" title={formatRupiahFull(phaseTotal)}>{fmtCompactFS(phaseTotal)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden">{formatRupiahFull(phaseTotal)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1396,7 +1396,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           {amExpanded&&(
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
               <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
             </tr>
           )}
         </React.Fragment>
@@ -1407,7 +1407,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // ── Multi-table renderer: tiap fase = 1 tabel dengan <thead> 2 baris ─────────
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
   const FS_TB_STYLE:React.CSSProperties={tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
-  function FSColGroup(){return(<colgroup><col style={{width:"30%"}}/><col style={{width:"100px"}}/><col style={{width:"82px"}}/><col style={{width:"150px"}}/><col/><col style={{width:"80px"}}/></colgroup>);}
+  function FSColGroup(){return(<colgroup><col style={{width:"25%"}}/><col style={{width:"80px"}}/><col style={{width:"75px"}}/><col style={{width:"210px"}}/><col style={{width:"200px"}}/><col style={{width:"130px"}}/></colgroup>);}
   function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
@@ -1443,9 +1443,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
               <td className="px-3 py-3 text-left whitespace-nowrap"><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
               <td className="px-3 py-3 text-left whitespace-nowrap"><span className={cn("text-sm font-black tabular-nums",amPelangganFS>0?"text-foreground":"text-muted-foreground")}>{amPelangganFS>0?<>{amPelangganFS} <span className="font-normal text-xs text-muted-foreground">plg</span></>:"—"}</span></td>
-              <td className="px-3 py-3 text-center overflow-hidden">{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground" title={formatRupiahFull(amTgt)}>{fmtCompactFS(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-3 text-center overflow-hidden">{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-3">
-                <span className="font-black tabular-nums text-sm block" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</span>
+                <span className="font-black tabular-nums text-sm block">{formatRupiahFull(amTotal)}</span>
                 {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
               <td className="px-4 py-3 text-right relative">{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
@@ -1467,9 +1467,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               </td>
               <td className="px-3 py-2.5 text-left whitespace-nowrap" style={bg}><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
               <td className="px-3 py-2.5 text-left whitespace-nowrap" style={bg}><span className={cn("text-sm font-black tabular-nums",amPelangganFS>0?"text-foreground":"text-muted-foreground")}>{amPelangganFS>0?<>{amPelangganFS} <span className="font-normal text-xs text-muted-foreground">plg</span></>:"—"}</span></td>
-              <td className="px-3 py-2.5 text-center overflow-hidden" style={bg}>{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground" title={formatRupiahFull(amTgt)}>{fmtCompactFS(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-2.5 text-center overflow-hidden" style={bg}>{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-2.5" style={bg}>
-                <span className="font-black tabular-nums text-sm block" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</span>
+                <span className="font-black tabular-nums text-sm block">{formatRupiahFull(amTotal)}</span>
                 {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
               <td className="px-4 py-2.5 text-right relative" style={bg}>{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
@@ -1495,7 +1495,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   </th>
                   {phaseExpanded
                     ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
-                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-3 py-2.5 text-right overflow-hidden font-normal" style={{background:phaseBg}} title={formatRupiahFull(phaseTotal)}><span className="text-sm font-black text-foreground tabular-nums">{fmtCompactFS(phaseTotal)}</span></th></>
+                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-3 py-2.5 text-right overflow-hidden font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums">{formatRupiahFull(phaseTotal)}</span></th></>
                   }
                 </tr>
               </thead>
@@ -1505,12 +1505,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <td colSpan={6} className="p-0 border-b border-slate-200">
                       <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
                         <colgroup>
-                          <col style={{width:"31%"}}/>
-                          <col style={{width:"11%"}}/>
-                          <col style={{width:"8%"}}/>
-                          <col style={{width:"13%"}}/>
-                          <col style={{width:"20%"}}/>
-                          <col style={{width:"17%"}}/>
+                          <col style={{width:"26%"}}/>
+                          <col style={{width:"10%"}}/>
+                          <col style={{width:"7%"}}/>
+                          <col style={{width:"12%"}}/>
+                          <col style={{width:"19%"}}/>
+                          <col style={{width:"26%"}}/>
                         </colgroup>
                         <thead>
                           <tr className="bg-slate-100 border-y border-slate-300">
@@ -1535,12 +1535,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                                   {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
                                 </div>
                               </td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden" title={formatRupiahFull(lop.nilaiProyek)}>{fmtCompactFS(lop.nilaiProyek||0)}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek||0)}</td>
                             </tr>
                           ))}
                           <tr className="bg-red-50 border-t border-red-200">
                             <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden" title={formatRupiahFull(phaseTotal)}>{fmtCompactFS(phaseTotal)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden">{formatRupiahFull(phaseTotal)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1555,7 +1555,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           <tbody>
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
               <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm" title={formatRupiahFull(amTotal)}>{fmtCompactFS(amTotal)}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -1887,12 +1887,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
                     <thead>
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[280px] text-left">Account Manager</th>
+                        <th className="px-4 py-2.5 min-w-[240px] text-left">Account Manager</th>
                         <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
                         <th className="px-3 py-2.5 whitespace-nowrap text-left">Pelanggan</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-center">Target 2026</th>
-                        <th className="px-3 py-2.5 text-left whitespace-nowrap">Nilai Proyek</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap">Conversion Rate</th>
+                        <th className="px-3 py-2.5 min-w-[210px] text-center">Target 2026</th>
+                        <th className="px-3 py-2.5 min-w-[200px] text-left">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 min-w-[130px] text-right whitespace-nowrap">Conversion Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
