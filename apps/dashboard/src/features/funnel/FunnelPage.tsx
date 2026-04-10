@@ -1122,7 +1122,7 @@ export default function FunnelPage() {
                     {lops.map((lop, idx) => (
                       <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
                         <td className="px-4 py-2.5 pl-16">
-                          <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
+                          <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[210px]" title={lop.judulProyek}>{lop.judulProyek}</div>
                         </td>
                         <td className="px-3 py-2.5"><KontrakBadge k={lop.kategoriKontrak} /></td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
@@ -1131,7 +1131,7 @@ export default function FunnelPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
                         </td>
-                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[180px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
+                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[110px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           {lop.divisi ? (
                             <span className={cn(
@@ -1389,10 +1389,10 @@ export default function FunnelPage() {
         {/* Unified scroll-container table: thead sticky at top-0, expanded AM/phase rows also sticky */}
         <div className="px-3 pb-3">
           <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
-            <table className="text-left text-sm w-full" style={{minWidth:"640px",tableLayout:"auto",borderCollapse:"collapse"}}>
+            <table className="text-left text-sm w-full" style={{minWidth:"780px",tableLayout:"auto",borderCollapse:"collapse"}}>
               <colgroup>
-                <col style={{minWidth:"200px"}}/><col style={{width:"75px"}}/><col style={{width:"70px"}}/>
-                <col style={{width:"160px"}}/><col style={{minWidth:"180px"}}/><col style={{width:"120px"}}/>
+                <col style={{minWidth:"170px"}}/><col style={{width:"72px"}}/><col style={{width:"68px"}}/>
+                <col style={{width:"130px"}}/><col style={{minWidth:"155px"}}/><col style={{width:"72px"}}/><col style={{width:"120px"}}/>
               </colgroup>
               <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
