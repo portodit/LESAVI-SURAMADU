@@ -81,6 +81,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       });
     }
   }
+  // Witel Suramadu hanya handle customer DPS dan DSS — singkirkan DGS
+  allLops = allLops.filter(l => (l.divisi || "").toUpperCase() !== "DGS");
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));

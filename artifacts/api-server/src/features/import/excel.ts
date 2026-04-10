@@ -248,12 +248,11 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
     const witel = cleanUpper(r.witel);
     if (!opts?.skipWitelFilter && !witel.includes("SURAMADU")) continue;
 
-    // ── STEP 2: Filter divisi = DPS / DSS / DGS
+    // ── STEP 2: Filter divisi = DPS / DSS (Witel Suramadu tidak handle DGS)
     // NOTE: In GSheets nationwide funnel, divisi = business segment (RSMES etc), NOT AM divisi.
     // Skip this filter when importing from GSheets — rely on activeNikSet instead.
-    // DGS diikutkan karena ada AM yang handle multi-divisi (DPS+DSS, DGS+DSS, dll).
     const divisi = clean(r.divisi).toUpperCase();
-    const VALID_DIVISI = new Set(["DPS", "DSS", "DGS"]);
+    const VALID_DIVISI = new Set(["DPS", "DSS"]);
     if (!opts?.skipDivisiFilter && !VALID_DIVISI.has(divisi)) continue;
 
     // ── STEP 3: NIK AM extraction
@@ -433,13 +432,12 @@ export interface CleanedActivityRow {
 export function cleanActivityRows(rows: ParsedRow[]): CleanedActivityRow[] {
   return rows
     .map(r => {
-      // ── STEP 1: Filter witel = SURAMADU AND divisi = DPS/DSS/DGS
-      // DGS diikutkan karena ada AM yang handle multi-divisi (DGS+DSS, DPS+DSS, dll).
+      // ── STEP 1: Filter witel = SURAMADU AND divisi = DPS/DSS (Witel Suramadu tidak handle DGS)
       const witel = cleanUpper(r.witel);
       const divisi = clean(r.divisi).toUpperCase();
 
       if (!witel.includes("SURAMADU")) return null;
-      if (divisi !== "DPS" && divisi !== "DSS" && divisi !== "DGS") return null;
+      if (divisi !== "DPS" && divisi !== "DSS") return null;
 
       // ── STEP 2: Validasi NIK numerik
       // Power BI menggunakan Int64.Type untuk kolom nik — baris dengan NIK tidak-numerik
