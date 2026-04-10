@@ -1115,8 +1115,7 @@ export default function FunnelPage() {
                       <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Kategori</td>
                       <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Durasi</td>
                       <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Divisi CC</td>
+                      <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Pelanggan & Divisi</td>
                       <td className="px-4 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider">Nilai</td>
                     </tr>
                     {lops.map((lop, idx) => (
@@ -1131,28 +1130,28 @@ export default function FunnelPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
                         </td>
-                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[110px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          {lop.divisi ? (
-                            <span className={cn(
-                              "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase border",
-                              lop.divisi.toUpperCase() === "DPS"
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : lop.divisi.toUpperCase() === "DSS"
-                                ? "bg-purple-50 text-purple-700 border-purple-200"
-                                : lop.divisi.toUpperCase() === "DGS"
-                                ? "bg-orange-50 text-orange-700 border-orange-200"
-                                : "bg-slate-100 text-slate-600 border-slate-300"
-                            )}>
-                              {lop.divisi}
-                            </span>
-                          ) : <span className="text-slate-300 text-xs">—</span>}
+                        <td className="px-3 py-2.5 max-w-[170px]">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                            {lop.divisi ? (
+                              <span className={cn(
+                                "inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border",
+                                lop.divisi.toUpperCase() === "DPS"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : lop.divisi.toUpperCase() === "DSS"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                                  : "bg-slate-100 text-slate-600 border-slate-300"
+                              )}>
+                                {lop.divisi}
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-left tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
                       </tr>
                     ))}
                     <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={6} className="px-4 py-2 pl-16">
+                      <td colSpan={5} className="px-4 py-2 pl-16">
                         <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
@@ -1389,10 +1388,10 @@ export default function FunnelPage() {
         {/* Unified scroll-container table: thead sticky at top-0, expanded AM/phase rows also sticky */}
         <div className="px-3 pb-3">
           <div className="border border-border rounded overflow-auto" style={{maxHeight:"calc(100svh - 210px)"}}>
-            <table className="text-left text-sm w-full" style={{minWidth:"780px",tableLayout:"auto",borderCollapse:"collapse"}}>
+            <table className="text-left text-sm w-full" style={{minWidth:"640px",tableLayout:"auto",borderCollapse:"collapse"}}>
               <colgroup>
-                <col style={{minWidth:"170px"}}/><col style={{width:"72px"}}/><col style={{width:"68px"}}/>
-                <col style={{width:"130px"}}/><col style={{minWidth:"155px"}}/><col style={{width:"72px"}}/><col style={{width:"120px"}}/>
+                <col style={{minWidth:"200px"}}/><col style={{width:"75px"}}/><col style={{width:"70px"}}/>
+                <col style={{width:"150px"}}/><col style={{minWidth:"170px"}}/><col style={{width:"120px"}}/>
               </colgroup>
               <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
