@@ -1163,7 +1163,7 @@ export default function FunnelPage() {
           })}
           {amExpanded && hasData && (
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring ? { borderLeft: `2px solid ${ring}`, borderRight: `2px solid ${ring}`, borderBottom: `2px solid ${ring}` } : {}}>
-              <td colSpan={6} className="px-4 py-2.5 pl-10">
+              <td colSpan={5} className="px-4 py-2.5 pl-10">
                 <span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span>
               </td>
               <td className="px-4 py-2.5 text-right tabular-nums font-black text-red-700 whitespace-nowrap text-lg">{formatRupiahFull(amTotal)}</td>
