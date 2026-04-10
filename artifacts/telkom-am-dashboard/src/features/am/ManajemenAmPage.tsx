@@ -436,6 +436,20 @@ function UserRow({ user, onEdit, onDelete, isPrivileged, onToggleAktif, toggling
         ) : <span className="text-muted-foreground/40 text-xs">—</span>}
       </td>
 
+      {/* Witel */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        {user.witel ? (
+          <span className={cn(
+            "inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md border",
+            isNonaktif
+              ? "bg-muted text-muted-foreground border-border opacity-70"
+              : "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-700"
+          )}>
+            {user.witel}
+          </span>
+        ) : <span className="text-muted-foreground/40 text-xs">—</span>}
+      </td>
+
       {/* Segmen */}
       <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
         {isAM ? (user.segmen || <span className="text-border text-xs">—</span>) : <span className="text-muted-foreground/40 text-xs">—</span>}
@@ -532,6 +546,7 @@ export default function ManajemenAmPage() {
   const [search, setSearch] = useState("");
   const [filterDivisi, setFilterDivisi] = useState<FilterDivisi>("all");
   const [filterRole, setFilterRole] = useState<FilterRole>("all");
+  const [filterWitel, setFilterWitel] = useState<string>("all");
   const [togglingAktifId, setTogglingAktifId] = useState<number | null>(null);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -608,15 +623,19 @@ export default function ManajemenAmPage() {
   const officers      = users.filter(u => u.role === "OFFICER");
   const newAmCount    = amOnly.filter(u => !u.aktif).length;
 
+  const availableWitels = [...new Set(users.map(u => u.witel).filter(Boolean))].sort();
+
   const filtered = users.filter(u => {
     if (filterRole !== "all" && u.role !== filterRole) return false;
     if (filterDivisi !== "all" && (u.role !== "AM" || !matchesDivisi(u.divisi, filterDivisi))) return false;
+    if (filterWitel !== "all" && u.witel !== filterWitel) return false;
     if (search) {
       const q = search.toLowerCase();
       return u.nama.toLowerCase().includes(q)
         || (u.nik || "").includes(q)
         || (u.segmen || "").toLowerCase().includes(q)
-        || (u.email || "").toLowerCase().includes(q);
+        || (u.email || "").toLowerCase().includes(q)
+        || (u.witel || "").toLowerCase().includes(q);
     }
     return true;
   });
@@ -723,6 +742,27 @@ export default function ManajemenAmPage() {
             </select>
           </div>
 
+          {/* Witel filter — dropdown */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-semibold text-muted-foreground">Witel:</span>
+            <select
+              value={filterWitel}
+              onChange={e => setFilterWitel(e.target.value)}
+              className={cn(
+                "h-8 pl-3 pr-7 text-xs font-semibold rounded-lg border border-border bg-background",
+                "focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer",
+                "appearance-none",
+                filterWitel !== "all" && "border-primary/50 ring-1 ring-primary/20 text-primary"
+              )}
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}
+            >
+              <option value="all">Semua Witel</option>
+              {availableWitels.map(w => (
+                <option key={w} value={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Divisi filter — button group (only when showing AM) */}
           {filterRole !== "MANAGER" && filterRole !== "OFFICER" && (
             <div className="flex items-center gap-1">
@@ -777,6 +817,7 @@ export default function ManajemenAmPage() {
                 <th className="px-4 py-3 w-24">Role</th>
                 <th className="px-4 py-3 w-20">Tipe</th>
                 <th className="px-4 py-3 w-20">Divisi</th>
+                <th className="px-4 py-3 w-28">Witel</th>
                 <th className="px-4 py-3 w-28">Segmen</th>
                 <th className="px-4 py-3 w-32">Telegram</th>
                 <th className="px-4 py-3 w-32">Status</th>
@@ -787,30 +828,30 @@ export default function ManajemenAmPage() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="border-b border-border/50">
-                    {[...Array(8)].map((_, j) => (
+                    {[...Array(9)].map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-secondary rounded animate-pulse" style={{ width: `${[60, 160, 60, 40, 40, 70, 80, 90][j]}px` }} />
+                        <div className="h-4 bg-secondary rounded animate-pulse" style={{ width: `${[60, 160, 60, 40, 40, 80, 70, 80, 90][j]}px` }} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : error ? (
-                <tr><td colSpan={8} className="text-center py-12">
+                <tr><td colSpan={10} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <AlertTriangle className="w-6 h-6 text-destructive" />
                     <p className="text-sm">Gagal memuat data</p>
                   </div>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-16">
+                <tr><td colSpan={10} className="text-center py-16">
                   <div className="flex flex-col items-center gap-3 text-muted-foreground">
                     <Users className="w-8 h-8 opacity-30" />
                     <p className="text-sm font-medium">
-                      {search || filterDivisi !== "all" || filterRole !== "all"
+                      {search || filterDivisi !== "all" || filterRole !== "all" || filterWitel !== "all"
                         ? "Tidak ada anggota yang cocok dengan filter"
                         : "Belum ada data anggota"}
                     </p>
-                    {!search && filterDivisi === "all" && filterRole === "all" && (
+                    {!search && filterDivisi === "all" && filterRole === "all" && filterWitel === "all" && (
                       <Button size="sm" onClick={() => setShowAdd(true)}>
                         <Plus className="w-3.5 h-3.5" /> Tambah Anggota Pertama
                       </Button>
