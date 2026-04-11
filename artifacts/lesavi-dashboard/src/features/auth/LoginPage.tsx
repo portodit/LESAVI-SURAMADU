@@ -175,7 +175,7 @@ export default function Login() {
             {/* Footer */}
             <p className="mt-10 text-[11px] text-[#99a1af] text-center tracking-[-0.16px]"
               style={{ fontFamily: "'Inter', sans-serif" }}>
-              © 2026 Large Enterprise Service Area VI Witel Suramadu Telkom Indonesia
+              © 2026 Large Enterprise Service Area VI · Witel Suramadu · Telkom Indonesia
             </p>
           </div>
         </div>
