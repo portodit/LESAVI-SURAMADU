@@ -15,7 +15,7 @@ import { id as idLocale } from "date-fns/locale";
 
 const MONTHS_LABEL = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const MONTHS_FULL  = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-const TIPE_RANK = ["Ach CM","Ach YTD","Real Revenue"];
+const TIPE_RANK = ["Ach CM","Ach YTD"];
 const TIPE_REVENUE = ["Reguler","Sustain","Scaling","NGTMA"];
 
 function EmptyState() {
@@ -533,7 +533,6 @@ export default function PerformaVis() {
     // Sort by filterTipeRank
     result.sort((a, b) => {
       if (filterTipeRank === "Ach YTD") return b.ytdAch - a.ytdAch;
-      if (filterTipeRank === "Real Revenue") return b.cmReal - a.cmReal;
       return b.cmAch - a.cmAch;
     });
 
@@ -711,6 +710,8 @@ export default function PerformaVis() {
   const isDivisiFiltered = filterDivisi !== "LESA";
   const isAmFiltered = filterNamaAms.size > 0;
   const isRankFiltered = filterTipeRank !== "Ach CM";
+  const showCmCol  = filterTipeRank !== "Ach YTD";
+  const showYtdCol = filterTipeRank !== "Ach CM";
   const isRevenueFiltered = filterTipeRevenue !== "Reguler";
   const hasPerformaActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
 
@@ -942,14 +943,14 @@ export default function PerformaVis() {
                 <div ref={perfTableHeaderRef} onScroll={onPerfHeaderScroll}
                   className="overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sticky z-10 bg-card"
                   style={{ top: `${perfSectionHeaderH}px` }}>
-                  <table style={{ minWidth: "874px", width: "100%", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
+                  <table style={{ minWidth: showCmCol && showYtdCol ? "874px" : "798px", width: "100%", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
                     <colgroup>
                       <col style={{width:"28px"}}/>
                       <col style={{width:"220px"}}/>
                       <col style={{width:"165px"}}/>
                       <col style={{width:"165px"}}/>
-                      <col style={{width:"76px"}}/>
-                      <col style={{width:"76px"}}/>
+                      {showCmCol && <col style={{width:"76px"}}/>}
+                      {showYtdCol && <col style={{width:"76px"}}/>}
                       <col style={{width:"72px"}}/>
                       <col style={{width:"72px"}}/>
                     </colgroup>
@@ -957,13 +958,13 @@ export default function PerformaVis() {
                       <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
                         <th className="px-4 py-2.5 text-left"></th>
                         <th className="px-4 py-2.5 text-left">Nama AM</th>
-                        <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Target {filterTipeRevenue}</th>
-                        <th className={cn("px-4 py-2.5 text-right", filterTipeRank === "Real Revenue" && "underline underline-offset-2")}>Real {filterTipeRevenue}</th>
-                        <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach CM" && "underline underline-offset-2")}>CM %</th>
-                        <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach YTD" && "underline underline-offset-2")}>YTD %</th>
+                        <th className="px-4 py-2.5 text-right">Target {filterTipeRevenue}</th>
+                        <th className="px-4 py-2.5 text-right">Real {filterTipeRevenue}</th>
+                        {showCmCol && <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach CM" && "underline underline-offset-2")}>CM %</th>}
+                        {showYtdCol && <th className={cn("px-3 py-2.5 text-right", filterTipeRank === "Ach YTD" && "underline underline-offset-2")}>YTD %</th>}
                         <th className="px-3 py-2.5 text-center">Customer</th>
                         <th className="px-3 py-2.5 text-center underline underline-offset-2">
-                          {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK REV"}
+                          {filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK CM"}
                         </th>
                       </tr>
                     </thead>
@@ -971,20 +972,20 @@ export default function PerformaVis() {
                 </div>
                 {/* Scrollable body */}
                 <div ref={perfTableBodyRef} onScroll={onPerfBodyScroll}>
-                <table className="w-full text-left text-xs" style={{ minWidth: "874px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
+                <table className="w-full text-left text-xs" style={{ minWidth: showCmCol && showYtdCol ? "874px" : "798px", tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0 }}>
                     <colgroup>
                       <col style={{width:"28px"}}/>
                       <col style={{width:"220px"}}/>
                       <col style={{width:"165px"}}/>
                       <col style={{width:"165px"}}/>
-                      <col style={{width:"76px"}}/>
-                      <col style={{width:"76px"}}/>
+                      {showCmCol && <col style={{width:"76px"}}/>}
+                      {showYtdCol && <col style={{width:"76px"}}/>}
                       <col style={{width:"72px"}}/>
                       <col style={{width:"72px"}}/>
                     </colgroup>
                   <thead className="sr-only" aria-hidden>
                     <tr>
-                      <th className="w-6"></th><th>Nama AM</th><th>Target</th><th>Real</th><th>CM %</th><th>YTD %</th><th>Customer</th><th>Rank</th>
+                      <th className="w-6"></th><th>Nama AM</th><th>Target</th><th>Real</th>{showCmCol && <th>CM %</th>}{showYtdCol && <th>YTD %</th>}<th>Customer</th><th>Rank</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -1059,18 +1060,18 @@ export default function PerformaVis() {
                             </td>
                             <td className="px-4 py-2.5 text-right font-bold text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.ytdTarget)}</td>
                             <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums whitespace-nowrap" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{formatRupiahFull(row.ytdReal)}</td>
-                            <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
+                            {showCmCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
-                            </td>
-                            <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
+                            </td>}
+                            {showYtdCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>
                               {(row.ytdAch * 100).toFixed(1).replace(".", ",")}%
-                            </td>
+                            </td>}
                             <td className="px-3 py-2.5 text-center font-black text-foreground" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{visibleCustomers.length}</td>
                             <td className="px-3 py-2.5 text-center font-black text-foreground" style={isExpanded?{backgroundColor:"hsl(var(--card))"}:{}}>{row.displayRank}</td>
                           </tr>
                           {isExpanded && hasCustomers && (
                             <tr className="bg-rose-50/40 dark:bg-rose-950/10">
-                              <td colSpan={8} className="px-0 pb-3 pt-0">
+                              <td colSpan={showCmCol && showYtdCol ? 8 : 7} className="px-0 pb-3 pt-0">
                                 <div className="mx-4 mt-2 mb-1 border-2 border-rose-200 dark:border-rose-800/50 rounded-xl overflow-clip shadow-sm">
                                   <table className="w-full text-xs">
                                     <thead>
@@ -1167,14 +1168,14 @@ export default function PerformaVis() {
                       <td className="px-4 py-3 font-bold text-sm text-foreground">Total ({amTableData.length} AM)</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiah(totals.ytdTarget)}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiah(totals.ytdReal)}</td>
-                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
+                      {showCmCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                         <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                      </td>
-                      <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
+                      </td>}
+                      {showYtdCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
                         <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
                         <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                      </td>
+                      </td>}
                       <td className="px-3 py-2.5 text-center tabular-nums text-foreground font-semibold text-sm">
                         {filteredAmData.reduce((s, r) => s + (r.customers || []).length, 0)}
                       </td>
