@@ -33,7 +33,7 @@ function fmtNilaiCompact(n: number): string {
 }
 const MONTHS_LABEL = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const MONTHS_FULL  = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-const TIPE_RANK = ["Ach CM","Real Revenue","YTD"];
+const TIPE_RANK = ["Ach CM","Ach YTD"];
 const TIPE_REVENUE = ["Reguler","Sustain","Scaling","NGTMA"];
 
 function periodeLabel(ym: string) {
@@ -146,7 +146,7 @@ function TrophyCard({ title, subtitle, am, value, realValue, targetValue, colorS
 
 // ─── Performance Table Shared ColGroup (ensures header + body columns align) ───
 // widths sum to 800px; both tables use table-layout:fixed so these are respected exactly
-function PerfColGroup() {
+function PerfColGroup({showCm=true,showYtd=true}:{showCm?:boolean;showYtd?:boolean}) {
   return (
     <colgroup>
       <col style={{width:"28px"}}/>
@@ -154,8 +154,8 @@ function PerfColGroup() {
       <col style={{width:"68px"}}/>
       <col style={{width:"170px"}}/>
       <col style={{width:"170px"}}/>
-      <col style={{width:"78px"}}/>
-      <col style={{width:"78px"}}/>
+      {showCm && <col style={{width:"78px"}}/>}
+      {showYtd && <col style={{width:"78px"}}/>}
       <col style={{width:"78px"}}/>
     </colgroup>
   );
@@ -2748,6 +2748,8 @@ export default function EmbedPerforma() {
   const isDivisiFiltered = filterDivisi !== "LESA";
   const isAmFiltered = filterNamaAms.size > 0;
   const isRankFiltered = filterTipeRank !== "Ach CM";
+  const showCmCol  = filterTipeRank !== "Ach YTD";
+  const showYtdCol = filterTipeRank !== "Ach CM";
   const isRevenueFiltered = filterTipeRevenue !== "Reguler";
   const hasPerformActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
   const resetPerformFilters = useCallback(() => {
@@ -2845,8 +2847,7 @@ export default function EmbedPerforma() {
     );
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
     result.sort((a, b) => {
-      if (filterTipeRank === "Real Revenue") return b.cmReal - a.cmReal;
-      if (filterTipeRank === "YTD") return b.ytdAch - a.ytdAch;
+      if (filterTipeRank === "Ach YTD") return b.ytdAch - a.ytdAch;
       return b.cmAch - a.cmAch;
     });
     return result.map((r, i) => ({ ...r, displayRank: i + 1 }));
@@ -3342,18 +3343,18 @@ export default function EmbedPerforma() {
                     {/* ① Global header — outside scroll container so it never floats above the section toolbar */}
                     <div className="overflow-x-auto">
                     <table style={{...PERF_TB, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
-                      <PerfColGroup/>
+                      <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                       <thead ref={perfTheadCallbackRef}>
                         <tr className="bg-red-700 text-white">
                           <th className="px-3 py-3 text-left" style={{backgroundColor:"#B91C1C"}}></th>
                           <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Nama AM</th>
                           <th className="px-2 py-3 text-center text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Cust</th>
-                          <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>Target {filterTipeRevenue}</th>
-                          <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>Real {filterTipeRevenue}</th>
-                          <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach CM" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>CM %</th>
-                          <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "YTD" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>YTD %</th>
+                          <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Target {filterTipeRevenue}</th>
+                          <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Real {filterTipeRevenue}</th>
+                          {showCmCol && <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach CM" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>CM %</th>}
+                          {showYtdCol && <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach YTD" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>YTD %</th>}
                           <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-wide underline underline-offset-2" style={{backgroundColor:"#B91C1C"}}>
-                            {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "YTD" ? "RANK YTD" : "RANK REV"}
+                            {filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK CM"}
                           </th>
                         </tr>
                       </thead>
@@ -3362,8 +3363,8 @@ export default function EmbedPerforma() {
                     {/* ② Per-AM data + total — scroll container (header is outside, so sticky never escapes) */}
                     <div ref={perfTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 280px)"}}>
                     {filteredAmData.length === 0 ? (
-                      <table style={PERF_TB}><PerfColGroup/>
-                        <tbody><tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
+                      <table style={PERF_TB}><PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
+                        <tbody><tr><td colSpan={showCmCol && showYtdCol ? 8 : 7} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
                       </table>
                     ) : filteredAmData.map((row) => {
                       const isExpanded = effectiveExpandedRows.has(row.nik);
@@ -3392,12 +3393,12 @@ export default function EmbedPerforma() {
                           <td className="px-2 py-2.5 text-center font-black text-foreground text-xs" style={{backgroundColor:bgCard}}>{(row.customers || []).length}</td>
                           <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdTarget)}</td>
                           <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdReal)}</td>
-                          <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
+                          {showCmCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
-                          </td>
-                          <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={{backgroundColor:bgCard}}>
+                          </td>}
+                          {showYtdCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.ytdAch * 100).toFixed(1).replace(".", ",")}%
-                          </td>
+                          </td>}
                           <td className="px-3 py-2.5 text-center font-black text-foreground text-xs" style={{backgroundColor:bgCard}}>{row.displayRank}</td>
                         </>
                       );
@@ -3405,7 +3406,7 @@ export default function EmbedPerforma() {
                       if (!isExpanded) {
                         return (
                           <table key={row.nik} style={PERF_TB}>
-                            <PerfColGroup/>
+                            <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                             <tbody>
                               <tr className={cn("select-none transition-colors", hasCustomers ? "cursor-pointer hover:bg-secondary/30" : "")}
                                 style={{borderTop:"1px solid hsl(var(--border))"}}
@@ -3422,7 +3423,7 @@ export default function EmbedPerforma() {
                         <div key={row.nik}>
                           {/* Sticky AM name row — sticks at top:0 of the inner scroll container */}
                           <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:0, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
-                            <PerfColGroup/>
+                            <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                             <tbody>
                               <tr className="cursor-pointer select-none"
                                 style={{borderTop:`2px solid ${ring}`, borderLeft:`2px solid ${ring}`, borderRight:`2px solid ${ring}`, borderBottom:"none"}}
@@ -3572,7 +3573,7 @@ export default function EmbedPerforma() {
                     {/* ③ Global total row — di luar scroll container agar selalu terlihat */}
                     <div className="overflow-x-auto">
                     <table style={PERF_TB}>
-                      <PerfColGroup/>
+                      <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                       <tbody>
                         <tr className="bg-secondary/60" style={{borderTop:"2px solid hsl(var(--border))"}}>
                           <td className="px-2 py-3" />
@@ -3582,14 +3583,14 @@ export default function EmbedPerforma() {
                           </td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdTarget)}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdReal)}</td>
-                          <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
+                          {showCmCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                             <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                          </td>
-                          <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
+                          </td>}
+                          {showYtdCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
                             <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                          </td>
+                          </td>}
                           <td />
                         </tr>
                       </tbody>
