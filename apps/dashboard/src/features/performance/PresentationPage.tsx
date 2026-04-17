@@ -531,15 +531,17 @@ function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYear
   };
 
   const sortedSelected = [...filterYears].sort().reverse();
-  const displayText = filterYears.size===1
-    ? (filterMonths.size===0
-        ? `${primaryYear} (semua bulan)`
-        : filterMonths.size===1
-          ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${primaryYear}`
-          : `${primaryYear} · ${filterMonths.size} bulan`)
-    : filterYears.size===2
-      ? `${sortedSelected.join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
-      : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`;
+  const displayText = filterYears.size===0
+    ? "Semua Periode"
+    : filterYears.size===1
+      ? (filterMonths.size===0
+          ? `${primaryYear} (semua bulan)`
+          : filterMonths.size===1
+            ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${primaryYear}`
+            : `${primaryYear} · ${filterMonths.size} bulan`)
+      : filterYears.size===2
+        ? `${sortedSelected.join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
+        : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`;
 
   const badgeCount = filterYears.size > 1 && filterMonths.size > 0
     ? `${filterYears.size}yr·${filterMonths.size}mo`
@@ -941,14 +943,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
     if(filterTahunAnggaran.size > 0){
-      // TA filter aktif → fetch API berdasarkan TA yang dipilih
+      // TA filter aktif → fetch API berdasarkan Tahun Anggaran
       const taYears=[...filterTahunAnggaran].sort().reverse();
       if(taYears.length===1) p.set("tahun",taYears[0]);
       else p.set("tahun_list",taYears.join(","));
     } else {
-      // Tidak ada TA filter → pakai filterYears (periode picker)
-      p.set("tahun",filterYear);
-      if(filterYears.size>1) p.set("tahun_list",[...filterYears].sort().reverse().join(","));
+      // Report Date mode → gunakan rd_year (filter by reportDate.year, ignore TA)
+      if(filterYears.size===1) p.set("rd_year",filterYear);
+      // multi-year: fetch semua, filter client-side
     }
     return p.toString();
   },[importId,filterYear,filterYears,filterTahunAnggaran]);
@@ -969,22 +971,30 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
 
-  // Auto-select tahun anggaran terkini saat data pertama kali load
+  // Saat filterTahunAnggaran berubah:
+  // - TA aktif → reset period picker ke kosong (user pilih sendiri jika ingin mempersempit)
+  // - TA dihapus → kembali ke Report Date mode, set filterYears ke tahun terkini
   useEffect(()=>{
-    if(tahunAnggaranStringOptions.length>0 && filterTahunAnggaran.size===0){
-      setFilterTahunAnggaran(new Set([tahunAnggaranStringOptions[0]]));
+    if(filterTahunAnggaran.size > 0){
+      setFilterYears(new Set());     // TA mode: tidak ada restriksi period secara default
+      setFilterMonths(new Set());
+    } else {
+      if(yearOptions.length>0) setFilterYears(new Set([yearOptions[0].value]));
+      setFilterMonths(new Set());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[tahunAnggaranStringOptions.length]);
+  },[filterTahunAnggaran]);
 
-  // availableMonthsByYear: bulan per tahun yang punya data LOP untuk filterTahunAnggaran yang aktif
-  // null = tidak ada TA filter, semua bulan tersedia
+  // availableMonthsByYear: bulan per reportDate.year dari LOP yang lolos filter aktif.
+  // TA mode: hanya LOP dengan TA yang dipilih. Report Date mode: semua LOP dari API.
   const availableMonthsByYear = useMemo(()=>{
-    if(!data?.lops || filterTahunAnggaran.size===0) return null;
+    if(!data?.lops) return null;
     const result: Record<string,Set<string>> = {};
     (data.lops as any[]).forEach((l:any)=>{
-      const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
-      if(!ta || !filterTahunAnggaran.has(ta)) return;
+      if(filterTahunAnggaran.size > 0){
+        const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
+        if(!ta || !filterTahunAnggaran.has(ta)) return; // TA mode: skip non-matching
+      }
       const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
       const mo = l.reportDate ? String(l.reportDate).slice(5,7) : null;
       if(rdYear && mo){
@@ -992,7 +1002,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         result[rdYear].add(mo);
       }
     });
-    return result;
+    return Object.keys(result).length > 0 ? result : null;
   },[data,filterTahunAnggaran]);
 
   // merged year list for Periode dropdown — ketika TA filter aktif hanya tampilkan tahun yang punya data
@@ -1006,40 +1016,26 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return [...new Set([...fromSnap,...fromData])].sort().reverse();
   },[yearOptions,tahunAnggaranStringOptions,availableMonthsByYear]);
 
-  // Ketika filterTahunAnggaran berubah: auto-set filterYears ke semua tahun yang punya data TA tersebut
-  useEffect(()=>{
-    if(!availableMonthsByYear){
-      // TA filter dihapus → tidak ada yang perlu di-sync (biarkan filterYears seperti apa adanya)
-      return;
-    }
-    const taYears = Object.keys(availableMonthsByYear).sort().reverse();
-    if(taYears.length>0){
-      // Set filterYears ke SEMUA tahun yang punya data TA aktif (misal: 2025 + 2026)
-      setFilterYears(new Set(taYears));
-      // Reset filterMonths supaya tidak salah referensi
-      setFilterMonths(new Set());
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[availableMonthsByYear]);
-
   // ── Period filtering on frontend ─────────────────────────────────────────────
-  // Ketika filterTahunAnggaran aktif → filter langsung by TA (bypass filterYears).
-  // Ketika tidak ada TA filter → filterYears berlaku (tahunAnggaran primary, rdYear fallback).
-  // Month filter selalu berlaku via reportDate setelah LOP lolos year filter.
+  // TA mode aktif  → filter by tahunAnggaran, period picker = opsional mempersempit bulan/tahun reportDate.
+  // Report Date mode (default) → filter by reportDate.year ∈ filterYears (API sudah pre-filter rd_year).
+  // Month filter selalu berlaku via reportDate.month setelah LOP lolos year filter.
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
       const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
       const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
       if(filterTahunAnggaran.size > 0){
-        // TA filter aktif: gunakan tahunAnggaran langsung, bypass filterYears
+        // TA mode: filter by tahunAnggaran; period picker mempersempit ke tahun/bulan reportDate tertentu
         if(!ta || !filterTahunAnggaran.has(ta)) return false;
+        // Jika user memilih tahun tertentu di period picker, saring lebih lanjut by reportDate.year
+        if(filterYears.size > 0 && rdYear && !filterYears.has(rdYear)) return false;
       } else {
-        // Tidak ada TA filter: pakai filterYears (tahunAnggaran primary, rdYear fallback)
-        const matchesYear = ta != null ? filterYears.has(ta) : (rdYear != null && filterYears.has(rdYear));
-        if(!matchesYear) return false;
+        // Report Date mode: filter by reportDate.year jika ada tahun yang dipilih
+        // filterYears={} = tidak ada restriksi tahun (tampil semua)
+        if(filterYears.size > 0 && rdYear && !filterYears.has(rdYear)) return false;
       }
-      // Month filter: berlaku pada reportDate untuk mempersempit hasil
+      // Month filter: berlaku pada reportDate.month
       if(filterMonths.size > 0 && l.reportDate){
         const mo = String(l.reportDate).slice(5,7);
         if(!filterMonths.has(mo)) return false;

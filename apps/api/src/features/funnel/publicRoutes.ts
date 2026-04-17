@@ -31,7 +31,7 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
 router.get("/public/funnel", async (req, res): Promise<void> => {
   Object.entries(PUBLIC_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
-  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, durasi_filter } = req.query;
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, rd_year, durasi_filter } = req.query;
 
   const masterAms = await db.select().from(accountManagersTable);
   const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
@@ -67,9 +67,17 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       .filter((y): y is number => y != null && y > 2000)
   )].sort((a, b) => b - a);
 
-  {
-    // Filter by tahun — tahunAnggaran is the primary key; fall back to reportDate.year only when tahunAnggaran is null.
-    // This prevents LOPs from earlier TAs (e.g. 2024) with a 2026 reportDate from leaking into the 2026 filter.
+  if (rd_year) {
+    // Report Date mode — filter strictly by reportDate.year, tahunAnggaran is irrelevant
+    const rdYearNum = Number(rd_year);
+    if (rdYearNum > 2000) {
+      allLops = allLops.filter(l => {
+        const yr = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
+        return yr === rdYearNum;
+      });
+    }
+  } else {
+    // Tahun Anggaran mode — tahunAnggaran is the primary key; fall back to reportDate.year only when tahunAnggaran is null.
     const listStr = tahun_list as string | undefined;
     const yearNums: number[] = listStr
       ? listStr.split(",").map(Number).filter(n => n > 2000)
@@ -78,7 +86,6 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       allLops = allLops.filter(l => {
         const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
         const ta = l.tahunAnggaran ?? null;
-        // tahunAnggaran takes priority; only fall back to rdYear when ta is absent
         return yearNums.some(yr => ta === yr || (ta == null && rdYear === yr));
       });
     }
