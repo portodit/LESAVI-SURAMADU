@@ -676,7 +676,7 @@ export default function FunnelPage() {
     staleTime: 0,
   });
 
-  // Available years: union dari reportDate year DAN tahunAnggaran
+  // Available years: dari reportDate.year saja (Report Date mode = primary)
   const availableYears = useMemo(() => {
     if (!data) return [...filterYears];
     const yearSet = new Set<string>();
@@ -685,33 +685,28 @@ export default function FunnelPage() {
         const yr = String(l.reportDate).slice(0, 4);
         if (/^\d{4}$/.test(yr)) yearSet.add(yr);
       }
-      if (l.tahunAnggaran != null) {
-        yearSet.add(String(l.tahunAnggaran));
-      }
     }
     const sorted = [...yearSet].sort().reverse();
     return sorted.length > 0 ? sorted : [...filterYears];
   }, [data]);
 
   // Period-filtered LOPs:
-  //   tahunAnggaran = primary key untuk filter tahun.
-  //   Fallback ke reportDate.year hanya jika tahunAnggaran tidak ada (null).
-  //   Month filter: berlaku pada reportDate untuk mempersempit LOP yang sudah lolos year filter.
+  //   reportDate.year = primary key untuk filter tahun (Report Date mode adalah default).
+  //   Month filter: berlaku pada reportDate.month untuk mempersempit LOP yang sudah lolos year filter.
   const periodFilteredLops = useMemo(() => {
     if (!data) return [];
     const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
     return data.lops.filter(l => {
       const reportYear = l.reportDate ? String(l.reportDate).slice(0, 4) : null;
-      const taYear = l.tahunAnggaran != null ? String(l.tahunAnggaran) : null;
 
-      // tahunAnggaran takes priority; fall back to reportDate.year only when tahunAnggaran is absent
-      const matchesYear = taYear != null ? filterYears.has(taYear) : (reportYear != null && filterYears.has(reportYear));
+      // Report Date is the primary filter dimension
+      const matchesYear = reportYear != null && filterYears.has(reportYear);
       if (!matchesYear) return false;
 
-      // Month filter: apply to reportDate when months are selected
-      if (singleYear && filterMonths.size > 0 && reportYear && filterYears.has(reportYear)) {
-        const mo = String(l.reportDate!).slice(5, 7);
-        if (!filterMonths.has(mo)) return false;
+      // Month filter: apply to reportDate.month when months are selected
+      if (singleYear && filterMonths.size > 0) {
+        const mo = l.reportDate ? String(l.reportDate).slice(5, 7) : null;
+        if (!mo || !filterMonths.has(mo)) return false;
       }
       return true;
     });
