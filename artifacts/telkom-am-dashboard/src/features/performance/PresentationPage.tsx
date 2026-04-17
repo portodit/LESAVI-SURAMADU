@@ -1796,28 +1796,31 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {viewMode!=="split"&&<div className="bg-card border border-border rounded-xl shadow-sm">
         {/* Sticky toolbar — single scrollable row on mobile */}
         <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b border-border">
-          <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <h3 className="text-base font-display font-bold text-foreground whitespace-nowrap shrink-0">Detail Funnel per AM</h3>
-            <div className="w-px h-5 bg-border/60 shrink-0"/>
-            <FSCheckboxDropdown label="" options={amOptions} selected={filterAm} onChange={setFilterAm}
+          <div className="flex items-end gap-2 px-4 py-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <h3 className="text-base font-display font-bold text-foreground whitespace-nowrap shrink-0 pb-1">Detail Funnel per AM</h3>
+            <div className="w-px h-8 bg-border/60 shrink-0"/>
+            <FSCheckboxDropdown label="Filter AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
-            <FSSelectDropdown label="" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
+            <FSSelectDropdown label="Durasi Kontrak" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
               className="w-44 shrink-0"/>
-            <div className="w-px h-5 bg-border/60 shrink-0"/>
-            <FSPeriodeTreeDropdown label=""
+            <div className="w-px h-8 bg-border/60 shrink-0"/>
+            <FSPeriodeTreeDropdown label="Filter Report Date"
               filterYears={filterYears} filterMonths={filterMonths}
               availableYears={periodeAvailableYears}
               availableMonthsByYear={availableMonthsByYear}
               onChange={(ys,ms)=>{setFilterYears(ys);setFilterMonths(ms);setImportId(null);}}
               className="w-48 shrink-0"/>
-            <FSCheckboxDropdown label="" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
+            <FSCheckboxDropdown label="Tahun Anggaran" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
               placeholder="Pilih Tahun Anggaran" summaryLabel="T. Anggaran" className="w-48 shrink-0"/>
-            <div className="relative shrink-0">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
-              <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
-                className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
-              {search&&<button onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5"/></button>}
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">Pencarian Data LOP</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
+                <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
+                {search&&<button onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5"/></button>}
+              </div>
             </div>
             {filterAm.size>0&&(<button onClick={()=>setFilterAm(new Set())} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1.5 border border-border rounded-lg hover:border-destructive/30 transition-colors shrink-0 whitespace-nowrap"><X className="w-3 h-3"/> Reset AM</button>)}
             <button onClick={handleToggleAll} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap shrink-0">

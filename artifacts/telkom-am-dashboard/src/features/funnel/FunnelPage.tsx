@@ -1250,7 +1250,7 @@ export default function FunnelPage() {
             disabled={snapshotOptions.length === 0} className="w-36 shrink-0" />
 
           <div className="w-px h-9 bg-border self-end shrink-0" />
-          <PeriodeTreeDropdown label="Periode"
+          <PeriodeTreeDropdown label="Filter Report Date"
             filterYears={filterYears} filterMonths={filterMonths}
             availableYears={availableYears}
             onChange={(yrs, ms) => { setFilterYears(yrs); setFilterMonths(ms); }}
@@ -1379,10 +1379,10 @@ export default function FunnelPage() {
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Sales Funnel per Account Manager
           </h3>
-          <div className="flex items-center gap-2 flex-nowrap ml-auto">
-            <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
+          <div className="flex items-end gap-2 flex-nowrap ml-auto">
+            <CheckboxDropdown label="Filter AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
-            <SelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
+            <SelectDropdown label="Durasi Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
               options={[{ value: "all", label: "Semua Durasi" }, { value: "single_year", label: "Single Year (≤12 bln)" }, { value: "multi_year", label: "Multi Year (>12 bln)" }]}
               className="w-44 shrink-0" />
             {hasDetailFilter && (
@@ -1391,12 +1391,15 @@ export default function FunnelPage() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <input type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-80 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60" />
-              {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Pencarian Data LOP</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-80 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60" />
+                {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
+              </div>
             </div>
             <button onClick={handleToggleAll}
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap">
