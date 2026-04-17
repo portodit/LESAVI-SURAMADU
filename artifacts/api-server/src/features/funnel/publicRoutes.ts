@@ -68,7 +68,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   )].sort((a, b) => b - a);
 
   {
-    // Multi-year OR logic: tahun_list overrides tahun for LOP filtering
+    // Filter by tahun — tahunAnggaran is the primary key; fall back to reportDate.year only when tahunAnggaran is null.
+    // This prevents LOPs from earlier TAs (e.g. 2024) with a 2026 reportDate from leaking into the 2026 filter.
     const listStr = tahun_list as string | undefined;
     const yearNums: number[] = listStr
       ? listStr.split(",").map(Number).filter(n => n > 2000)
@@ -77,7 +78,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       allLops = allLops.filter(l => {
         const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
         const ta = l.tahunAnggaran ?? null;
-        return yearNums.some(yr => rdYear === yr || ta === yr);
+        // tahunAnggaran takes priority; only fall back to rdYear when ta is absent
+        return yearNums.some(yr => ta === yr || (ta == null && rdYear === yr));
       });
     }
   }

@@ -694,10 +694,9 @@ export default function FunnelPage() {
   }, [data]);
 
   // Period-filtered LOPs:
-  //   LOP lolos jika: reportDate.year cocok filterYears  (primary — patokan utama)
-  //                OR tahunAnggaran cocok filterYears     (secondary — tambahan)
-  //   Month filter: hanya berlaku untuk LOP yang masuk via reportDate.year (primary).
-  //   LOP yang masuk hanya via tahunAnggaran (reportDate di luar tahun filter) lolos semua bulan.
+  //   tahunAnggaran = primary key untuk filter tahun.
+  //   Fallback ke reportDate.year hanya jika tahunAnggaran tidak ada (null).
+  //   Month filter: berlaku pada reportDate untuk mempersempit LOP yang sudah lolos year filter.
   const periodFilteredLops = useMemo(() => {
     if (!data) return [];
     const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
@@ -705,13 +704,12 @@ export default function FunnelPage() {
       const reportYear = l.reportDate ? String(l.reportDate).slice(0, 4) : null;
       const taYear = l.tahunAnggaran != null ? String(l.tahunAnggaran) : null;
 
-      const matchesReportYear = reportYear !== null && filterYears.has(reportYear);
-      const matchesTa = taYear !== null && filterYears.has(taYear);
+      // tahunAnggaran takes priority; fall back to reportDate.year only when tahunAnggaran is absent
+      const matchesYear = taYear != null ? filterYears.has(taYear) : (reportYear != null && filterYears.has(reportYear));
+      if (!matchesYear) return false;
 
-      if (!matchesReportYear && !matchesTa) return false;
-
-      // Month filter hanya untuk yang masuk via reportDate.year
-      if (singleYear && filterMonths.size > 0 && matchesReportYear) {
+      // Month filter: apply to reportDate when months are selected
+      if (singleYear && filterMonths.size > 0 && reportYear && filterYears.has(reportYear)) {
         const mo = String(l.reportDate!).slice(5, 7);
         if (!filterMonths.has(mo)) return false;
       }

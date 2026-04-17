@@ -1008,16 +1008,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[availableMonthsByYear]);
 
-  // ── Period filtering on frontend — multi-year support ────────────────────────
+  // ── Period filtering on frontend — tahunAnggaran as primary key ──────────────
+  // tahunAnggaran = penentu utama LOP masuk ke tahun mana.
+  // Fallback ke reportDate.year hanya jika tahunAnggaran tidak ada.
+  // Month filter mempersempit via reportDate setelah LOP lolos year filter.
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
-      // Year filter: LOP lolos jika reportDate.year atau tahunAnggaran ada di filterYears
       const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
       const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
-      const matchesAnyYear = (rdYear && filterYears.has(rdYear)) || (ta && filterYears.has(ta));
-      if(!matchesAnyYear) return false;
-      // Month filter: hanya berlaku untuk LOP yang masuk via reportDate.year (primary match)
+      // tahunAnggaran takes priority; fall back to reportDate.year only when tahunAnggaran is absent
+      const matchesYear = ta != null ? filterYears.has(ta) : (rdYear != null && filterYears.has(rdYear));
+      if(!matchesYear) return false;
+      // Month filter: apply to reportDate to narrow down within matched LOPs
       if(filterMonths.size>0 && rdYear && filterYears.has(rdYear)){
         const mo=String(l.reportDate).slice(5,7);
         if(!filterMonths.has(mo)) return false;
