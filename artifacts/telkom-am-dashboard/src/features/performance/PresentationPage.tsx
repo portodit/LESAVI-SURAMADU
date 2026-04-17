@@ -472,11 +472,12 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
 
 const FS_MONTH_NUMS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
-function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYears, onChange, className }: {
+function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYears, availableMonthsByYear, onChange, className }: {
   label?: string;
   filterYears: Set<string>;
   filterMonths: Set<string>;
   availableYears: string[];
+  availableMonthsByYear?: Record<string, Set<string>> | null;
   onChange: (years: Set<string>, months: Set<string>) => void;
   className?: string;
 }) {
@@ -583,6 +584,8 @@ function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYear
                   {exp&&(
                     <div className="ml-6 pb-1">
                       {FS_MONTH_NUMS.map((mo,idx)=>{
+                        const availMonths = availableMonthsByYear?.[yr];
+                        if (availMonths && !availMonths.has(mo)) return null;
                         const checked=filterMonths.has(mo);
                         return (
                           <label key={mo} className="flex items-center gap-2 px-2 py-1 hover:bg-secondary/30 cursor-pointer rounded select-none">
@@ -594,6 +597,9 @@ function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYear
                           </label>
                         );
                       })}
+                      {availableMonthsByYear?.[yr] && availableMonthsByYear[yr].size === 0 && (
+                        <p className="px-2 py-1 text-xs text-muted-foreground italic">Tidak ada data</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -956,12 +962,57 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[data,yearOptions]);
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
-  // merged year list for Periode dropdown — snapshot years + all distinct tahun_anggaran from data
+
+  // availableMonthsByYear: bulan per tahun yang punya data LOP untuk filterTahunAnggaran yang aktif
+  // null = tidak ada TA filter, semua bulan tersedia
+  const availableMonthsByYear = useMemo(()=>{
+    if(!data?.lops || filterTahunAnggaran.size===0) return null;
+    const result: Record<string,Set<string>> = {};
+    (data.lops as any[]).forEach((l:any)=>{
+      const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
+      if(!ta || !filterTahunAnggaran.has(ta)) return;
+      const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
+      const mo = l.reportDate ? String(l.reportDate).slice(5,7) : null;
+      if(rdYear && mo){
+        if(!result[rdYear]) result[rdYear]=new Set();
+        result[rdYear].add(mo);
+      }
+    });
+    return result;
+  },[data,filterTahunAnggaran]);
+
+  // merged year list for Periode dropdown — ketika TA filter aktif hanya tampilkan tahun yang punya data
   const periodeAvailableYears = useMemo(()=>{
+    if(availableMonthsByYear){
+      const taYears = Object.keys(availableMonthsByYear).sort().reverse();
+      if(taYears.length>0) return taYears;
+    }
     const fromSnap = yearOptions.map(o=>o.value);
     const fromData = tahunAnggaranStringOptions;
     return [...new Set([...fromSnap,...fromData])].sort().reverse();
-  },[yearOptions,tahunAnggaranStringOptions]);
+  },[yearOptions,tahunAnggaranStringOptions,availableMonthsByYear]);
+
+  // Ketika availableMonthsByYear berubah (TA filter berubah): bersihkan filterMonths/filterYears yang tidak ada datanya
+  useEffect(()=>{
+    if(!availableMonthsByYear) return; // tidak ada TA filter aktif
+    // Update filterYears: hanya sertakan tahun yang punya data
+    const taYears = Object.keys(availableMonthsByYear);
+    if(taYears.length>0){
+      setFilterYears(prev=>{
+        const ok = new Set([...prev].filter(y=>taYears.includes(y)));
+        return ok.size>0 ? ok : new Set([taYears[0]]); // fallback ke tahun pertama
+      });
+    }
+    // Bersihkan filterMonths yang tidak tersedia di tahun yang baru
+    setFilterMonths(prev=>{
+      if(prev.size===0) return prev;
+      const ok = new Set([...prev].filter(mo=>
+        taYears.some(yr=>availableMonthsByYear[yr]?.has(mo))
+      ));
+      return ok.size!==prev.size ? ok : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[availableMonthsByYear]);
 
   // ── Period filtering on frontend — multi-year support ────────────────────────
   const periodFilteredLops = useMemo(()=>{
@@ -1749,6 +1800,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <FSPeriodeTreeDropdown label=""
               filterYears={filterYears} filterMonths={filterMonths}
               availableYears={periodeAvailableYears}
+              availableMonthsByYear={availableMonthsByYear}
               onChange={(ys,ms)=>{setFilterYears(ys);setFilterMonths(ms);setImportId(null);}}
               className="w-48 shrink-0"/>
             <FSCheckboxDropdown label="" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
