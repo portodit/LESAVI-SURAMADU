@@ -937,15 +937,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
-  // Auto-select tahun anggaran terkini saat data pertama kali load
-  useEffect(()=>{
-    if(tahunAnggaranStringOptions.length>0 && filterTahunAnggaran.size===0){
-      setFilterTahunAnggaran(new Set([tahunAnggaranStringOptions[0]]));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[tahunAnggaranStringOptions.length]);
-
-
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
@@ -977,6 +968,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   },[data,yearOptions]);
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
+
+  // Auto-select tahun anggaran terkini saat data pertama kali load
+  useEffect(()=>{
+    if(tahunAnggaranStringOptions.length>0 && filterTahunAnggaran.size===0){
+      setFilterTahunAnggaran(new Set([tahunAnggaranStringOptions[0]]));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[tahunAnggaranStringOptions.length]);
 
   // availableMonthsByYear: bulan per tahun yang punya data LOP untuk filterTahunAnggaran yang aktif
   // null = tidak ada TA filter, semua bulan tersedia
