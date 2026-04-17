@@ -937,15 +937,30 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
+  // Auto-select tahun anggaran terkini saat data pertama kali load
+  useEffect(()=>{
+    if(tahunAnggaranStringOptions.length>0 && filterTahunAnggaran.size===0){
+      setFilterTahunAnggaran(new Set([tahunAnggaranStringOptions[0]]));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[tahunAnggaranStringOptions.length]);
 
 
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
-    p.set("tahun",filterYear);
-    if(filterYears.size>1) p.set("tahun_list",[...filterYears].sort().reverse().join(","));
+    if(filterTahunAnggaran.size > 0){
+      // TA filter aktif → fetch API berdasarkan TA yang dipilih
+      const taYears=[...filterTahunAnggaran].sort().reverse();
+      if(taYears.length===1) p.set("tahun",taYears[0]);
+      else p.set("tahun_list",taYears.join(","));
+    } else {
+      // Tidak ada TA filter → pakai filterYears (periode picker)
+      p.set("tahun",filterYear);
+      if(filterYears.size>1) p.set("tahun_list",[...filterYears].sort().reverse().join(","));
+    }
     return p.toString();
-  },[importId,filterYear,filterYears]);
+  },[importId,filterYear,filterYears,filterTahunAnggaran]);
 
   const {data,isLoading} = useQuery<any>({
     queryKey:["funnel-data-pres",funnelParams],
@@ -1008,26 +1023,31 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[availableMonthsByYear]);
 
-  // ── Period filtering on frontend — tahunAnggaran as primary key ──────────────
-  // tahunAnggaran = penentu utama LOP masuk ke tahun mana.
-  // Fallback ke reportDate.year hanya jika tahunAnggaran tidak ada.
-  // Month filter mempersempit via reportDate setelah LOP lolos year filter.
+  // ── Period filtering on frontend ─────────────────────────────────────────────
+  // Ketika filterTahunAnggaran aktif → filter langsung by TA (bypass filterYears).
+  // Ketika tidak ada TA filter → filterYears berlaku (tahunAnggaran primary, rdYear fallback).
+  // Month filter selalu berlaku via reportDate setelah LOP lolos year filter.
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
       const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
       const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
-      // tahunAnggaran takes priority; fall back to reportDate.year only when tahunAnggaran is absent
-      const matchesYear = ta != null ? filterYears.has(ta) : (rdYear != null && filterYears.has(rdYear));
-      if(!matchesYear) return false;
-      // Month filter: apply to reportDate to narrow down within matched LOPs
-      if(filterMonths.size>0 && rdYear && filterYears.has(rdYear)){
-        const mo=String(l.reportDate).slice(5,7);
+      if(filterTahunAnggaran.size > 0){
+        // TA filter aktif: gunakan tahunAnggaran langsung, bypass filterYears
+        if(!ta || !filterTahunAnggaran.has(ta)) return false;
+      } else {
+        // Tidak ada TA filter: pakai filterYears (tahunAnggaran primary, rdYear fallback)
+        const matchesYear = ta != null ? filterYears.has(ta) : (rdYear != null && filterYears.has(rdYear));
+        if(!matchesYear) return false;
+      }
+      // Month filter: berlaku pada reportDate untuk mempersempit hasil
+      if(filterMonths.size > 0 && l.reportDate){
+        const mo = String(l.reportDate).slice(5,7);
         if(!filterMonths.has(mo)) return false;
       }
       return true;
     });
-  },[data,filterYears,filterMonths]);
+  },[data,filterYears,filterMonths,filterTahunAnggaran]);
 
   const periodStats = useMemo(()=>{
     const lops=periodFilteredLops;
@@ -1088,10 +1108,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(filterStatus.size>0&&(!l.statusF||!filterStatus.has(l.statusF))) return false;
       if(filterKontrak.size>0&&(!l.kategoriKontrak||!filterKontrak.has(l.kategoriKontrak))) return false;
       if(filterDurasi==="multi_year"&&!(l.monthSubs!=null&&l.monthSubs>12)) return false;
-      if(filterTahunAnggaran.size>0){
-        const ta=l.tahunAnggaran??(l.reportDate?parseInt(String(l.reportDate).slice(0,4),10)||null:null);
-        if(!filterTahunAnggaran.has(String(ta))) return false;
-      }
       return true;
     });
     if(filterDurasi==="all") return base;
@@ -1101,7 +1117,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(!m||m<12) return l; // < 12 bulan dianggap 1 tahun → nilai penuh
       return {...l, nilaiProyek: Math.round(l.nilaiProyek*12/m)};
     });
-  },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,filterTahunAnggaran,search]);
+  },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
@@ -1694,8 +1710,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <button onClick={() => setFilterTahunAnggaran(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
-        {(filterStatus.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all" || filterMonths.size > 0 || filterAm.size > 0 || filterTahunAnggaran.size > 0) && (
-          <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterDurasi("all"); setFilterMonths(new Set()); setFilterAm(new Set()); setFilterTahunAnggaran(new Set()); }}
+        {(filterStatus.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all" || filterMonths.size > 0 || filterAm.size > 0) && (
+          <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterDurasi("all"); setFilterMonths(new Set()); setFilterAm(new Set()); }}
             className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <X className="w-3 h-3"/> Reset filter
           </button>
