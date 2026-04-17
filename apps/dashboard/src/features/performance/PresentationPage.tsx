@@ -992,25 +992,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return [...new Set([...fromSnap,...fromData])].sort().reverse();
   },[yearOptions,tahunAnggaranStringOptions,availableMonthsByYear]);
 
-  // Ketika availableMonthsByYear berubah (TA filter berubah): bersihkan filterMonths/filterYears yang tidak ada datanya
+  // Ketika filterTahunAnggaran berubah: auto-set filterYears ke semua tahun yang punya data TA tersebut
   useEffect(()=>{
-    if(!availableMonthsByYear) return; // tidak ada TA filter aktif
-    // Update filterYears: hanya sertakan tahun yang punya data
-    const taYears = Object.keys(availableMonthsByYear);
-    if(taYears.length>0){
-      setFilterYears(prev=>{
-        const ok = new Set([...prev].filter(y=>taYears.includes(y)));
-        return ok.size>0 ? ok : new Set([taYears[0]]); // fallback ke tahun pertama
-      });
+    if(!availableMonthsByYear){
+      // TA filter dihapus → tidak ada yang perlu di-sync (biarkan filterYears seperti apa adanya)
+      return;
     }
-    // Bersihkan filterMonths yang tidak tersedia di tahun yang baru
-    setFilterMonths(prev=>{
-      if(prev.size===0) return prev;
-      const ok = new Set([...prev].filter(mo=>
-        taYears.some(yr=>availableMonthsByYear[yr]?.has(mo))
-      ));
-      return ok.size!==prev.size ? ok : prev;
-    });
+    const taYears = Object.keys(availableMonthsByYear).sort().reverse();
+    if(taYears.length>0){
+      // Set filterYears ke SEMUA tahun yang punya data TA aktif (misal: 2025 + 2026)
+      setFilterYears(new Set(taYears));
+      // Reset filterMonths supaya tidak salah referensi
+      setFilterMonths(new Set());
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[availableMonthsByYear]);
 
