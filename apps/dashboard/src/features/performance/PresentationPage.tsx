@@ -33,7 +33,7 @@ function fmtNilaiCompact(n: number): string {
 }
 const MONTHS_LABEL = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const MONTHS_FULL  = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-const TIPE_RANK = ["Ach CM","Real Revenue","YTD"];
+const TIPE_RANK = ["Ach CM","Ach YTD"];
 const TIPE_REVENUE = ["Reguler","Sustain","Scaling","NGTMA"];
 
 function periodeLabel(ym: string) {
@@ -146,7 +146,7 @@ function TrophyCard({ title, subtitle, am, value, realValue, targetValue, colorS
 
 // ─── Performance Table Shared ColGroup (ensures header + body columns align) ───
 // widths sum to 800px; both tables use table-layout:fixed so these are respected exactly
-function PerfColGroup() {
+function PerfColGroup({showCm=true,showYtd=true}:{showCm?:boolean;showYtd?:boolean}) {
   return (
     <colgroup>
       <col style={{width:"28px"}}/>
@@ -154,8 +154,8 @@ function PerfColGroup() {
       <col style={{width:"68px"}}/>
       <col style={{width:"170px"}}/>
       <col style={{width:"170px"}}/>
-      <col style={{width:"78px"}}/>
-      <col style={{width:"78px"}}/>
+      {showCm && <col style={{width:"78px"}}/>}
+      {showYtd && <col style={{width:"78px"}}/>}
       <col style={{width:"78px"}}/>
     </colgroup>
   );
@@ -472,17 +472,19 @@ function FSCheckboxDropdown({ label, options, selected, onChange, placeholder, l
 
 const FS_MONTH_NUMS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
-function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears, onChange, className }: {
+function FSPeriodeTreeDropdown({ label, filterYears, filterMonths, availableYears, availableMonthsByYear, onChange, className }: {
   label?: string;
-  filterYear: string;
+  filterYears: Set<string>;
   filterMonths: Set<string>;
   availableYears: string[];
-  onChange: (year: string, months: Set<string>) => void;
+  availableMonthsByYear?: Record<string, Set<string>> | null;
+  onChange: (years: Set<string>, months: Set<string>) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([filterYear]));
+  const primaryYear = [...filterYears].sort().reverse()[0] || "";
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([primaryYear]));
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -497,10 +499,11 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
   },[]);
 
   useEffect(()=>{
-    setExpandedYears(prev=>new Set([...prev,filterYear]));
-  },[filterYear]);
+    const primary=[...filterYears].sort().reverse()[0];
+    if(primary) setExpandedYears(prev=>new Set([...prev,primary]));
+  },[filterYears]);
 
-  const years = availableYears.length > 0 ? availableYears : [filterYear];
+  const years = availableYears.length > 0 ? availableYears : [...filterYears].sort().reverse();
 
   const toggle = () => {
     if(triggerRef.current){
@@ -515,18 +518,34 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
     setExpandedYears(prev=>{ const n=new Set(prev); n.has(yr)?n.delete(yr):n.add(yr); return n; });
   };
 
-  const selectYear = (yr:string) => onChange(yr, new Set());
-
-  const toggleMonth = (yr:string, mo:string) => {
-    if(yr!==filterYear){ onChange(yr, new Set([mo])); return; }
-    const n=new Set(filterMonths); n.has(mo)?n.delete(mo):n.add(mo); onChange(yr,n);
+  const toggleYear = (yr:string) => {
+    const n=new Set(filterYears);
+    if(n.has(yr)){ if(n.size>1) n.delete(yr); }
+    else n.add(yr);
+    onChange(n, filterMonths);
   };
 
-  const displayText = filterMonths.size===0
-    ? `${filterYear} (semua bulan)`
-    : filterMonths.size===1
-    ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${filterYear}`
-    : `${filterYear} · ${filterMonths.size} bulan`;
+  const toggleMonth = (mo:string) => {
+    const n=new Set(filterMonths); n.has(mo)?n.delete(mo):n.add(mo);
+    onChange(filterYears, n);
+  };
+
+  const sortedSelected = [...filterYears].sort().reverse();
+  const displayText = filterYears.size===0
+    ? "Semua Periode"
+    : filterYears.size===1
+      ? (filterMonths.size===0
+          ? `${primaryYear} (semua bulan)`
+          : filterMonths.size===1
+            ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]||[...filterMonths][0]} ${primaryYear}`
+            : `${primaryYear} · ${filterMonths.size} bulan`)
+      : filterYears.size===2
+        ? `${sortedSelected.join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
+        : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`;
+
+  const badgeCount = filterYears.size > 1 && filterMonths.size > 0
+    ? `${filterYears.size}yr·${filterMonths.size}mo`
+    : filterYears.size > 1 ? `${filterYears.size}yr` : filterMonths.size > 0 ? String(filterMonths.size) : null;
 
   return (
     <div className={cn("flex flex-col gap-1",className)} ref={triggerRef}>
@@ -534,23 +553,21 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
       <button type="button" onClick={toggle}
         className={cn("h-9 px-3 bg-secondary/50 border border-border rounded-lg text-sm flex items-center gap-1.5 w-full transition-colors text-left",open&&"border-primary/50 ring-2 ring-primary/20")}>
         <span className="flex-1 truncate font-medium text-foreground">{displayText}</span>
-        {filterMonths.size>0&&(
-          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{filterMonths.size}</span>
+        {badgeCount&&(
+          <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0">{badgeCount}</span>
         )}
         <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform",open&&"rotate-180")}/>
       </button>
       {open&&createPortal(
         <div ref={dropRef} style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:9999 }}
-          className="bg-card border border-border rounded-xl shadow-xl w-52 overflow-hidden">
+          className="bg-card border border-border rounded-xl shadow-xl w-56 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary/30">
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Periode</span>
-            <button onClick={()=>onChange(filterYear,new Set())} className="text-[11px] text-primary font-semibold hover:underline">Reset</button>
+            <button onClick={()=>onChange(new Set([years[0]||primaryYear]),new Set())} className="text-[11px] text-primary font-semibold hover:underline">Reset</button>
           </div>
           <div className="max-h-64 overflow-y-auto py-1">
             {years.map(yr=>{
-              const isActive=yr===filterYear;
-              const allSel=isActive&&filterMonths.size===0;
-              const someSel=isActive&&filterMonths.size>0;
+              const isSelected=filterYears.has(yr);
               const exp=expandedYears.has(yr);
               return (
                 <div key={yr}>
@@ -560,20 +577,21 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
                       <ChevronRight className={cn("w-3 h-3 transition-transform",exp&&"rotate-90")}/>
                     </button>
                     <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
-                      <input type="checkbox" checked={allSel}
-                        ref={el=>{if(el)el.indeterminate=someSel;}}
-                        onChange={()=>selectYear(yr)}
+                      <input type="checkbox" checked={isSelected}
+                        onChange={()=>toggleYear(yr)}
                         className="w-3.5 h-3.5 accent-primary cursor-pointer"/>
-                      <span className={cn("text-sm font-semibold",isActive?"text-primary":"text-foreground")}>{yr}</span>
+                      <span className={cn("text-sm font-semibold",isSelected?"text-primary":"text-foreground")}>{yr}</span>
                     </label>
                   </div>
                   {exp&&(
                     <div className="ml-6 pb-1">
                       {FS_MONTH_NUMS.map((mo,idx)=>{
-                        const checked=isActive&&filterMonths.has(mo);
+                        const availMonths = availableMonthsByYear?.[yr];
+                        if (availMonths && !availMonths.has(mo)) return null;
+                        const checked=filterMonths.has(mo);
                         return (
                           <label key={mo} className="flex items-center gap-2 px-2 py-1 hover:bg-secondary/30 cursor-pointer rounded select-none">
-                            <input type="checkbox" checked={checked} onChange={()=>toggleMonth(yr,mo)}
+                            <input type="checkbox" checked={checked} onChange={()=>toggleMonth(mo)}
                               className="w-3.5 h-3.5 accent-primary cursor-pointer"/>
                             <span className={cn("text-sm",checked?"text-foreground font-medium":"text-muted-foreground")}>
                               {FS_MONTHS_ID[idx+1]}
@@ -581,6 +599,9 @@ function FSPeriodeTreeDropdown({ label, filterYear, filterMonths, availableYears
                           </label>
                         );
                       })}
+                      {availableMonthsByYear?.[yr] && availableMonthsByYear[yr].size === 0 && (
+                        <p className="px-2 py-1 text-xs text-muted-foreground italic">Tidak ada data</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -722,8 +743,8 @@ function FSFaseBarChart({ data, compact }: { data:any; compact?: boolean }) {
         const tooltip=`${phase}: ${d.count} proyek · ${fmtCompactFS(d.nilai)}`;
         return (
           <div key={phase} className="flex items-center gap-2 group" title={tooltip}>
-            <div className={compact?"w-5 shrink-0":"w-6 shrink-0"}>
-              <span className={compact?"text-[10px] font-black font-mono":"text-xs font-black font-mono"} style={{color:c.text}}>{phase}</span>
+            <div className={compact?"w-5 shrink-0":"w-7 shrink-0"}>
+              <span className={compact?"text-[10px] font-black":"text-sm font-black"} style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
             </div>
             <div className={`flex-1 bg-secondary rounded overflow-hidden relative ${compact?"h-4":"h-5"}`}>
               <div className="h-full rounded transition-all duration-500" style={{width:`${Math.max(pct,2)}%`,backgroundColor:c.bar}}/>
@@ -731,8 +752,8 @@ function FSFaseBarChart({ data, compact }: { data:any; compact?: boolean }) {
                 <span className="text-[10px] font-black text-white drop-shadow-sm whitespace-nowrap">{d.count} proyek · {fmtCompactFS(d.nilai)}</span>
               </div>
             </div>
-            <span className={compact?"text-[10px] font-black font-mono w-14 shrink-0 text-right":"text-xs font-black font-mono w-14 shrink-0 text-right"} style={{color:c.text}}>
-              {d.count} <span className="font-normal text-muted-foreground text-[9px]">LOP</span>
+            <span className={compact?"text-[10px] font-black w-14 shrink-0 text-right":"text-sm font-black w-16 shrink-0 text-right"} style={{color:c.text,fontFamily:"Inter,sans-serif"}}>
+              {d.count} <span className="font-semibold text-muted-foreground text-[10px]">LOP</span>
             </span>
           </div>
         );
@@ -763,6 +784,7 @@ function FSMiniSparkline({ color, fill }: { color: string; fill: string }) {
   );
 }
 
+type CRDivisiStat = { f5: number; denom: number; cr: number | null };
 function FSKpiGrid({ data }: { data:any }) {
   if(!data) return null;
   const kpis = [
@@ -789,14 +811,85 @@ function FSKpiGrid({ data }: { data:any }) {
   );
 }
 
+function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:number|null; divisi:"DPS"|"DSS" }) {
+  const pct = cr !== null ? cr * 100 : 0;
+  const clamp = Math.min(Math.max(pct, 0), 100);
+  const r=54,cx=80,cy=70;
+  const startAngle=-210,endAngle=30,totalDeg=endAngle-startAngle;
+  const fillDeg=(clamp/100)*totalDeg;
+  const thresholdDeg=(70/100)*totalDeg;
+  const toRad=(d:number)=>(d*Math.PI)/180;
+  const arc=(start:number,end:number,radius:number)=>{
+    const s=toRad(start),e=toRad(end);
+    const x1=cx+radius*Math.cos(s),y1=cy+radius*Math.sin(s);
+    const x2=cx+radius*Math.cos(e),y2=cy+radius*Math.sin(e);
+    const large=end-start>180?1:0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
+  };
+  const isGood = cr !== null && cr >= 0.7;
+  const color = cr===null ? "#9ca3af" : isGood ? "#10b981" : "#CC0000";
+  const startX=cx+r*Math.cos(toRad(startAngle));
+  const startY=cy+r*Math.sin(toRad(startAngle));
+  const endX=cx+r*Math.cos(toRad(endAngle));
+  const endY=cy+r*Math.sin(toRad(endAngle));
+  const thAngle=startAngle+thresholdDeg;
+  const thInnerX=cx+(r-14)*Math.cos(toRad(thAngle));
+  const thInnerY=cy+(r-14)*Math.sin(toRad(thAngle));
+  const thOuterX=cx+(r+5)*Math.cos(toRad(thAngle));
+  const thOuterY=cy+(r+5)*Math.sin(toRad(thAngle));
+  const divColor = divisi==="DPS" ? "#3b82f6" : "#10b981";
+  return (
+    <div className="flex items-center gap-3">
+      <div className="shrink-0">
+        <svg width="145" height="105" viewBox="0 0 160 115">
+          <path d={arc(startAngle,endAngle,r)} fill="none" stroke="#e5e7eb" strokeWidth="18" strokeLinecap="round"/>
+          {cr!==null&&clamp>0&&<path d={arc(startAngle,startAngle+fillDeg,r)} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round"/>}
+          <line x1={thInnerX} y1={thInnerY} x2={thOuterX} y2={thOuterY} stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"/>
+          {cr!==null?(
+            <>
+              <text x={cx} y={cy-4} textAnchor="middle" fontSize="22" fontWeight="800" fill={color} fontFamily="ui-monospace,monospace">{(cr*100).toFixed(1)}%</text>
+              <text x={cx} y={cy+11} textAnchor="middle" fontSize="8.5" fill="#6b7280">CONV. RATE</text>
+            </>
+          ):(
+            <text x={cx} y={cy+3} textAnchor="middle" fontSize="10" fill="#9ca3af">No data</text>
+          )}
+          <text x={startX} y={startY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">0%</text>
+          <text x={endX} y={endY+13} textAnchor="middle" fontSize="8" fill="#9ca3af">100%</text>
+          <text x={cx+(r+9)*Math.cos(toRad(thAngle))} y={cy+(r+9)*Math.sin(toRad(thAngle))-8} textAnchor="middle" fontSize="7" fill="#f59e0b" fontWeight="700">70%</text>
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0 space-y-1" style={{fontSize:"clamp(9px,1.05vw,12px)"}}>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">F5 (Closed Won)</span>
+          <span className="font-bold tabular-nums truncate text-right ml-1" style={{color:divColor}}>{fmtRupiahFS(f5)}</span>
+        </div>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">F3 + F4 + F5</span>
+          <span className="tabular-nums text-foreground">{fmtRupiahFS(denom)}</span>
+        </div>
+        <div className="flex justify-between items-baseline gap-1 pt-0.5 border-t border-border">
+          <span className="text-muted-foreground whitespace-nowrap shrink-0">Threshold</span>
+          <span className="font-bold text-amber-500">≥ 70%</span>
+        </div>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className={cn("font-bold whitespace-nowrap shrink-0",isGood?"text-emerald-600":"text-red-600")}>{isGood?"Tercapai":"Belum Tercapai"}</span>
+          <span className={cn("font-black tabular-nums",isGood?"text-emerald-600":"text-red-600")}>{cr!==null?`${(cr*100).toFixed(1)}%`:"—"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void }) {
-  const [filterYear,setFilterYear] = useState("2026");
+  const [filterYears,setFilterYears] = useState<Set<string>>(new Set(["2026"]));
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
+  const filterYear = useMemo(()=>[...filterYears].sort().reverse()[0]||"2026",[filterYears]);
   const [importId,setImportId] = useState<number|null>(null);
   const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
   const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set());
   const [filterDurasi,setFilterDurasi] = useState<"all"|"single_year"|"multi_year">("all");
+  const [filterTahunAnggaran,setFilterTahunAnggaran] = useState<Set<string>>(new Set());
   const [filterAm,setFilterAm] = useState<Set<string>>(new Set());
   const [search,setSearch] = useState("");
   const [expandedAm,setExpandedAm] = useState<Record<string,boolean>>({});
@@ -813,6 +906,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     staleTime:60_000,
   });
 
+  // yearOptions: from import snapshot periods (must be before useEffect that uses it)
   const yearOptions = useMemo(()=>{
     const snapsArr = Array.isArray(snapshots) ? snapshots : [];
     const years=[...new Set(snapsArr.map((s:any)=>s.period.slice(0,4)))].sort().reverse() as string[];
@@ -843,36 +937,112 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   ,[snapshots,filterYear,filterMonths]);
 
-  useEffect(()=>{if(yearOptions.length>0)setFilterYear(yearOptions[0].value);},[yearOptions.length]);
+  useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
-
-
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
     if(importId) p.set("import_id",String(importId));
-    p.set("tahun",filterYear);
+    if(filterTahunAnggaran.size > 0){
+      // TA filter aktif → fetch API berdasarkan Tahun Anggaran
+      const taYears=[...filterTahunAnggaran].sort().reverse();
+      if(taYears.length===1) p.set("tahun",taYears[0]);
+      else p.set("tahun_list",taYears.join(","));
+    } else {
+      // Report Date mode → gunakan rd_year (filter by reportDate.year, ignore TA)
+      if(filterYears.size===1) p.set("rd_year",filterYear);
+      // multi-year: fetch semua, filter client-side
+    }
     return p.toString();
-  },[importId,filterYear]);
+  },[importId,filterYear,filterYears,filterTahunAnggaran]);
 
   const {data,isLoading} = useQuery<any>({
     queryKey:["funnel-data-pres",funnelParams],
     queryFn:async()=>{const r=await fetch(`${BASE_PATH}/api/public/funnel?${funnelParams}`);if(!r.ok)return null;return r.json();},
-    enabled:importId!==null||(Array.isArray(snapshots)&&snapshots.length===0),
+    enabled:importId!==null||(Array.isArray(snapshots)&&(snapshots.length===0||snapshotOptions.length===0)),
     staleTime:0,
   });
 
-  // ── Period filtering on frontend (mirrors FunnelPage logic) ─────────────────
+  // tahunAnggaranOptions: for the table-level Tahun Anggaran dropdown — uses real LOP data from API
+  const tahunAnggaranOptions = useMemo(()=>{
+    const taYears = Array.isArray(data?.availableTahunAnggaran) ? (data.availableTahunAnggaran as number[]) : [];
+    if(taYears.length>0) return taYears.map(y=>({value:String(y),label:String(y)}));
+    return yearOptions; // fallback to snapshot years
+  },[data,yearOptions]);
+  // string array for FSCheckboxDropdown
+  const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
+
+  // Saat filterTahunAnggaran berubah:
+  // - TA aktif → reset period picker ke kosong (user pilih sendiri jika ingin mempersempit)
+  // - TA dihapus → kembali ke Report Date mode, set filterYears ke tahun terkini
+  useEffect(()=>{
+    if(filterTahunAnggaran.size > 0){
+      setFilterYears(new Set());     // TA mode: tidak ada restriksi period secara default
+      setFilterMonths(new Set());
+    } else {
+      if(yearOptions.length>0) setFilterYears(new Set([yearOptions[0].value]));
+      setFilterMonths(new Set());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[filterTahunAnggaran]);
+
+  // availableMonthsByYear: bulan per reportDate.year dari LOP yang lolos filter aktif.
+  // TA mode: hanya LOP dengan TA yang dipilih. Report Date mode: semua LOP dari API.
+  const availableMonthsByYear = useMemo(()=>{
+    if(!data?.lops) return null;
+    const result: Record<string,Set<string>> = {};
+    (data.lops as any[]).forEach((l:any)=>{
+      if(filterTahunAnggaran.size > 0){
+        const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
+        if(!ta || !filterTahunAnggaran.has(ta)) return; // TA mode: skip non-matching
+      }
+      const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
+      const mo = l.reportDate ? String(l.reportDate).slice(5,7) : null;
+      if(rdYear && mo){
+        if(!result[rdYear]) result[rdYear]=new Set();
+        result[rdYear].add(mo);
+      }
+    });
+    return Object.keys(result).length > 0 ? result : null;
+  },[data,filterTahunAnggaran]);
+
+  // merged year list for Periode dropdown — ketika TA filter aktif hanya tampilkan tahun yang punya data
+  const periodeAvailableYears = useMemo(()=>{
+    if(availableMonthsByYear){
+      const taYears = Object.keys(availableMonthsByYear).sort().reverse();
+      if(taYears.length>0) return taYears;
+    }
+    const fromSnap = yearOptions.map(o=>o.value);
+    const fromData = tahunAnggaranStringOptions;
+    return [...new Set([...fromSnap,...fromData])].sort().reverse();
+  },[yearOptions,tahunAnggaranStringOptions,availableMonthsByYear]);
+
+  // ── Period filtering on frontend ─────────────────────────────────────────────
+  // TA mode aktif  → filter by tahunAnggaran, period picker = opsional mempersempit bulan/tahun reportDate.
+  // Report Date mode (default) → filter by reportDate.year ∈ filterYears (API sudah pre-filter rd_year).
+  // Month filter selalu berlaku via reportDate.month setelah LOP lolos year filter.
   const periodFilteredLops = useMemo(()=>{
     if(!data) return [];
     return (data.lops||[]).filter((l:any)=>{
-      if(!l.reportDate) return false;
-      const rd=String(l.reportDate).slice(0,10);
-      const yr=rd.slice(0,4);
-      if(yr!==filterYear) return false;
-      if(filterMonths.size>0&&!filterMonths.has(rd.slice(5,7))) return false;
+      const rdYear = l.reportDate ? String(l.reportDate).slice(0,4) : null;
+      const ta = l.tahunAnggaran ? String(l.tahunAnggaran) : null;
+      if(filterTahunAnggaran.size > 0){
+        // TA mode: filter by tahunAnggaran; period picker mempersempit ke tahun/bulan reportDate tertentu
+        if(!ta || !filterTahunAnggaran.has(ta)) return false;
+        // Jika user memilih tahun tertentu di period picker, saring lebih lanjut by reportDate.year
+        if(filterYears.size > 0 && rdYear && !filterYears.has(rdYear)) return false;
+      } else {
+        // Report Date mode: filter by reportDate.year jika ada tahun yang dipilih
+        // filterYears={} = tidak ada restriksi tahun (tampil semua)
+        if(filterYears.size > 0 && rdYear && !filterYears.has(rdYear)) return false;
+      }
+      // Month filter: berlaku pada reportDate.month
+      if(filterMonths.size > 0 && l.reportDate){
+        const mo = String(l.reportDate).slice(5,7);
+        if(!filterMonths.has(mo)) return false;
+      }
       return true;
     });
-  },[data,filterYear,filterMonths]);
+  },[data,filterYears,filterMonths,filterTahunAnggaran]);
 
   const periodStats = useMemo(()=>{
     const lops=periodFilteredLops;
@@ -892,6 +1062,18 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     };
   },[periodFilteredLops]);
 
+  const crStats = useMemo(()=>{
+    const compute = (divisi: string): CRDivisiStat => {
+      const lops = periodFilteredLops.filter((l:any)=>l.divisi===divisi);
+      const f5   = lops.filter((l:any)=>l.statusF==="F5").reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const f3   = lops.filter((l:any)=>l.statusF==="F3").reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const f4   = lops.filter((l:any)=>l.statusF==="F4").reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
+      const denom = f3+f4+f5;
+      return { f5, denom, cr: denom>0 ? f5/denom : null };
+    };
+    return { dps: compute("DPS"), dss: compute("DSS") };
+  },[periodFilteredLops]);
+
   const amOptions = useMemo(()=>{
     const map=new Map<string,string>();
     for(const l of periodFilteredLops){if(l.nikAm&&l.namaAm&&l.namaAm.trim()!=="")map.set(l.nikAm,l.namaAm);}
@@ -908,12 +1090,19 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   const filteredLops = useMemo(()=>{
     const q=search.toLowerCase();
+    const allApiLops:any[] = data?.lops||[];
+    // When searching: bypass all filters — search across ALL lops for current tahun anggaran
+    if(q) {
+      return allApiLops.filter((l:any)=>{
+        const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
     const base=periodFilteredLops.filter((l:any)=>{
       if(filterAm.size>0&&(!l.nikAm||!filterAm.has(l.nikAm))) return false;
       if(filterStatus.size>0&&(!l.statusF||!filterStatus.has(l.statusF))) return false;
       if(filterKontrak.size>0&&(!l.kategoriKontrak||!filterKontrak.has(l.kategoriKontrak))) return false;
       if(filterDurasi==="multi_year"&&!(l.monthSubs!=null&&l.monthSubs>12)) return false;
-      if(q){const hay=`${l.judulProyek} ${l.pelanggan} ${l.lopid} ${l.namaAm} ${l.kategoriKontrak??""} ${l.divisi??""} ${l.segmen??""} ${l.nikAm??""}`.toLowerCase();if(!hay.includes(q))return false;}
       return true;
     });
     if(filterDurasi==="all") return base;
@@ -923,7 +1112,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(!m||m<12) return l; // < 12 bulan dianggap 1 tahun → nilai penuh
       return {...l, nilaiProyek: Math.round(l.nilaiProyek*12/m)};
     });
-  },[periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
+  },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
@@ -1101,7 +1290,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const dpsPct=dpsTgt?(dpsStats.totalNilai/dpsTgt)*100:0;
   const dssPct=dssTgt?(dssStats.totalNilai/dssTgt)*100:0;
 
-  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterDurasi!=="all"||filterMonths.size>0||filterYear!=="";
+  const hasActiveFilter=filterAm.size>0||filterStatus.size>0||filterKontrak.size>0||filterDurasi!=="all"||filterMonths.size>0||filterTahunAnggaran.size>0;
   const lopBadge=filteredLops.length!==(data?.totalLop||0)?`${filteredLops.length} / ${data?.totalLop||0}`:filteredLops.length.toLocaleString("id-ID");
 
 
@@ -1161,11 +1350,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     {amPelangganTbody>0?<>{amPelangganTbody} <span className="font-normal text-xs text-muted-foreground">plg</span></>:"—"}
                   </span>
                 </td>
-                <td className="px-3 py-3 text-center" style={stickyCell}>
+                <td className="px-3 py-3 text-center overflow-hidden" style={stickyCell}>
                   {amTargetVal>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTargetVal)}</span>:<span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 <td className="px-3 py-3" style={stickyCell}>
-                  <span className="font-black tabular-nums text-sm whitespace-nowrap block text-foreground">{formatRupiahFull(amTotal)}</span>
+                  <span className="font-black tabular-nums text-sm block text-foreground">{formatRupiahFull(amTotal)}</span>
                   {amTargetVal>0&&(
                     <div className="mt-1.5">
                       <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -1178,8 +1367,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap" style={stickyCell}>
-                  {cr!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",cr>=0.7?"text-emerald-600":"text-red-600")}>{(cr*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",cr>=0.7?"text-emerald-600":"text-red-600")}>= {(cr*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}
+                <td className="px-4 py-3 text-right relative" style={stickyCell}>
+                  {cr!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",cr>=0.7?"text-emerald-600":"text-red-600")}>{(cr*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",cr>=0.7?"text-emerald-600":"text-red-600")}>= {(cr*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}
                 </td>
               </>);
             })()}
@@ -1203,41 +1392,62 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     <div className="flex items-center gap-2">
                       <ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/>
                       <span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span>
-                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span>
+                      <span className="text-xs font-black text-slate-900 px-1.5 py-0.5 rounded-full" style={{background:"#f2f2f2"}}>{lops.length} proyek</span>
                     </div>
                   </td>
                   {phaseExpanded
                     ? <td colSpan={5} className="px-3 py-2.5" style={{background:phaseBg}}/>
                     : <><td colSpan={4} className="px-3 py-2.5" style={{background:phaseBg}}/>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap" style={{background:phaseBg}}>
-                          <span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span>
+                        <td className="px-3 py-2.5 text-right overflow-hidden" style={{background:phaseBg}} title={formatRupiahFull(phaseTotal)}>
+                          <span className="text-sm font-black text-foreground tabular-nums">{formatRupiahFull(phaseTotal)}</span>
                         </td></>}
                 </tr>
                 {phaseExpanded&&(
-                  <>
-                    <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
-                      <td className="px-4 py-2 pl-16 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Nama Proyek</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Kategori</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Durasi</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-4 py-2 text-sm font-extrabold text-slate-900 uppercase tracking-wider">Nilai</td>
-                    </tr>
-                    {lops.map((lop:any,idx:number)=>(
-                      <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
-                        <td className="px-4 py-2.5 pl-16"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div></td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                        <td className="px-3 py-2.5 whitespace-nowrap"><span className="text-sm font-bold text-teal-700 dark:text-teal-400">{fsDurasi(lop.monthSubs)}</span></td>
-                        <td className="px-3 py-2.5 whitespace-nowrap"><span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span></td>
-                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                        <td className="px-3 py-2.5 text-left tabular-nums text-sm font-black text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek)}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={5} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                      <td className="px-3 py-2 text-left tabular-nums font-black text-red-800 overflow-hidden text-base">{formatRupiahFull(phaseTotal)}</td>
-                    </tr>
-                  </>
+                  <tr style={ringStyle({})}>
+                    <td colSpan={6} className="p-0 border-b border-slate-200">
+                      <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
+                        <colgroup>
+                          <col style={{width:"26%"}}/>
+                          <col style={{width:"10%"}}/>
+                          <col style={{width:"7%"}}/>
+                          <col style={{width:"12%"}}/>
+                          <col style={{width:"19%"}}/>
+                          <col style={{width:"26%"}}/>
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-slate-200 border-y border-slate-400">
+                            <td className="px-4 py-2 pl-16 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lops.map((lop:any,idx:number)=>(
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors border-b border-slate-100">
+                              <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                              <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                                  {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek||0)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-red-50 border-t border-red-200">
+                            <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden">{formatRupiahFull(phaseTotal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
                 )}
               </React.Fragment>
             );
@@ -1245,7 +1455,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           {amExpanded&&(
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
               <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-left tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
             </tr>
           )}
         </React.Fragment>
@@ -1255,8 +1465,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── Multi-table renderer: tiap fase = 1 tabel dengan <thead> 2 baris ─────────
   // Nama AM + DAFTAR PROYEK Fx sticky bersama satu unit — no gap
-  const FS_TB_STYLE:React.CSSProperties={minWidth:"800px",tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
-  function FSColGroup(){return(<colgroup><col style={{width:"33%"}}/><col style={{width:"110px"}}/><col style={{width:"82px"}}/><col style={{width:"170px"}}/><col/><col style={{width:"170px"}}/></colgroup>);}
+  const FS_TB_STYLE:React.CSSProperties={tableLayout:"fixed",borderCollapse:"separate",borderSpacing:0,width:"100%"};
+  function FSColGroup(){return(<colgroup><col style={{width:"25%"}}/><col style={{width:"80px"}}/><col style={{width:"75px"}}/><col style={{width:"210px"}}/><col style={{width:"200px"}}/><col style={{width:"130px"}}/></colgroup>);}
   function fsDurasi(m:any):string{if(!m||m<=0)return"–";if(m%12===0)return`${m/12} TAHUN`;return`${m} BULAN`;}
 
   function renderAmTablesFS(ams: typeof groupedByAm, emptyMsg?: string): React.ReactNode {
@@ -1292,12 +1502,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               <td className="px-4 py-3"><div className="flex items-center gap-2"><ChevronRight className="w-4 h-4 text-muted-foreground shrink-0"/><span className="text-foreground text-sm uppercase tracking-wide font-extrabold">{am.namaAm}</span>{divBadges}<button type="button" onClick={e=>{e.stopPropagation();handleAmExpandIcon(amKey,orderedPhases);}} className="ml-1 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 shrink-0" title="Expand semua proyek"><Expand className="w-3 h-3"/></button></div></td>
               <td className="px-3 py-3 text-left whitespace-nowrap"><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
               <td className="px-3 py-3 text-left whitespace-nowrap"><span className={cn("text-sm font-black tabular-nums",amPelangganFS>0?"text-foreground":"text-muted-foreground")}>{amPelangganFS>0?<>{amPelangganFS} <span className="font-normal text-xs text-muted-foreground">plg</span></>:"—"}</span></td>
-              <td className="px-3 py-3 text-center">{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-3 text-center overflow-hidden">{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-3">
-                <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
+                <span className="font-black tabular-nums text-sm block">{formatRupiahFull(amTotal)}</span>
                 {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
-              <td className="px-4 py-3 text-right whitespace-nowrap">{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-4 py-3 text-right relative">{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
           </tbody>
         </table>
@@ -1316,12 +1526,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               </td>
               <td className="px-3 py-2.5 text-left whitespace-nowrap" style={bg}><span className="text-sm font-black tabular-nums">{amLopCount} <span className="font-normal text-xs text-muted-foreground">lop</span></span></td>
               <td className="px-3 py-2.5 text-left whitespace-nowrap" style={bg}><span className={cn("text-sm font-black tabular-nums",amPelangganFS>0?"text-foreground":"text-muted-foreground")}>{amPelangganFS>0?<>{amPelangganFS} <span className="font-normal text-xs text-muted-foreground">plg</span></>:"—"}</span></td>
-              <td className="px-3 py-2.5 text-center" style={bg}>{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-3 py-2.5 text-center overflow-hidden" style={bg}>{amTgt>0?<span className="text-sm font-black tabular-nums text-foreground">{formatRupiahFull(amTgt)}</span>:<span className="text-muted-foreground text-xs">—</span>}</td>
               <td className="px-3 py-2.5" style={bg}>
-                <span className="font-black tabular-nums text-sm whitespace-nowrap block">{formatRupiahFull(amTotal)}</span>
+                <span className="font-black tabular-nums text-sm block">{formatRupiahFull(amTotal)}</span>
                 {amTgt>0&&(<div className="mt-1.5"><div className="h-2.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full" style={{width:`${pctBarAm}%`,background:barColorAm}}/></div><div className="flex items-center gap-1 mt-0.5"><span className="text-sm font-black tabular-nums" style={{color:barColorAm}}>{pctRawAm.toFixed(0)}%</span><span className="text-xs font-bold text-muted-foreground">capaian</span></div></div>)}
               </td>
-              <td className="px-4 py-2.5 text-right whitespace-nowrap" style={bg}>{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conv. Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
+              <td className="px-4 py-2.5 text-right relative" style={bg}>{crAm!==null?(<div className="relative inline-block group"><span className={cn("font-bold text-sm tabular-nums cursor-help underline decoration-dotted decoration-1 underline-offset-2",crAm>=0.7?"text-emerald-600":"text-red-600")}>{(crAm*100).toFixed(1)}%</span><div className="absolute right-0 top-full mt-1 z-[200] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150" style={{minWidth:"220px"}}><div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left"><div className="text-[10px] font-black text-slate-900 uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div><div className="space-y-1.5"><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F5 (Closed/Won)</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f5Val)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">F3 + F4 + F5</span><span className="text-xs font-bold text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(f345Val)}</span></div><div className="border-t border-border pt-1.5 flex items-center justify-between gap-4"><span className="text-xs font-medium text-slate-700 whitespace-nowrap">CR = F5 ÷ (F3+F4+F5)</span><span className={cn("text-xs font-black tabular-nums whitespace-nowrap",crAm>=0.7?"text-emerald-600":"text-red-600")}>= {(crAm*100).toFixed(1)}%</span></div></div></div></div></div>):<span className="text-muted-foreground text-xs">—</span>}</td>
             </tr>
           </tbody>
         </table>
@@ -1340,39 +1550,60 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   style={{borderLeft:`4px solid ${c?.bar||"#94a3b8"}`,borderRight:`2px solid ${ring}`,boxShadow:"0 2px 6px rgba(0,0,0,0.09)",borderTop:phaseIdx>0?`1px solid hsl(var(--border))`:"none"}}
                   onClick={()=>togglePhaseRow(phaseKey)}>
                   <th className="px-4 py-2.5 pl-10 font-normal text-left" style={{background:phaseBg}}>
-                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">{lops.length} proyek</span></div>
+                    <div className="flex items-center gap-2"><ChevronRight className={cn("w-3.5 h-3.5 text-slate-500 transition-transform shrink-0",phaseExpanded&&"rotate-90")}/><span className="text-sm font-black uppercase tracking-wide" style={{color:c?.text}}>DAFTAR PROYEK {phase}</span><span className="text-xs font-black text-slate-900 px-1.5 py-0.5 rounded-full" style={{background:"#f2f2f2"}}>{lops.length} proyek</span></div>
                   </th>
                   {phaseExpanded
                     ?<th colSpan={5} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/>
-                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-4 py-2.5 text-right whitespace-nowrap font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums whitespace-nowrap">{formatRupiahFull(phaseTotal)}</span></th></>
+                    :<><th colSpan={4} className="px-3 py-2.5 font-normal" style={{background:phaseBg}}/><th className="px-3 py-2.5 text-right overflow-hidden font-normal" style={{background:phaseBg}}><span className="text-sm font-black text-foreground tabular-nums">{formatRupiahFull(phaseTotal)}</span></th></>
                   }
                 </tr>
-                {phaseExpanded&&(
-                  <tr className="bg-slate-100 border-y border-slate-300" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <th className="px-4 py-2 pl-16 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Nama Proyek</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Kategori</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Durasi</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">LOP ID</th>
-                    <th className="px-3 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Pelanggan</th>
-                    <th className="px-4 py-2 text-[11px] font-extrabold text-slate-900 uppercase tracking-wider text-left">Nilai</th>
-                  </tr>
-                )}
               </thead>
-              <tbody className="divide-y divide-border/50">
-                {phaseExpanded&&lops.map((lop:any,idx:number)=>(
-                  <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td className="px-4 py-2.5 pl-16"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div></td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap"><span className="text-sm font-bold text-teal-700 dark:text-teal-400">{fsDurasi(lop.monthSubs)}</span></td>
-                    <td className="px-3 py-2.5 whitespace-nowrap"><span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span></td>
-                    <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[220px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                    <td className="px-3 py-2.5 text-left tabular-nums text-sm font-black text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek)}</td>
-                  </tr>
-                ))}
+              <tbody>
                 {phaseExpanded&&(
-                  <tr className="bg-red-50 border-t border-red-200" style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
-                    <td colSpan={5} className="px-4 py-2 pl-16"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
-                    <td className="px-3 py-2 text-left tabular-nums font-black text-red-800 overflow-hidden text-base">{formatRupiahFull(phaseTotal)}</td>
+                  <tr style={{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`}}>
+                    <td colSpan={6} className="p-0 border-b border-slate-200">
+                      <table className="w-full text-left text-sm" style={{tableLayout:"fixed",borderCollapse:"collapse"}}>
+                        <colgroup>
+                          <col style={{width:"26%"}}/>
+                          <col style={{width:"10%"}}/>
+                          <col style={{width:"7%"}}/>
+                          <col style={{width:"12%"}}/>
+                          <col style={{width:"19%"}}/>
+                          <col style={{width:"26%"}}/>
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-slate-200 border-y border-slate-400">
+                            <td className="px-4 py-2 pl-16 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-xs font-black text-slate-950 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lops.map((lop:any,idx:number)=>(
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors border-b border-slate-100">
+                              <td className="px-4 py-2.5 pl-16 overflow-hidden"><div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div></td>
+                              <td className="px-3 py-2.5 overflow-hidden">{lop.kategoriKontrak?<span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${kategoriColor(lop.kategoriKontrak)}`}>{lop.kategoriKontrak}</span>:<span className="text-muted-foreground text-xs">–</span>}</td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{fsDurasi(lop.monthSubs)}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden"><span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span></td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                                  {lop.divisi?<span className={`inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${lop.divisi.toUpperCase()==="DPS"?"bg-blue-50 text-blue-700 border-blue-200":lop.divisi.toUpperCase()==="DSS"?"bg-purple-50 text-purple-700 border-purple-200":"bg-slate-100 text-slate-600 border-slate-300"}`}>{lop.divisi}</span>:null}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden">{formatRupiahFull(lop.nilaiProyek||0)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-red-50 border-t border-red-200">
+                            <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden"><span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span></td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden">{formatRupiahFull(phaseTotal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -1383,7 +1614,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           <tbody>
             <tr className="bg-slate-100 border-t-2 border-slate-300" style={ring?{borderLeft:`2px solid ${ring}`,borderRight:`2px solid ${ring}`,borderBottom:`2px solid ${ring}`}:{}}>
               <td colSpan={5} className="px-4 py-2.5 pl-10"><span className="text-sm font-black text-red-700 uppercase tracking-wide">Total Nilai Proyek — {am.namaAm}</span></td>
-              <td className="px-3 py-2.5 text-left tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-black text-red-700 overflow-hidden text-sm">{formatRupiahFull(amTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -1406,11 +1637,6 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       <FSSelectDropdown label="Snapshot" value={String(importId||"")} onChange={v=>setImportId(Number(v))}
         options={snapshotOptions.length>0?snapshotOptions:[{value:"",label:"Belum ada data"}]}
         disabled={snapshotOptions.length===0} className="w-36 shrink-0"/>
-      <FSPeriodeTreeDropdown label="Periode"
-        filterYear={filterYear} filterMonths={filterMonths}
-        availableYears={yearOptions.map(o=>o.value)}
-        onChange={(y,ms)=>{setFilterYear(y);setFilterMonths(ms);setImportId(null);}}
-        className="w-44 shrink-0"/>
       <div className="w-px h-9 bg-border/60 self-end shrink-0"/>
       <FSSelectDropdown label="Target" value={filterMode} onChange={v=>setFilterMode(v as "ho"|"fullho")}
         options={[{value:"ho",label:"HO"},{value:"fullho",label:"FULL (HO+BA)"}]}
@@ -1434,11 +1660,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide shrink-0">Filter aktif:</span>
         {/* Periode — always shows */}
         <span className="inline-flex shrink-0 items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/20">
-          Periode: {filterMonths.size === 0
-            ? `${filterYear} (semua bulan)`
-            : filterMonths.size === 1
-              ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
-              : `${filterMonths.size} bulan`}
+          Periode: {filterYears.size===1
+            ? (filterMonths.size===0
+                ? `${filterYear} (semua bulan)`
+                : filterMonths.size===1
+                  ? `${FS_MONTHS_ID[parseInt([...filterMonths][0])]} ${filterYear}`
+                  : `${filterMonths.size} bulan`)
+            : filterYears.size===2
+              ? `${[...filterYears].sort().reverse().join("+")}${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`
+              : `${filterYears.size} tahun${filterMonths.size>0?` · ${filterMonths.size} bln`:" (semua)"}`}
           {filterMonths.size > 0 && <button onClick={() => setFilterMonths(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>}
         </span>
         {/* Target mode — always shows */}
@@ -1469,6 +1699,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             <button onClick={() => setFilterDurasi("all")} className="hover:opacity-70"><X className="w-3 h-3"/></button>
           </span>
         )}
+        {filterTahunAnggaran.size > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-1 bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-sky-200 dark:border-sky-800">
+            T. Anggaran: {filterTahunAnggaran.size === 1 ? [...filterTahunAnggaran][0] : `${filterTahunAnggaran.size} tahun`}
+            <button onClick={() => setFilterTahunAnggaran(new Set())} className="hover:opacity-70"><X className="w-3 h-3"/></button>
+          </span>
+        )}
         {(filterStatus.size > 0 || filterKontrak.size > 0 || filterDurasi !== "all" || filterMonths.size > 0 || filterAm.size > 0) && (
           <button onClick={() => { setFilterStatus(new Set()); setFilterKontrak(new Set()); setFilterDurasi("all"); setFilterMonths(new Set()); setFilterAm(new Set()); }}
             className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
@@ -1491,9 +1727,30 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           {/* LOP per Fase + DPS/DSS gauges — one row on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr_2fr] gap-4">
             {/* LOP per Fase */}
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0 flex flex-col">
               <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
               <FSFaseBarChart data={data?{...data,byStatus:periodStats.byStatus}:undefined}/>
+              {data&&(()=>{
+                const pm:Record<string,{count:number;nilai:number}>={};
+                for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
+                for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+                return (
+                  <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
+                    <div className="flex-1 flex gap-1.5">
+                      {FS_PHASES.map(phase=>{
+                        const d=pm[phase];const c=FS_PHASE_COLORS[phase];
+                        return (
+                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
+                            <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
+                            <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                            <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             {/* DPS | DSS gauges */}
             {(["DPS","DSS"] as const).map(div=>{
@@ -1501,6 +1758,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               const tgtFull=div==="DPS"?dpsTgtFullHo:dssTgtFullHo;
               const real   =div==="DPS"?dpsStats.totalNilai:dssStats.totalNilai;
               const divPct =div==="DPS"?dpsPct:dssPct;
+              const crDiv  =crStats?.[div==="DPS"?"dps":"dss"];
               return (
                 <div key={div} className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
                   <h3 className="text-base font-display font-bold text-foreground mb-2 flex items-center gap-2">
@@ -1510,6 +1768,18 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     )}>{div}</span>
                   </h3>
                   <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode} divisi={div}/>
+                  {crDiv&&(
+                    <>
+                      <div className="border-t border-border my-3"/>
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        Conversion Rate
+                        <span className={cn("text-xs font-black px-2 py-0.5 rounded",
+                          div==="DPS"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"
+                        )}>{div}</span>
+                      </h4>
+                      <FSCRGauge f5={crDiv.f5} denom={crDiv.denom} cr={crDiv.cr} divisi={div}/>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -1526,19 +1796,31 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       {viewMode!=="split"&&<div className="bg-card border border-border rounded-xl shadow-sm">
         {/* Sticky toolbar — single scrollable row on mobile */}
         <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b border-border">
-          <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <h3 className="text-base font-display font-bold text-foreground whitespace-nowrap shrink-0">Detail Funnel per AM</h3>
-            <div className="w-px h-5 bg-border/60 shrink-0"/>
-            <FSCheckboxDropdown label="" options={amOptions} selected={filterAm} onChange={setFilterAm}
+          <div className="flex items-end gap-2 px-4 py-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <h3 className="text-base font-display font-bold text-foreground whitespace-nowrap shrink-0 pb-1">Detail Funnel per AM</h3>
+            <div className="w-px h-8 bg-border/60 shrink-0"/>
+            <FSCheckboxDropdown label="Filter AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-40 shrink-0"/>
-            <FSSelectDropdown label="" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
+            <FSSelectDropdown label="Durasi Kontrak" value={filterDurasi} onChange={v=>setFilterDurasi(v as typeof filterDurasi)}
               options={[{value:"all",label:"Semua Durasi"},{value:"single_year",label:"Nilai per Tahun"},{value:"multi_year",label:"Multi Year (>12 bln)"}]}
               className="w-44 shrink-0"/>
-            <div className="relative shrink-0">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
-              <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
-                className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
-              {search&&<button onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5"/></button>}
+            <div className="w-px h-8 bg-border/60 shrink-0"/>
+            <FSPeriodeTreeDropdown label="Filter Report Date"
+              filterYears={filterYears} filterMonths={filterMonths}
+              availableYears={periodeAvailableYears}
+              availableMonthsByYear={availableMonthsByYear}
+              onChange={(ys,ms)=>{setFilterYears(ys);setFilterMonths(ms);setImportId(null);}}
+              className="w-48 shrink-0"/>
+            <FSCheckboxDropdown label="Tahun Anggaran" options={tahunAnggaranStringOptions} selected={filterTahunAnggaran} onChange={setFilterTahunAnggaran}
+              placeholder="Pilih Tahun Anggaran" summaryLabel="T. Anggaran" className="w-48 shrink-0"/>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <label className="text-xs font-display font-bold text-foreground uppercase tracking-wide">Pencarian Data LOP</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"/>
+                <input ref={funnelSearchRef} type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search} onChange={e=>setSearch(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
+                {search&&<button onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5"/></button>}
+              </div>
             </div>
             {filterAm.size>0&&(<button onClick={()=>setFilterAm(new Set())} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1.5 border border-border rounded-lg hover:border-destructive/30 transition-colors shrink-0 whitespace-nowrap"><X className="w-3 h-3"/> Reset AM</button>)}
             <button onClick={handleToggleAll} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap shrink-0">
@@ -1549,7 +1831,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
         {/* Multi-table scroll container: tiap fase = tabel sendiri, thead-nya sticky bersama */}
         <div className="px-3 pb-3">
-          <div ref={funnelTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="border border-border rounded overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 210px)"}}>
+          <div ref={funnelTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="border border-border rounded overflow-y-auto overflow-x-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 210px)"}}>
             {/* Header kolom — sticky di atas, pisah dari tabel AM agar tidak saling tarik */}
             <table ref={fsFunnelTheadRef} className="text-left text-sm" style={{...FS_TB_STYLE,position:"sticky",top:0,zIndex:20}}>
               <FSColGroup/>
@@ -1560,7 +1842,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>Pelanggan</th>
                   <th className="px-3 py-3 text-center whitespace-nowrap" style={{background:"#B91C1C"}}>Target 2026</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap" style={{background:"#B91C1C"}}>Nilai Proyek</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Conv. Rate</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap" style={{background:"#B91C1C"}}>Conversion Rate</th>
                 </tr>
               </thead>
             </table>
@@ -1668,12 +1950,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
                     <thead>
                       <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[280px] text-left">Account Manager</th>
+                        <th className="px-4 py-2.5 min-w-[240px] text-left">Account Manager</th>
                         <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
                         <th className="px-3 py-2.5 whitespace-nowrap text-left">Pelanggan</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-center">Target 2026</th>
-                        <th className="px-3 py-2.5 text-left whitespace-nowrap">Nilai Proyek</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap">Conv. Rate</th>
+                        <th className="px-3 py-2.5 min-w-[210px] text-center">Target 2026</th>
+                        <th className="px-3 py-2.5 min-w-[200px] text-left">Nilai Proyek</th>
+                        <th className="px-4 py-2.5 min-w-[130px] text-right whitespace-nowrap">Conversion Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -1961,7 +2243,7 @@ function ActivitySlide() {
   //            (2) kpiActivityDefault dari settings API (fallback jika activity belum loaded)
   //            (3) hardcoded 30 (last resort)
   const actSettingsKpi:number = (data as any)?.kpiDefault ?? actSettingsData?.kpiActivityDefault ?? 30;
-  const actEffectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
+
 
   const amList = useMemo(()=>{
     if(!data) return [];
@@ -1986,7 +2268,8 @@ function ActivitySlide() {
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
         const perAmOverride=ex?.perAmKpiTarget;
-        const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
+        // kpiTarget = nilai settingan saja, tidak dikalikan jumlah bulan
+        const baseKpiTarget=perAmOverride??actSettingsKpi;
         const baseActs=(ex?.activities||[]);
         const activityDivisis=Array.from(new Set(baseActs.map((a:any)=>a.divisi).filter(Boolean)));
         const base=ex
@@ -1995,7 +2278,7 @@ function ActivitySlide() {
         const visibleActs=filterKategori.size===0?base.activities:base.activities.filter((a:any)=>filterKategori.has(a.label));
         return {...base,visibleActivities:visibleActs};
       });
-  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi,actEffectiveMonths]);
+  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi]);
 
   const stats = useMemo(()=>{
     const totalKpi=amList.reduce((s:number,a:any)=>s+a.kpiCount,0);
@@ -2117,7 +2400,7 @@ function ActivitySlide() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-foreground uppercase tracking-wide mb-1">AM Capai KPI</div>
                 <div className="text-3xl font-black tabular-nums leading-tight text-foreground">{stats.reach}</div>
-                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??(actSettingsKpi*actEffectiveMonths)} aktivitas</strong> / {actEffectiveMonths===1?"bulan":`${actEffectiveMonths} bulan`}</div>
+                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??actSettingsKpi} aktivitas</strong> / bulan</div>
               </div>
             </div>
             {/* Card 3: AM Di Bawah KPI */}
@@ -2529,6 +2812,8 @@ export default function EmbedPerforma() {
   const isDivisiFiltered = filterDivisi !== "LESA";
   const isAmFiltered = filterNamaAms.size > 0;
   const isRankFiltered = filterTipeRank !== "Ach CM";
+  const showCmCol  = filterTipeRank !== "Ach YTD";
+  const showYtdCol = filterTipeRank !== "Ach CM";
   const isRevenueFiltered = filterTipeRevenue !== "Reguler";
   const hasPerformActiveFilter = isPeriodeFiltered || isDivisiFiltered || isAmFiltered || isRankFiltered || isRevenueFiltered;
   const resetPerformFilters = useCallback(() => {
@@ -2626,8 +2911,7 @@ export default function EmbedPerforma() {
     );
     if (filterNamaAms.size > 0) result = result.filter(r => filterNamaAms.has(r.namaAm));
     result.sort((a, b) => {
-      if (filterTipeRank === "Real Revenue") return b.cmReal - a.cmReal;
-      if (filterTipeRank === "YTD") return b.ytdAch - a.ytdAch;
+      if (filterTipeRank === "Ach YTD") return b.ytdAch - a.ytdAch;
       return b.cmAch - a.cmAch;
     });
     return result.map((r, i) => ({ ...r, displayRank: i + 1 }));
@@ -3123,18 +3407,18 @@ export default function EmbedPerforma() {
                     {/* ① Global header — outside scroll container so it never floats above the section toolbar */}
                     <div className="overflow-x-auto">
                     <table style={{...PERF_TB, boxShadow:"0 2px 4px rgba(0,0,0,0.10)"}}>
-                      <PerfColGroup/>
+                      <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                       <thead ref={perfTheadCallbackRef}>
                         <tr className="bg-red-700 text-white">
                           <th className="px-3 py-3 text-left" style={{backgroundColor:"#B91C1C"}}></th>
                           <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Nama AM</th>
                           <th className="px-2 py-3 text-center text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Cust</th>
-                          <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>Target {filterTipeRevenue}</th>
-                          <th className={cn("px-4 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Real Revenue" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>Real {filterTipeRevenue}</th>
-                          <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach CM" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>CM %</th>
-                          <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "YTD" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>YTD %</th>
+                          <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Target {filterTipeRevenue}</th>
+                          <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide" style={{backgroundColor:"#B91C1C"}}>Real {filterTipeRevenue}</th>
+                          {showCmCol && <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach CM" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>CM %</th>}
+                          {showYtdCol && <th className={cn("px-3 py-3 text-right text-xs font-black uppercase tracking-wide", filterTipeRank === "Ach YTD" && "underline underline-offset-2")} style={{backgroundColor:"#B91C1C"}}>YTD %</th>}
                           <th className="px-3 py-3 text-center text-xs font-black uppercase tracking-wide underline underline-offset-2" style={{backgroundColor:"#B91C1C"}}>
-                            {filterTipeRank === "Ach CM" ? "RANK CM" : filterTipeRank === "YTD" ? "RANK YTD" : "RANK REV"}
+                            {filterTipeRank === "Ach YTD" ? "RANK YTD" : "RANK CM"}
                           </th>
                         </tr>
                       </thead>
@@ -3143,8 +3427,8 @@ export default function EmbedPerforma() {
                     {/* ② Per-AM data + total — scroll container (header is outside, so sticky never escapes) */}
                     <div ref={perfTableRef} tabIndex={0} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();e.currentTarget.scrollBy({top:80,behavior:"smooth"});}if(e.key==="ArrowUp"){e.preventDefault();e.currentTarget.scrollBy({top:-80,behavior:"smooth"});}}} className="overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" style={{maxHeight:"calc(100svh - 280px)"}}>
                     {filteredAmData.length === 0 ? (
-                      <table style={PERF_TB}><PerfColGroup/>
-                        <tbody><tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
+                      <table style={PERF_TB}><PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
+                        <tbody><tr><td colSpan={showCmCol && showYtdCol ? 8 : 7} className="text-center py-12 text-muted-foreground text-sm">Tidak ada data yang cocok</td></tr></tbody>
                       </table>
                     ) : filteredAmData.map((row) => {
                       const isExpanded = effectiveExpandedRows.has(row.nik);
@@ -3173,12 +3457,12 @@ export default function EmbedPerforma() {
                           <td className="px-2 py-2.5 text-center font-black text-foreground text-xs" style={{backgroundColor:bgCard}}>{(row.customers || []).length}</td>
                           <td className="px-4 py-2.5 text-right font-semibold text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdTarget)}</td>
                           <td className="px-4 py-2.5 text-right font-black text-foreground tabular-nums text-xs whitespace-nowrap" style={{backgroundColor:bgCard}}>{formatRupiahFull(row.ytdReal)}</td>
-                          <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
+                          {showCmCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.cmAch >= 1 ? "text-green-600" : row.cmAch >= 0.8 ? "text-orange-500" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.cmAch * 100).toFixed(1).replace(".", ",")}%
-                          </td>
-                          <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={{backgroundColor:bgCard}}>
+                          </td>}
+                          {showYtdCol && <td className={cn("px-3 py-2.5 text-right font-black tabular-nums text-xs", row.ytdAch >= 1 ? "text-green-600" : row.ytdAch >= 0.8 ? "text-blue-600" : "text-red-600")} style={{backgroundColor:bgCard}}>
                             {(row.ytdAch * 100).toFixed(1).replace(".", ",")}%
-                          </td>
+                          </td>}
                           <td className="px-3 py-2.5 text-center font-black text-foreground text-xs" style={{backgroundColor:bgCard}}>{row.displayRank}</td>
                         </>
                       );
@@ -3186,7 +3470,7 @@ export default function EmbedPerforma() {
                       if (!isExpanded) {
                         return (
                           <table key={row.nik} style={PERF_TB}>
-                            <PerfColGroup/>
+                            <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                             <tbody>
                               <tr className={cn("select-none transition-colors", hasCustomers ? "cursor-pointer hover:bg-secondary/30" : "")}
                                 style={{borderTop:"1px solid hsl(var(--border))"}}
@@ -3203,7 +3487,7 @@ export default function EmbedPerforma() {
                         <div key={row.nik}>
                           {/* Sticky AM name row — sticks at top:0 of the inner scroll container */}
                           <table ref={perfPresentAmRowCallbackRef} style={{...PERF_TB, position:"sticky", top:0, zIndex:16, boxShadow:"0 2px 8px rgba(0,0,0,0.13)"}}>
-                            <PerfColGroup/>
+                            <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                             <tbody>
                               <tr className="cursor-pointer select-none"
                                 style={{borderTop:`2px solid ${ring}`, borderLeft:`2px solid ${ring}`, borderRight:`2px solid ${ring}`, borderBottom:"none"}}
@@ -3353,7 +3637,7 @@ export default function EmbedPerforma() {
                     {/* ③ Global total row — di luar scroll container agar selalu terlihat */}
                     <div className="overflow-x-auto">
                     <table style={PERF_TB}>
-                      <PerfColGroup/>
+                      <PerfColGroup showCm={showCmCol} showYtd={showYtdCol}/>
                       <tbody>
                         <tr className="bg-secondary/60" style={{borderTop:"2px solid hsl(var(--border))"}}>
                           <td className="px-2 py-3" />
@@ -3363,14 +3647,14 @@ export default function EmbedPerforma() {
                           </td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground font-semibold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdTarget)}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-bold text-sm whitespace-nowrap">{formatRupiahFull(totals.ytdReal)}</td>
-                          <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
+                          {showCmCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.cmAch >= 100 ? "text-green-600" : totals.cmAch >= 80 ? "text-orange-500" : "text-red-600")}>
                             <div className="font-black text-sm">{totals.cmAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.cmAch >= 100 ? "Melebihi Target" : totals.cmAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                          </td>
-                          <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
+                          </td>}
+                          {showYtdCol && <td className={cn("px-3 py-2.5 text-right tabular-nums", totals.ytdAch >= 100 ? "text-green-600" : totals.ytdAch >= 80 ? "text-blue-600" : "text-red-500")}>
                             <div className="font-black text-sm">{totals.ytdAch.toFixed(1).replace(".", ",")}%</div>
                             <div className="text-[10px] font-semibold mt-0.5">{totals.ytdAch >= 100 ? "Melebihi Target" : totals.ytdAch >= 80 ? "Mendekati" : "Di Bawah Target"}</div>
-                          </td>
+                          </td>}
                           <td />
                         </tr>
                       </tbody>
