@@ -1,7 +1,6 @@
 import { db, accountManagersTable, appSettingsTable, telegramBotUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { sendToTelegram, answerCallbackQuery, greetingByTime, buildTelegramMessages, getAvailablePerfPeriods } from "./service";
-import { chatWithGemini, generateBasaBasi } from "./ai";
 import { logger } from "../../shared/logger";
 
 let lastUpdateId = 0;
@@ -31,8 +30,10 @@ async function upsertBotUser(user: BotUser) {
       username: user.username, lastMessage: user.lastMessage, lastSeen: new Date(user.lastSeen),
     }).onConflictDoUpdate({
       target: telegramBotUsersTable.chatId,
-      set: { firstName: user.firstName, lastName: user.lastName, username: user.username,
-             lastMessage: user.lastMessage, lastSeen: new Date(user.lastSeen) },
+      set: {
+        firstName: user.firstName, lastName: user.lastName, username: user.username,
+        lastMessage: user.lastMessage, lastSeen: new Date(user.lastSeen)
+      },
     });
   } catch (err) {
     logger.debug({ err }, "Failed to persist bot user (non-fatal)");
@@ -42,8 +43,8 @@ async function upsertBotUser(user: BotUser) {
 const MAIN_KEYBOARD = {
   inline_keyboard: [
     [
-      { text: "📋 Funneling",   callback_data: "/funneling"   },
-      { text: "📅 Activity",    callback_data: "/activity"    },
+      { text: "📋 Funneling", callback_data: "/funneling" },
+      { text: "📅 Activity", callback_data: "/activity" },
     ],
     [
       { text: "📊 Performansi", callback_data: "/performansi" },
@@ -55,7 +56,19 @@ const PERF_NAV_KEYBOARD = {
   inline_keyboard: [
     [
       { text: "◀️ Pilih Bulan Lain", callback_data: "perf:menu" },
-      { text: "🏠 Menu Utama",       callback_data: "nav:main"  },
+      { text: "🏠 Menu Utama", callback_data: "nav:main" },
+    ],
+  ],
+};
+
+const ACTIVITY_LABEL_KEYBOARD = {
+  inline_keyboard: [
+    [
+      { text: "👥 Dengan Pelanggan", callback_data: "act:pelanggan" },
+      { text: "🏗️ Pelanggan Dengan Proyek", callback_data: "act:proyek" },
+    ],
+    [
+      { text: "🏠 Menu Utama", callback_data: "nav:main" },
     ],
   ],
 };
@@ -84,12 +97,10 @@ function buildCoreBody(): string {
 // First-time linked welcome
 async function buildWelcomeLinked(namaLengkap: string): Promise<string> {
   const greeting = greetingByTime();
-  const basaBasi = await generateBasaBasi(namaLengkap);
   return (
     `✅ *Akun berhasil terhubung!* 🎉\n\n` +
     `Hai kak *${namaLengkap}*! 👋 ${greeting}\n\n` +
     `Selamat datang di *BOT LESA VI — Witel Suramadu TREG 3!* 🏢\n\n` +
-    `${basaBasi}\n\n` +
     buildCoreBody()
   );
 }
@@ -97,11 +108,9 @@ async function buildWelcomeLinked(namaLengkap: string): Promise<string> {
 // Returning user /start
 async function buildWelcomeReturning(namaLengkap: string): Promise<string> {
   const greeting = greetingByTime();
-  const basaBasi = await generateBasaBasi(namaLengkap);
   return (
     `Hai kak *${namaLengkap}*! 👋 ${greeting}\n\n` +
     `Selamat datang kembali di *BOT LESA VI — Witel Suramadu TREG 3!* 🏢\n\n` +
-    `${basaBasi}\n\n` +
     buildCoreBody()
   );
 }
@@ -130,9 +139,9 @@ export async function pollOnce() {
 
     const token = settings.telegramBotToken;
     const offset = lastUpdateId > 0 ? lastUpdateId + 1 : 0;
-    const url = `https://api.telegram.org/bot${token}/getUpdates?limit=50&offset=${offset}&timeout=0`;
+    const url = `https://api.telegram.org/bot${token}/getUpdates?limit=50&offset=${offset}&timeout=30`;
 
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(35000) });
     if (!resp.ok) return;
 
     const data = await resp.json() as { ok: boolean; result: any[] };
@@ -153,19 +162,54 @@ export async function pollOnce() {
           .where(eq(accountManagersTable.telegramChatId, cbChatId));
 
         if (!linkedAm) {
-          await sendToTelegram(token, cbChatId, `❌ Akun kamu belum terhubung. Minta admin untuk generate link verifikasi.`).catch(() => {});
+          await sendToTelegram(token, cbChatId, `❌ Akun kamu belum terhubung. Minta admin untuk generate link verifikasi.`).catch(() => { });
           continue;
         }
 
         const amFirstName = linkedAm.nama.split(" ")[0];
 
-        // ── Funneling & Activity (unchanged) ────────────────────────────
-        if (cbData === "/funneling" || cbData === "/activity") {
+        // ── Funneling (unchanged) ────────────────────────────
+        if (cbData === "/funneling") {
           const period = currentPeriod();
-          const opts = { includePerformance: false, includeFunnel: cbData === "/funneling", includeActivity: cbData === "/activity" };
+          const opts = { includePerformance: false, includeFunnel: true, includeActivity: false };
           const msgs = await buildTelegramMessages(linkedAm.nik, period, opts);
-          for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => {});
-          if (!msgs.length) await sendToTelegram(token, cbChatId, `Belum ada data untuk periode ini kak *${amFirstName}*.`).catch(() => {});
+          for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => { });
+          if (!msgs.length) await sendToTelegram(token, cbChatId, `Belum ada data untuk periode ini kak *${amFirstName}*.`).catch(() => { });
+          continue;
+        }
+
+        // ── Activity: show summary + label picker ────────────────────────
+        if (cbData === "/activity") {
+          const period = currentPeriod();
+          const opts = { includePerformance: false, includeFunnel: false, includeActivity: true };
+          const msgs = await buildTelegramMessages(linkedAm.nik, period, opts);
+          for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => { });
+
+          await sendToTelegram(token, cbChatId,
+            `Mau lihat detail *Sales Activity* berdasarkan kategori apa, kak *${amFirstName}*?`,
+            ACTIVITY_LABEL_KEYBOARD
+          ).catch(() => { });
+          continue;
+        }
+
+        // ── act:label — show filtered activity ─────────────────────────────
+        if (cbData.startsWith("act:")) {
+          const labelMap: Record<string, string> = {
+            "pelanggan": "dengan pelanggan",
+            "proyek": "pelanggan dengan proyek"
+          };
+          const key = cbData.slice(4);
+          const label = labelMap[key];
+          if (label) {
+            const period = currentPeriod();
+            const msgs = await buildTelegramMessages(linkedAm.nik, period, {
+              includePerformance: false, includeFunnel: false, includeActivity: true, activityLabel: label
+            });
+            for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => { });
+            if (!msgs.length) {
+              await sendToTelegram(token, cbChatId, `Belum ada data untuk kategori *${label}* periode ini kak *${amFirstName}*.`).catch(() => { });
+            }
+          }
           continue;
         }
 
@@ -182,7 +226,7 @@ export async function pollOnce() {
           await sendToTelegram(token, cbChatId,
             `📊 *Performansi Revenue*\n\nMau lihat rekap performansi bulan apa, kak *${amFirstName}*?`,
             pickerKeyboard
-          ).catch(() => {});
+          ).catch(() => { });
           continue;
         }
 
@@ -190,14 +234,14 @@ export async function pollOnce() {
         if (cbData === "perf:current") {
           const period = currentPeriod();
           const msgs = await buildTelegramMessages(linkedAm.nik, period, { includePerformance: true, includeFunnel: false, includeActivity: false });
-          for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => {});
+          for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => { });
           if (!msgs.length) {
             const now = new Date();
             await sendToTelegram(token, cbChatId,
               `_Data performansi untuk *${MONTH_NAMES[now.getMonth() + 1]} ${now.getFullYear()}* belum tersedia kak *${amFirstName}*. Mungkin belum diimport bulan ini._`
-            ).catch(() => {});
+            ).catch(() => { });
           } else {
-            await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => {});
+            await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => { });
           }
           continue;
         }
@@ -206,7 +250,7 @@ export async function pollOnce() {
         if (cbData === "perf:menu") {
           const periods = await getAvailablePerfPeriods(linkedAm.nik);
           if (!periods.length) {
-            await sendToTelegram(token, cbChatId, `❌ Belum ada data performansi tersimpan untuk akun kamu kak *${amFirstName}*.`).catch(() => {});
+            await sendToTelegram(token, cbChatId, `❌ Belum ada data performansi tersimpan untuk akun kamu kak *${amFirstName}*.`).catch(() => { });
             continue;
           }
           const SHORT_MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -219,7 +263,7 @@ export async function pollOnce() {
           await sendToTelegram(token, cbChatId,
             `🗓 *Pilih Periode Performansi*\n\nSilakan pilih bulan yang ingin kamu lihat kak *${amFirstName}*:`,
             { inline_keyboard: rows }
-          ).catch(() => {});
+          ).catch(() => { });
           continue;
         }
 
@@ -228,14 +272,14 @@ export async function pollOnce() {
           const periodStr = cbData.slice(5);
           if (/^\d{4}-\d{2}$/.test(periodStr)) {
             const msgs = await buildTelegramMessages(linkedAm.nik, periodStr, { includePerformance: true, includeFunnel: false, includeActivity: false });
-            for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => {});
+            for (const m of msgs) await sendToTelegram(token, cbChatId, m).catch(() => { });
             if (!msgs.length) {
               const [yr, mo] = periodStr.split("-").map(Number);
               await sendToTelegram(token, cbChatId,
                 `_Data performansi untuk *${MONTH_NAMES[mo]} ${yr}* tidak ditemukan kak *${amFirstName}*._`
-              ).catch(() => {});
+              ).catch(() => { });
             } else {
-              await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => {});
+              await sendToTelegram(token, cbChatId, `Butuh apa lagi kak *${amFirstName}*? 😊`, PERF_NAV_KEYBOARD).catch(() => { });
             }
           }
           continue;
@@ -243,7 +287,7 @@ export async function pollOnce() {
 
         // ── nav:main — kembali ke menu utama ─────────────────────────────
         if (cbData === "nav:main") {
-          await sendToTelegram(token, cbChatId, `Pilih menu di bawah untuk akses data:`, MAIN_KEYBOARD).catch(() => {});
+          await sendToTelegram(token, cbChatId, `Pilih menu di bawah untuk akses data:`, MAIN_KEYBOARD).catch(() => { });
           continue;
         }
 
@@ -273,18 +317,18 @@ export async function pollOnce() {
         const [am] = await db.select().from(accountManagersTable)
           .where(eq(accountManagersTable.telegramCode, code));
         if (!am) {
-          await sendToTelegram(token, chatId, `❌ Link/kode tidak valid atau sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
+          await sendToTelegram(token, chatId, `❌ Link/kode tidak valid atau sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => { });
           return false;
         }
         if (!am.telegramCodeExpiry || am.telegramCodeExpiry <= now) {
-          await sendToTelegram(token, chatId, `⏰ Link sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => {});
+          await sendToTelegram(token, chatId, `⏰ Link sudah kadaluarsa.\n\nMinta admin untuk generate link baru.`).catch(() => { });
           return false;
         }
         await db.update(accountManagersTable)
           .set({ telegramChatId: chatId, telegramCode: null, telegramCodeExpiry: null })
           .where(eq(accountManagersTable.id, am.id));
         await upsertBotUser({ ...botUsersMap.get(chatId)!, lastMessage: `✅ Linked via ${source}` });
-        await sendToTelegram(token, chatId, await buildWelcomeLinked(am.nama), MAIN_KEYBOARD).catch(() => {});
+        await sendToTelegram(token, chatId, await buildWelcomeLinked(am.nama), MAIN_KEYBOARD).catch(() => { });
         logger.info({ amId: am.id, nama: am.nama, chatId, source }, "AM auto-linked");
         return true;
       };
@@ -299,9 +343,9 @@ export async function pollOnce() {
         const [linkedAm] = await db.select().from(accountManagersTable)
           .where(eq(accountManagersTable.telegramChatId, chatId));
         if (linkedAm) {
-          await sendToTelegram(token, chatId, await buildWelcomeReturning(linkedAm.nama), MAIN_KEYBOARD).catch(() => {});
+          await sendToTelegram(token, chatId, await buildWelcomeReturning(linkedAm.nama), MAIN_KEYBOARD).catch(() => { });
         } else {
-          await sendToTelegram(token, chatId, buildWelcomeUnlinked(firstName, chatId)).catch(() => {});
+          await sendToTelegram(token, chatId, buildWelcomeUnlinked(firstName, chatId)).catch(() => { });
         }
         continue;
       }
@@ -310,7 +354,7 @@ export async function pollOnce() {
       if (text === "/myid") {
         await sendToTelegram(token, chatId,
           `🆔 *Chat ID kamu:* \`${chatId}\`\n\nBagikan ID ini ke admin LESA VI untuk menghubungkan akun kamu ke sistem.`
-        ).catch(() => {});
+        ).catch(() => { });
         continue;
       }
 
@@ -319,7 +363,7 @@ export async function pollOnce() {
         const [linkedAm] = await db.select().from(accountManagersTable)
           .where(eq(accountManagersTable.telegramChatId, chatId));
         if (!linkedAm) {
-          await sendToTelegram(token, chatId, `❌ Akun kamu belum terhubung. Minta admin untuk generate link verifikasi.`).catch(() => {});
+          await sendToTelegram(token, chatId, `❌ Akun kamu belum terhubung. Minta admin untuk generate link verifikasi.`).catch(() => { });
           continue;
         }
         const amFirstName = linkedAm.nama.split(" ")[0];
@@ -337,15 +381,15 @@ export async function pollOnce() {
           await sendToTelegram(token, chatId,
             `📊 *Performansi Revenue*\n\nMau lihat rekap performansi bulan apa, kak *${amFirstName}*?`,
             pickerKeyboard
-          ).catch(() => {});
+          ).catch(() => { });
           continue;
         }
 
         const period = currentPeriod();
         const opts = { includePerformance: false, includeFunnel: text === "/funneling", includeActivity: text === "/activity" };
         const msgs = await buildTelegramMessages(linkedAm.nik, period, opts);
-        for (const m of msgs) await sendToTelegram(token, chatId, m).catch(() => {});
-        if (!msgs.length) await sendToTelegram(token, chatId, `Belum ada data untuk periode ini kak *${amFirstName}*.`).catch(() => {});
+        for (const m of msgs) await sendToTelegram(token, chatId, m).catch(() => { });
+        if (!msgs.length) await sendToTelegram(token, chatId, `Belum ada data untuk periode ini kak *${amFirstName}*.`).catch(() => { });
         continue;
       }
 
@@ -366,11 +410,11 @@ export async function pollOnce() {
         });
 
         if (aiReply) {
-          await sendToTelegram(token, chatId, aiReply).catch(() => {});
+          await sendToTelegram(token, chatId, aiReply).catch(() => { });
         } else if (!linkedAm) {
           await sendToTelegram(token, chatId,
             `Halo kak! Untuk bisa menggunakan bot ini, kamu perlu terhubung ke sistem dulu ya.\n\nKetik /myid untuk dapat Chat ID kamu.`
-          ).catch(() => {});
+          ).catch(() => { });
         }
       }
     }
@@ -387,7 +431,7 @@ async function deleteWebhookIfAny(token: string) {
   } catch { /* non-fatal */ }
 }
 
-export function startTelegramPoller(intervalMs = 15000) {
+export function startTelegramPoller(intervalMs = 100) {
   const run = async () => {
     await pollOnce();
     pollerTimer = setTimeout(run, intervalMs);
@@ -415,13 +459,15 @@ export function rescheduleTelegramPoller(newToken?: string) {
   lastUpdateId = 0;
   const restart = async () => {
     if (newToken) {
-      try { await (async () => {
-        const resp = await fetch(`https://api.telegram.org/bot${newToken}/deleteWebhook?drop_pending_updates=false`);
-        const data = await resp.json() as { ok: boolean };
-        if (data.ok) logger.info("Webhook cleared for new token");
-      })(); } catch { /* non-fatal */ }
+      try {
+        await (async () => {
+          const resp = await fetch(`https://api.telegram.org/bot${newToken}/deleteWebhook?drop_pending_updates=false`);
+          const data = await resp.json() as { ok: boolean };
+          if (data.ok) logger.info("Webhook cleared for new token");
+        })();
+      } catch { /* non-fatal */ }
     }
-    startTelegramPoller(15000);
+    startTelegramPoller(100);
   };
-  setTimeout(() => restart().catch(() => {}), 500);
+  setTimeout(() => restart().catch(() => { }), 500);
 }

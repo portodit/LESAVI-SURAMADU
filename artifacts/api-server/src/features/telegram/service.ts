@@ -170,12 +170,12 @@ async function buildPerformanceMessage(
   const achRegulerCm = (p?.targetReguler ?? 0) > 0 ? ((p?.realReguler ?? 0) / p!.targetReguler!) * 100 : 0;
   const achSustainCm = (p?.targetSustain ?? 0) > 0 ? ((p?.realSustain ?? 0) / p!.targetSustain!) * 100 : 0;
   const achScalingCm = (p?.targetScaling ?? 0) > 0 ? ((p?.realScaling ?? 0) / p!.targetScaling!) * 100 : 0;
-  const achNgtmaCm   = (p?.targetNgtma ?? 0) > 0   ? ((p?.realNgtma ?? 0)   / p!.targetNgtma!)   * 100 : 0;
+  const achNgtmaCm = (p?.targetNgtma ?? 0) > 0 ? ((p?.realNgtma ?? 0) / p!.targetNgtma!) * 100 : 0;
 
   const achRegulerYtd = sumYtdAch("realReguler", "targetReguler");
   const achSustainYtd = sumYtdAch("realSustain", "targetSustain");
   const achScalingYtd = sumYtdAch("realScaling", "targetScaling");
-  const achNgtmaYtd   = sumYtdAch("realNgtma", "targetNgtma");
+  const achNgtmaYtd = sumYtdAch("realNgtma", "targetNgtma");
 
   const greeting = greetingByTime();
 
@@ -434,7 +434,7 @@ async function buildFunnelMessage(nik: string): Promise<string | null> {
   return msg;
 }
 
-async function buildActivityMessage(nik: string, period: string): Promise<string | null> {
+async function buildActivityMessage(nik: string, period: string, label?: string): Promise<string | null> {
   const [year, month] = period.split("-").map(Number);
 
   const [am] = await db.select().from(accountManagersTable).where(eq(accountManagersTable.nik, nik));
@@ -443,22 +443,50 @@ async function buildActivityMessage(nik: string, period: string): Promise<string
   const firstName = am.nama.split(" ")[0];
 
   const acts = await db.select().from(salesActivityTable).where(eq(salesActivityTable.nik, nik));
-  const monthActs = acts.filter(a => a.activityEndDate?.startsWith(period));
+  let monthActs = acts.filter(a => a.activityEndDate?.startsWith(period));
+
+  if (label) {
+    monthActs = monthActs.filter(a => a.label?.toLowerCase() === label.toLowerCase());
+  }
+
   const achieved = monthActs.length >= am.kpiActivity;
   const remaining = am.kpiActivity - monthActs.length;
   const greeting = greetingByTime();
 
-  let msg = `📌 *SALES ACTIVITY*\n`;
+  let msg = `📌 *SALES ACTIVITY${label ? ` (${label})` : ""}*\n`;
   msg += `LESA VI — Witel Suramadu\n\n`;
   msg += `Halo kak ${firstName}! 👋 ${greeting}\n\n`;
   msg += `Status *Sales Activity* — ${MONTH_NAMES[month]} ${year}:\n\n`;
-  msg += `Activity   : *${monthActs.length}* / ${am.kpiActivity} KPI\n`;
-  msg += `Status     : ${achieved ? `✅ KPI Tercapai!` : `⚠️ Belum tercapai — butuh *${remaining}* lagi`}\n\n`;
+  msg += `Activity   : *${monthActs.length}* ${label ? "" : `/ ${am.kpiActivity} KPI`}\n`;
 
-  if (!achieved && remaining <= 3) {
-    msg += `_Hampir sampai, kak ${firstName}! Tinggal ${remaining} lagi 💪_\n\n`;
-  } else if (!achieved) {
-    msg += `_Yuk tambah activity kak ${firstName}, masih ada waktu! 🚀_\n\n`;
+  if (!label) {
+    msg += `Status     : ${achieved ? `✅ KPI Tercapai!` : `⚠️ Belum tercapai — butuh *${remaining}* lagi`}\n\n`;
+
+    if (!achieved && remaining <= 3) {
+      msg += `_Hampir sampai, kak ${firstName}! Tinggal ${remaining} lagi 💪_\n\n`;
+    } else if (!achieved) {
+      msg += `_Yuk tambah activity kak ${firstName}, masih ada waktu! 🚀_\n\n`;
+    }
+  } else {
+    msg += `\n_Menampilkan detail data kategori: *${label}*_ \n\n`;
+
+    // Sort newest first
+    const sorted = [...monthActs].sort((a, b) => (b.createdatActivity || "").localeCompare(a.createdatActivity || ""));
+
+    const MAX_ITEMS = 10;
+    const items = sorted.slice(0, MAX_ITEMS);
+    const rest = sorted.length - items.length;
+
+    for (const a of items) {
+      msg += `• *${a.caName || "Nama Pelanggan -"}*\n`;
+      msg += `  ├ Tipe: ${a.activityType || "-"}\n`;
+      msg += `  ├ Waktu: ${formatSnapshotDate(a.createdatActivity?.split(" ")[0], null, a.createdatActivity || "-")}\n`;
+      msg += `  └ Catatan: _${a.activityNotes || "Tidak ada catatan"}_ \n\n`;
+    }
+
+    if (rest > 0) {
+      msg += `_...dan ${rest} aktivitas lainnya untuk periode ini._\n`;
+    }
   }
 
   return msg;
@@ -469,7 +497,7 @@ async function buildActivityMessage(nik: string, period: string): Promise<string
 export async function buildTelegramMessages(
   nik: string,
   period: string,
-  options: { includePerformance: boolean; includeFunnel: boolean; includeActivity: boolean }
+  options: { includePerformance: boolean; includeFunnel: boolean; includeActivity: boolean; activityLabel?: string }
 ): Promise<string[]> {
   const messages: string[] = [];
 
@@ -484,7 +512,7 @@ export async function buildTelegramMessages(
   }
 
   if (options.includeActivity) {
-    const m = await buildActivityMessage(nik, period);
+    const m = await buildActivityMessage(nik, period, options.activityLabel);
     if (m) messages.push(m);
   }
 
@@ -527,7 +555,7 @@ export async function answerCallbackQuery(botToken: string, callbackQueryId: str
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: callbackQueryId }),
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 export { greetingByTime };
