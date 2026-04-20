@@ -78,6 +78,7 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     nik: string; fullname: string | null; divisi: string;
     kpiCount: number; totalCount: number; kpiTarget: number;
     activities: any[];
+    _divisiSet: Set<string>;
   }> = {};
 
   // Inisialisasi hanya dari AM terdaftar
@@ -92,6 +93,7 @@ router.get("/public/activity", async (req, res): Promise<void> => {
       kpiTarget: am.kpiActivity ?? kpiDefault,
       perAmKpiTarget: am.kpiActivity ?? null,
       activities: [],
+      _divisiSet: new Set<string>(),
     };
   }
 
@@ -105,10 +107,13 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     byAmMap[nik].totalCount++;
     if (isKpiLabel(act.label)) byAmMap[nik].kpiCount++;
     if (act.label) distinctLabels.add(act.label);
+    // Kumpulkan semua divisi dari data aktivitas (bukan dari profil AM)
+    if (act.divisi) byAmMap[nik]._divisiSet.add(act.divisi);
     byAmMap[nik].activities.push({
       id: act.id,
       activityEndDate: act.activityEndDate,
       activityType: act.activityType,
+      divisi: act.divisi ?? null,
       label: act.label,
       caName: act.caName,
       picName: act.picName,
@@ -123,19 +128,35 @@ router.get("/public/activity", async (req, res): Promise<void> => {
       const db2 = b.activityEndDate ?? "";
       return db2 < da ? -1 : db2 > da ? 1 : 0;
     });
+    // Tentukan divisi efektif dari data aktivitas (lebih akurat dari profil AM)
+    if (entry._divisiSet.size > 0) {
+      entry.divisi = [...entry._divisiSet][0];
+    }
   }
 
-  const byAm = Object.values(byAmMap).filter(a =>
-    matchesDivisi(a.divisi, divisi ? String(divisi) : "all")
-  );
+  const filterDivisiParam = divisi ? String(divisi) : "all";
+  const byAm = Object.values(byAmMap).filter(a => {
+    // Filter berdasarkan divisi dari aktivitas aktual, bukan hanya profil AM
+    const actDivisis = [...a._divisiSet];
+    if (actDivisis.length > 0) {
+      return actDivisis.some(d => matchesDivisi(d, filterDivisiParam));
+    }
+    return matchesDivisi(a.divisi, filterDivisiParam);
+  });
 
   const totalKpiActivities = byAm.reduce((s, a) => s + a.kpiCount, 0);
+
+  // Bersihkan internal field sebelum kirim, tambahkan divisiAll sebagai array
+  const byAmClean = byAm.map(({ _divisiSet, ...rest }) => ({
+    ...rest,
+    divisiAll: [..._divisiSet].sort(),
+  }));
 
   res.json({
     totalKpiActivities,
     kpiDefault,
     masterAms,
-    byAm,
+    byAm: byAmClean,
     distinctLabels: [...distinctLabels].sort(),
   });
 });
