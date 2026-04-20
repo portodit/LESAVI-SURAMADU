@@ -25,6 +25,7 @@ interface AmActivity {
   nik: string;
   fullname: string;
   divisi: string;
+  divisiAll?: string[];
   kpiCount: number;
   totalCount: number;
   kpiTarget: number;
@@ -798,9 +799,11 @@ export default function ActivityPage() {
             } catch { return false; }
           });
         }
-        // Compute which divisis this AM actually has (for multi-divisi badge)
+        // Compute divisi dari aktivitas yang sudah terfilter — sumber dari sales_activity.divisi
         const activityDivisis = Array.from(new Set(acts.map(a => a.divisi).filter(Boolean))) as string[];
-        return { ...existing, activities: acts, kpiTarget: settingsKpi * effectiveMonths, activityDivisis };
+        // Fallback ke divisiAll dari API jika tidak ada aktivitas yang terfilter
+        const effectiveDivisiAll = activityDivisis.length > 0 ? activityDivisis : (existing.divisiAll ?? []);
+        return { ...existing, activities: acts, kpiTarget: settingsKpi * effectiveMonths, activityDivisis: effectiveDivisiAll };
       }
       const activityDivisis = matchesDivisi(ma.divisi, divisi) ? [ma.divisi] : [];
       return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi * effectiveMonths, activities: [], activityDivisis };
