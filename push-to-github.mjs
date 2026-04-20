@@ -12,16 +12,16 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-const TOKEN  = process.env.GITHUB_TOKEN;
+const TOKEN  = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 const OWNER  = "portodit";
 const REPO   = "LESAVI-SURAMADU";
-const BRANCH = "master";
+const BRANCH = "feature/enhance-sales-activity";
 const BASE   = process.cwd();
 const ARGS   = process.argv.slice(2);
 const MSG    = ARGS[0] || "chore: update";
 const FILES  = ARGS.slice(1);
 
-if (!TOKEN) { console.error("❌ GITHUB_TOKEN tidak ada"); process.exit(1); }
+if (!TOKEN) { console.error("❌ GITHUB_PERSONAL_ACCESS_TOKEN tidak ada"); process.exit(1); }
 
 const GH = "https://api.github.com";
 const H  = {

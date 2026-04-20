@@ -74,6 +74,14 @@ Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client insta
 
 Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
 
+## GitHub Push Configuration
+
+- **Script**: `push-to-github.mjs`
+- **Token**: `GITHUB_PERSONAL_ACCESS_TOKEN` (secret)
+- **Branch**: `feature/enhance-sales-activity`
+- **Repo**: `portodit/LESAVI-SURAMADU`
+- **Usage**: `node push-to-github.mjs "type: desc" file1 file2` (spesifik) atau `node push-to-github.mjs "type: desc"` (diff semua)
+
 ### `lib/api-spec` (`@workspace/api-spec`)
 
 Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
