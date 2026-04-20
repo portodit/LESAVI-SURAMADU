@@ -722,8 +722,6 @@ export default function ActivityPage() {
   });
   const settingsKpi = (data as any)?.kpiDefault ?? settingsData?.kpiActivityDefault ?? 30;
 
-  const effectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
-
   const amOptions = useMemo(() => {
     const byAmSet = new Set((data?.byAm ?? []).map(a => a.fullname));
     return (data?.masterAms ?? [])
@@ -803,12 +801,13 @@ export default function ActivityPage() {
         const activityDivisis = Array.from(new Set(acts.map(a => a.divisi).filter(Boolean))) as string[];
         // Fallback ke divisiAll dari API jika tidak ada aktivitas yang terfilter
         const effectiveDivisiAll = activityDivisis.length > 0 ? activityDivisis : (existing.divisiAll ?? []);
-        return { ...existing, activities: acts, kpiTarget: settingsKpi * effectiveMonths, activityDivisis: effectiveDivisiAll };
+        // kpiTarget = nilai settingan saja, tidak dikalikan jumlah bulan
+        return { ...existing, activities: acts, kpiTarget: existing.kpiTarget, activityDivisis: effectiveDivisiAll };
       }
       const activityDivisis = matchesDivisi(ma.divisi, divisi) ? [ma.divisi] : [];
-      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi * effectiveMonths, activities: [], activityDivisis };
+      return { nik: ma.nik, fullname: ma.nama, divisi: ma.divisi, kpiCount: 0, totalCount: 0, kpiTarget: settingsKpi, activities: [], activityDivisis };
     });
-  }, [data, divisi, selectedAms, search, filterMonths, effectiveMonths, settingsKpi]);
+  }, [data, divisi, selectedAms, search, filterMonths, settingsKpi]);
 
   const kpiLabels = useMemo(() => selectedLabels ?? new Set<string>(), [selectedLabels]);
 
@@ -996,7 +995,7 @@ export default function ActivityPage() {
           icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           label="AM Capai KPI"
           value={isLoading ? "—" : stats.reach}
-          sub={<>target <strong className="text-foreground">≥{filteredAms[0]?.kpiTarget ?? settingsKpi * effectiveMonths} aktivitas</strong> / {effectiveMonths === 1 ? "bulan" : `${effectiveMonths} bulan`}</>}
+          sub={<>target <strong className="text-foreground">≥{filteredAms[0]?.kpiTarget ?? settingsKpi} aktivitas</strong> / bulan</>}
           accent="bg-emerald-100 dark:bg-emerald-950/30"
         />
         <OverviewCard
