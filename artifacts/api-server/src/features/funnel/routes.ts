@@ -94,7 +94,7 @@ router.delete("/funnel/am-targets/:id", requireAuth, async (req, res): Promise<v
 
 // ── Main Funnel Data ───────────────────────────────────────────────────────────
 router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
-  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list } = req.query;
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, is_report, project_type } = req.query;
 
   // Load account_managers for name resolution and AM group filtering
   const masterAms = await db.select().from(accountManagersTable);
@@ -145,12 +145,15 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
   if (kategori_kontrak) allLops = allLops.filter(l => l.kategoriKontrak === String(kategori_kontrak));
+  if (is_report) allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === String(is_report).toUpperCase());
+  if (project_type) allLops = allLops.filter(l => String(project_type).toUpperCase().split(",").some(pt => (l.projectType || "").toUpperCase().includes(pt.trim())));
 
   // Only include LOPs from registered AMs (role=AM, aktif=true) — same rule as activity/performance visualizations
   allLops = allLops.filter(l => l.nikAm && activeNikSet.has(l.nikAm));
 
   const totalLop = allLops.length;
   const totalNilai = allLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+  const totalEstRev = allLops.reduce((s, l) => s + (l.estRev || 0), 0);
   // Count only LOPs with identified AMs (has a valid name)
   const namedLops = allLops.filter(l => l.namaAm && l.namaAm !== "");
   const amSet = new Set(namedLops.map(l => l.nikAm).filter(Boolean));
@@ -248,7 +251,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
 
   res.json({
-    totalLop, totalNilai,
+    totalLop, totalNilai, totalEstRev,
     targetHo: targetHoVal,
     targetFullHo: targetFullHoVal,
     targetByDivisi,
@@ -268,12 +271,15 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
       judulProyek: l.judulProyek,
       pelanggan: l.pelanggan,
       nilaiProyek: l.nilaiProyek,
+      estRev: l.estRev ?? null,
       divisi: l.divisi,
       segmen: l.segmen,
       statusF: l.statusF,
       proses: l.proses,
       statusProyek: l.statusProyek,
       kategoriKontrak: l.kategoriKontrak,
+      projectType: l.projectType ?? null,
+      isReport: l.isReport ?? null,
       estimateBulan: l.estimateBulan,
       monthSubs: l.monthSubs ?? null,
       namaAm: l.namaAm,

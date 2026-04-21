@@ -222,6 +222,7 @@ export interface CleanedFunnelRow {
   judulProyek: string;
   pelanggan: string;
   nilaiProyek: number;
+  estRev: number;
   divisi: string;
   segmen: string;
   witel: string;
@@ -229,6 +230,8 @@ export interface CleanedFunnelRow {
   proses: string;
   statusProyek: string;
   kategoriKontrak: string;
+  projectType: string;
+  isReport: string;
   estimateBulan: string;
   monthSubs: number | null;
   namaAm: string;
@@ -318,6 +321,7 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
       judulProyek: clean(r.judul_proyek),
       pelanggan: cleanUpper(r.pelanggan) || "–",
       nilaiProyek: parseFloat(String(r.nilai_proyek ?? 0)) || 0,
+      estRev: parseIndonesianNumber(r[" est_rev "] ?? r.est_rev ?? r["est_rev"] ?? 0),
       divisi,
       segmen: clean(r.segmen),
       witel,
@@ -325,6 +329,8 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
       proses: clean(r.proses),
       statusProyek: clean(r.status_proyek),
       kategoriKontrak: clean(r.kategori_kontrak) || "–",
+      projectType: clean(r.project_type),
+      isReport: clean(r.is_report).toUpperCase(),
       estimateBulan: parseDate(r.estimate_bulan_billcomp) || clean(r.estimate_bulan_billcomp),
       monthSubs: r.month_subs != null
         ? (parseInt(String(r.month_subs), 10) || null)
