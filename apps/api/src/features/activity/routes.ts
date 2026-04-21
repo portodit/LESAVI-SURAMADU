@@ -66,9 +66,9 @@ router.get("/activity", requireAuth, async (req, res): Promise<void> => {
 
   if (year && month && String(month) !== "all") {
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
-    acts = acts.filter(a => a.createdatActivity?.startsWith(prefix));
+    acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
   } else if (year) {
-    acts = acts.filter(a => a.createdatActivity?.startsWith(String(year)));
+    acts = acts.filter(a => a.activityEndDate?.startsWith(String(year)));
   }
 
   const masterAms = registeredAms.map(a => ({ nik: a.nik, nama: a.nama, divisi: a.divisi ?? "" }));
@@ -146,7 +146,7 @@ router.get("/activity/:nik", requireAuth, async (req, res): Promise<void> => {
   acts = acts.filter(a => a.nik === raw);
   if (year && month) {
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
-    acts = acts.filter(a => a.createdatActivity?.startsWith(prefix));
+    acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
   }
 
   const [allAms, singleSettingsArr] = await Promise.all([
