@@ -2243,7 +2243,7 @@ function ActivitySlide() {
   //            (2) kpiActivityDefault dari settings API (fallback jika activity belum loaded)
   //            (3) hardcoded 30 (last resort)
   const actSettingsKpi:number = (data as any)?.kpiDefault ?? actSettingsData?.kpiActivityDefault ?? 30;
-  const actEffectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
+
 
   const amList = useMemo(()=>{
     if(!data) return [];
@@ -2268,7 +2268,8 @@ function ActivitySlide() {
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
         const perAmOverride=ex?.perAmKpiTarget;
-        const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
+        // kpiTarget = nilai settingan saja, tidak dikalikan jumlah bulan
+        const baseKpiTarget=perAmOverride??actSettingsKpi;
         const baseActs=(ex?.activities||[]);
         const activityDivisis=Array.from(new Set(baseActs.map((a:any)=>a.divisi).filter(Boolean)));
         const base=ex
@@ -2277,7 +2278,7 @@ function ActivitySlide() {
         const visibleActs=filterKategori.size===0?base.activities:base.activities.filter((a:any)=>filterKategori.has(a.label));
         return {...base,visibleActivities:visibleActs};
       });
-  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi,actEffectiveMonths]);
+  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi]);
 
   const stats = useMemo(()=>{
     const totalKpi=amList.reduce((s:number,a:any)=>s+a.kpiCount,0);
@@ -2399,7 +2400,7 @@ function ActivitySlide() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-foreground uppercase tracking-wide mb-1">AM Capai KPI</div>
                 <div className="text-3xl font-black tabular-nums leading-tight text-foreground">{stats.reach}</div>
-                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??(actSettingsKpi*actEffectiveMonths)} aktivitas</strong> / {actEffectiveMonths===1?"bulan":`${actEffectiveMonths} bulan`}</div>
+                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??actSettingsKpi} aktivitas</strong> / bulan</div>
               </div>
             </div>
             {/* Card 3: AM Di Bawah KPI */}
