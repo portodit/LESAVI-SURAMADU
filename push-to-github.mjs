@@ -15,7 +15,7 @@ import crypto from "crypto";
 const TOKEN  = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 const OWNER  = "portodit";
 const REPO   = "LESAVI-SURAMADU";
-const BRANCH = "feature/enhance-sales-activity";
+const BRANCH = "feature/enhanced-sales-funnel";
 const BASE   = process.cwd();
 const ARGS   = process.argv.slice(2);
 const MSG    = ARGS[0] || "chore: update";
