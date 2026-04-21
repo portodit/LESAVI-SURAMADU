@@ -30,6 +30,7 @@ export const appSettingsTable = pgTable("app_settings", {
   gDriveSyncHourWib: integer("g_drive_sync_hour_wib").notNull().default(7),
   gDriveSyncIntervalDays: integer("g_drive_sync_interval_days").notNull().default(1),
   gDriveLastCheckAt: timestamp("g_drive_last_check_at", { withTimezone: true }),
+  nonAktifAmsCleaned: boolean("non_aktif_ams_cleaned").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

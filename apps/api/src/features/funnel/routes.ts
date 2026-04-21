@@ -94,7 +94,7 @@ router.delete("/funnel/am-targets/:id", requireAuth, async (req, res): Promise<v
 
 // ── Main Funnel Data ───────────────────────────────────────────────────────────
 router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
-  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun } = req.query;
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list } = req.query;
 
   // Load account_managers for name resolution and AM group filtering
   const masterAms = await db.select().from(accountManagersTable);
@@ -125,11 +125,22 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
     allLops = [...lopMap.values()];
   }
 
-  // Filter by report_date year — this matches Power BI's Date filter behaviour
-  if (tahun) {
-    const yr = Number(tahun);
-    allLops = allLops.filter(l => l.reportDate && new Date(l.reportDate as string).getFullYear() === yr);
+  // Multi-year OR logic: tahun_list overrides tahun for LOP filtering
+  {
+    const listStr = tahun_list as string | undefined;
+    const yearNums: number[] = listStr
+      ? listStr.split(",").map(Number).filter(n => n > 2000)
+      : tahun ? [Number(tahun)] : [];
+    if (yearNums.length > 0) {
+      allLops = allLops.filter(l => {
+        const rdYear = l.reportDate ? parseInt(String(l.reportDate).slice(0, 4), 10) || null : null;
+        const ta = l.tahunAnggaran ?? null;
+        return yearNums.some(yr => rdYear === yr || ta === yr);
+      });
+    }
   }
+  // Witel Suramadu hanya handle customer DPS dan DSS — singkirkan DGS
+  allLops = allLops.filter(l => (l.divisi || "").toUpperCase() !== "DGS");
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
@@ -268,6 +279,7 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
       namaAm: l.namaAm,
       nikAm: l.nikAm,
       reportDate: l.reportDate,
+      tahunAnggaran: l.tahunAnggaran ?? null,
     })),
   });
 });

@@ -20,6 +20,25 @@ async function ensureSessionTable(): Promise<void> {
   `);
 }
 
+async function patchNullTahunAnggaran(): Promise<void> {
+  const result = await pool.query(`
+    UPDATE sales_funnel
+    SET tahun_anggaran = COALESCE(
+      CASE WHEN snapshot_date IS NOT NULL AND snapshot_date ~ '^[0-9]{4}'
+        THEN EXTRACT(YEAR FROM snapshot_date::date)::integer
+      END,
+      CASE WHEN report_date IS NOT NULL AND report_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        THEN EXTRACT(YEAR FROM report_date::date)::integer
+      END
+    )
+    WHERE tahun_anggaran IS NULL;
+  `);
+  const count = result.rowCount ?? 0;
+  if (count > 0) {
+    logger.info({ count }, "Patched NULL tahun_anggaran rows from snapshot/report_date");
+  }
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -49,6 +68,10 @@ ensureDefaultSeed()
 ensureFullSeed()
   .then(() => logger.info("Full seed check complete"))
   .catch(err => logger.error({ err }, "Failed full seed check"));
+
+patchNullTahunAnggaran()
+  .then(() => logger.info("Tahun anggaran patch complete"))
+  .catch(err => logger.error({ err }, "Failed to patch tahun anggaran"));
 
 app.listen(port, (err) => {
   if (err) {

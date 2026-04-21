@@ -16,6 +16,7 @@ interface LopRow {
   divisi: string; segmen: string | null; statusF: string | null; proses: string | null;
   statusProyek: string | null; kategoriKontrak: string | null; estimateBulan: string | null;
   monthSubs: number | null; namaAm: string | null; nikAm: string | null; reportDate: string | null;
+  tahunAnggaran: number | null;
 }
 
 interface MasterAm { nik: string; nama: string; divisi: string; }
@@ -600,6 +601,14 @@ function formatDurasi(m: number | null | undefined): string {
   if (y > 0) return `${y} tahun`;
   return `${m} bulan`;
 }
+function formatRupiahCompact(val: number | null | undefined): string {
+  if (!val) return "Rp 0";
+  const abs = Math.abs(val);
+  if (abs >= 1_000_000_000_000) return `Rp ${(val / 1_000_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} T`;
+  if (abs >= 1_000_000_000) return `Rp ${(val / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} M`;
+  if (abs >= 1_000_000) return `Rp ${(val / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} Jt`;
+  return `Rp ${val.toLocaleString("id-ID")}`;
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -667,29 +676,38 @@ export default function FunnelPage() {
     staleTime: 0,
   });
 
-  // Available years derived from loaded data
+  // Available years: dari reportDate.year saja (Report Date mode = primary)
   const availableYears = useMemo(() => {
     if (!data) return [...filterYears];
     const yearSet = new Set<string>();
     for (const l of data.lops) {
-      if (!l.reportDate) continue;
-      const yr = String(l.reportDate).slice(0, 4);
-      if (/^\d{4}$/.test(yr)) yearSet.add(yr);
+      if (l.reportDate) {
+        const yr = String(l.reportDate).slice(0, 4);
+        if (/^\d{4}$/.test(yr)) yearSet.add(yr);
+      }
     }
     const sorted = [...yearSet].sort().reverse();
     return sorted.length > 0 ? sorted : [...filterYears];
   }, [data]);
 
-  // Period-filtered LOPs: filter by selected years + months (months only for single year)
+  // Period-filtered LOPs:
+  //   reportDate.year = primary key untuk filter tahun (Report Date mode adalah default).
+  //   Month filter: berlaku pada reportDate.month untuk mempersempit LOP yang sudah lolos year filter.
   const periodFilteredLops = useMemo(() => {
     if (!data) return [];
     const singleYear = filterYears.size === 1 ? [...filterYears][0] : null;
     return data.lops.filter(l => {
-      if (!l.reportDate) return false;
-      const rd = String(l.reportDate).slice(0, 10);
-      const yr = rd.slice(0, 4);
-      if (!filterYears.has(yr)) return false;
-      if (singleYear && filterMonths.size > 0 && !filterMonths.has(rd.slice(5, 7))) return false;
+      const reportYear = l.reportDate ? String(l.reportDate).slice(0, 4) : null;
+
+      // Report Date is the primary filter dimension
+      const matchesYear = reportYear != null && filterYears.has(reportYear);
+      if (!matchesYear) return false;
+
+      // Month filter: apply to reportDate.month when months are selected
+      if (singleYear && filterMonths.size > 0) {
+        const mo = l.reportDate ? String(l.reportDate).slice(5, 7) : null;
+        if (!mo || !filterMonths.has(mo)) return false;
+      }
       return true;
     });
   }, [data, filterYears, filterMonths]);
@@ -1017,7 +1035,7 @@ export default function FunnelPage() {
                       <div className="absolute right-0 bottom-full mb-2 z-[60] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
                         style={{minWidth:"220px"}}>
                         <div className="bg-popover border border-border rounded-lg shadow-xl p-3 text-left">
-                          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-2">Perhitungan Conv. Rate</div>
+                          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-2">Perhitungan Conversion Rate</div>
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-4">
                               <span className="text-xs text-muted-foreground whitespace-nowrap">F5 (Closed/Won)</span>
@@ -1091,39 +1109,75 @@ export default function FunnelPage() {
                   }
                 </tr>
                 {phaseExpanded && (
-                  <>
-                    {/* Sub-header for project detail columns */}
-                    <tr className="bg-slate-100 border-y border-slate-300" style={ringStyle({})}>
-                      <td className="px-4 py-2 pl-16 text-xs font-black text-slate-800 uppercase tracking-wider">Nama Proyek</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Kategori</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Durasi</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">LOP ID</td>
-                      <td className="px-3 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Pelanggan</td>
-                      <td className="px-4 py-2 text-xs font-black text-slate-800 uppercase tracking-wider">Nilai</td>
-                    </tr>
-                    {lops.map((lop, idx) => (
-                      <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors" style={ringStyle({})}>
-                        <td className="px-4 py-2.5 pl-16">
-                          <div className="text-sm text-foreground font-bold leading-tight line-clamp-2 max-w-[280px]" title={lop.judulProyek}>{lop.judulProyek}</div>
-                        </td>
-                        <td className="px-3 py-2.5"><KontrakBadge k={lop.kategoriKontrak} /></td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-sm font-bold text-teal-700 dark:text-teal-400">{formatDurasi(lop.monthSubs)}</span>
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="font-mono text-xs font-semibold text-slate-600">{lop.lopid}</span>
-                        </td>
-                        <td className="px-3 py-2.5 text-sm text-foreground font-semibold max-w-[200px] truncate" title={lop.pelanggan}>{lop.pelanggan}</td>
-                        <td className="px-4 py-2.5 text-left tabular-nums text-sm font-black text-foreground whitespace-nowrap">{formatRupiahFull(lop.nilaiProyek)}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-red-50 border-t border-red-200" style={ringStyle({})}>
-                      <td colSpan={5} className="px-4 py-2 pl-16">
-                        <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums font-black text-red-800 whitespace-nowrap text-base">{formatRupiahFull(phaseTotal)}</td>
-                    </tr>
-                  </>
+                  /* Nested table: layout independen dari outer table — tidak memengaruhi lebar kolom utama */
+                  <tr style={ringStyle({})}>
+                    <td colSpan={6} className="p-0 border-b border-slate-200">
+                      <table className="w-full text-left text-sm" style={{ tableLayout: "fixed", borderCollapse: "collapse" }}>
+                        <colgroup>
+                          <col style={{ width: "31%" }} />
+                          <col style={{ width: "11%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "13%" }} />
+                          <col style={{ width: "20%" }} />
+                          <col style={{ width: "17%" }} />
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-slate-100 border-y border-slate-300">
+                            <td className="px-4 py-2 pl-16 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Nama Proyek</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Kategori</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Durasi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">LOP ID</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider overflow-hidden">Pelanggan & Divisi</td>
+                            <td className="px-3 py-2 text-[11px] font-black text-slate-800 uppercase tracking-wider text-right overflow-hidden">Nilai</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lops.map((lop, idx) => (
+                            <tr key={`${lop.lopid}-${idx}`} className="hover:bg-pink-50 transition-colors border-b border-slate-100">
+                              <td className="px-4 py-2.5 pl-16 overflow-hidden">
+                                <div className="text-sm text-foreground font-bold leading-tight line-clamp-2" title={lop.judulProyek}>{lop.judulProyek}</div>
+                              </td>
+                              <td className="px-3 py-2.5 overflow-hidden"><KontrakBadge k={lop.kategoriKontrak} /></td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <span className="text-sm font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">{formatDurasi(lop.monthSubs)}</span>
+                              </td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <span className="font-mono text-xs font-semibold text-slate-600 truncate block">{lop.lopid}</span>
+                              </td>
+                              <td className="px-3 py-2.5 overflow-hidden">
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-sm text-foreground font-semibold truncate" title={lop.pelanggan}>{lop.pelanggan}</span>
+                                  {lop.divisi ? (
+                                    <span className={cn(
+                                      "inline-flex items-center self-start px-1.5 py-0.5 rounded text-[10px] font-black uppercase border",
+                                      lop.divisi.toUpperCase() === "DPS"
+                                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                                        : lop.divisi.toUpperCase() === "DSS"
+                                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                                        : "bg-slate-100 text-slate-600 border-slate-300"
+                                    )}>
+                                      {lop.divisi}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-xs font-bold text-foreground overflow-hidden" title={formatRupiahFull(lop.nilaiProyek)}>
+                                {formatRupiahCompact(lop.nilaiProyek)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-red-50 border-t border-red-200">
+                            <td colSpan={5} className="px-4 py-2 pl-16 overflow-hidden">
+                              <span className="text-sm font-black text-red-800 uppercase tracking-wide">Total Nilai {phase}</span>
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-sm font-black text-red-800 overflow-hidden" title={formatRupiahFull(phaseTotal)}>
+                              {formatRupiahCompact(phaseTotal)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
                 )}
               </React.Fragment>
             );
@@ -1196,7 +1250,7 @@ export default function FunnelPage() {
             disabled={snapshotOptions.length === 0} className="w-36 shrink-0" />
 
           <div className="w-px h-9 bg-border self-end shrink-0" />
-          <PeriodeTreeDropdown label="Periode"
+          <PeriodeTreeDropdown label="Filter Report Date"
             filterYears={filterYears} filterMonths={filterMonths}
             availableYears={availableYears}
             onChange={(yrs, ms) => { setFilterYears(yrs); setFilterMonths(ms); }}
@@ -1325,10 +1379,10 @@ export default function FunnelPage() {
             <TrendingUp className="w-4 h-4 text-primary" />
             Detail Sales Funnel per Account Manager
           </h3>
-          <div className="flex items-center gap-2 flex-nowrap ml-auto">
-            <CheckboxDropdown label="Nama AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
+          <div className="flex items-end gap-2 flex-nowrap ml-auto">
+            <CheckboxDropdown label="Filter AM" options={amOptions} selected={filterAm} onChange={setFilterAm}
               placeholder="Semua AM" labelFn={amLabelFn} summaryLabel="AM" className="w-44 shrink-0" />
-            <SelectDropdown label="Masa Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
+            <SelectDropdown label="Durasi Kontrak" value={filterDurasi} onChange={v => setFilterDurasi(v as typeof filterDurasi)}
               options={[{ value: "all", label: "Semua Durasi" }, { value: "single_year", label: "Single Year (≤12 bln)" }, { value: "multi_year", label: "Multi Year (>12 bln)" }]}
               className="w-44 shrink-0" />
             {hasDetailFilter && (
@@ -1337,12 +1391,15 @@ export default function FunnelPage() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <input type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-80 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60" />
-              {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Pencarian Data LOP</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input type="text" placeholder="Cari AM, LOP ID, proyek, pelanggan, kategori…" value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 text-sm bg-background border border-border rounded-lg w-80 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60" />
+                {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
+              </div>
             </div>
             <button onClick={handleToggleAll}
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap">
@@ -1358,7 +1415,7 @@ export default function FunnelPage() {
             <table className="text-left text-sm w-full" style={{minWidth:"640px",tableLayout:"auto",borderCollapse:"collapse"}}>
               <colgroup>
                 <col style={{minWidth:"200px"}}/><col style={{width:"75px"}}/><col style={{width:"70px"}}/>
-                <col style={{width:"160px"}}/><col style={{minWidth:"180px"}}/><col style={{width:"120px"}}/>
+                <col style={{width:"150px"}}/><col style={{minWidth:"170px"}}/><col style={{width:"120px"}}/>
               </colgroup>
               <thead ref={funnelTheadRef} style={{position:"sticky",top:0,zIndex:20}}>
                 <tr className="bg-red-700 text-white font-black uppercase tracking-wide text-xs">
@@ -1367,7 +1424,7 @@ export default function FunnelPage() {
                   <th className="px-3 py-3 text-left whitespace-nowrap">Pelanggan</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">Target 2026</th>
                   <th className="px-3 py-3 text-left whitespace-nowrap">Nilai Proyek</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">Conv. Rate</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Conversion Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -1464,7 +1521,7 @@ export default function FunnelPage() {
                         <th className="px-3 py-2.5 whitespace-nowrap w-16 text-left">Pelanggan</th>
                         <th className="px-3 py-2.5 whitespace-nowrap min-w-[140px] text-left">Target 2026</th>
                         <th className="px-3 py-2.5 min-w-[160px] text-left">Nilai Proyek</th>
-                        <th className="px-4 py-2.5 text-right whitespace-nowrap w-24">Conv. Rate</th>
+                        <th className="px-4 py-2.5 text-right whitespace-nowrap w-24">Conversion Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">

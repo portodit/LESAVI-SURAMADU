@@ -1,5 +1,5 @@
 import { db, accountManagersTable, appSettingsTable, salesFunnelTargetTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { seedAmFunnelTargets } from "../seeds/seed-am-funnel-targets";
 
 // Default Google Drive folder IDs (TREG3 Suramadu production folders)
@@ -39,12 +39,64 @@ const DEFAULT_MANAGER = {
   discoveredFrom: "seeder",
 };
 
+const DEFAULT_OFFICERS = [
+  {
+    nik: "950160",
+    nama: "DIAN ING TYAS DANANJAYA",
+    slug: "dian-ing-tyas-dananjaya",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
+  {
+    nik: "980134",
+    nama: "AYU KIRANA",
+    slug: "ayu-kirana",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
+  {
+    nik: "940094",
+    nama: "KARENDIYA KINASIH",
+    slug: "karendiya-kinasih",
+    role: "OFFICER" as const,
+    tipe: "LESA",
+    divisi: "DPS",
+    witel: "SURAMADU",
+    kpiActivity: 0,
+    aktif: true,
+    crossWitel: false,
+  },
+];
+
 const DEFAULT_FUNNEL_TARGETS = [
   { divisi: "DPS", tahun: 2026, targetFullHo: 97076000000, targetHo: 95973000000 },
   { divisi: "DSS", tahun: 2026, targetFullHo: 73780000000, targetHo: 57036000000 },
 ];
 
 export async function ensureDefaultSeed(): Promise<void> {
+  // ── One-time cleanup: hapus AM non-aktif yang ditemukan dari import (bukan seed asli)
+  // Flag disimpan di app_settings.nonAktifAmsCleaned — hanya dijalankan sekali
+  const settingsForCleanup = await db.select({ id: appSettingsTable.id, nonAktifAmsCleaned: appSettingsTable.nonAktifAmsCleaned }).from(appSettingsTable).limit(1);
+  const shouldClean = settingsForCleanup.length === 0 || !settingsForCleanup[0].nonAktifAmsCleaned;
+  if (shouldClean) {
+    await db.delete(accountManagersTable).where(
+      and(eq(accountManagersTable.aktif, false), eq(accountManagersTable.role, "AM"))
+    );
+    if (settingsForCleanup.length > 0) {
+      await db.update(appSettingsTable).set({ nonAktifAmsCleaned: true }).where(eq(appSettingsTable.id, settingsForCleanup[0].id));
+    }
+  }
+
   // Always upsert all AMs — using onConflictDoNothing so we never overwrite user edits
   // but also never skip if admin/manager accounts already exist in the table
   for (const am of DEFAULT_AMS) {
@@ -53,6 +105,11 @@ export async function ensureDefaultSeed(): Promise<void> {
 
   // Upsert default manager
   await db.insert(accountManagersTable).values(DEFAULT_MANAGER as any).onConflictDoNothing();
+
+  // Upsert default officers (non-admin — no email/password)
+  for (const o of DEFAULT_OFFICERS) {
+    await db.insert(accountManagersTable).values(o as any).onConflictDoNothing();
+  }
 
   const googleApiKey = process.env.GOOGLE_API_KEY || null;
 

@@ -21,6 +21,7 @@ export const accountManagersTable = pgTable("account_managers", {
   telegramCode: text("telegram_code"),
   telegramCodeExpiry: timestamp("telegram_code_expiry", { withTimezone: true }),
   kpiActivity: integer("kpi_activity"),
+  discoveredFrom: text("discovered_from"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

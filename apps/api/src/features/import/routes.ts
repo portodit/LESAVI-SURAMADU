@@ -368,7 +368,7 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
 
   // ── AM baru: langsung masuk accounts dengan aktif=false (tidak perlu konfirmasi)
   const newAmCount = await autoRegisterNewAms(
-    toInsert.map(r => ({ nik: r.nik, nama: r.namaAm, divisi: r.divisi, witel: "SURAMADU" })),
+    toInsert.map(r => ({ nik: r.nik, nama: r.namaAm, divisi: r.divisi, witel: (r as any).witelAm || (r as any).witel || "SURAMADU" })),
     "import_performance"
   );
 
@@ -420,7 +420,7 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
 
   // ── AM baru: langsung masuk accounts dengan aktif=false
   const newFunnelAmCount = await autoRegisterNewAms(
-    cleaned.filter(r => r.nikAm).map(r => ({ nik: r.nikAm!, nama: r.namaAm || r.nikAm!, divisi: r.divisi || "DPS" })),
+    cleaned.filter(r => r.nikAm).map(r => ({ nik: r.nikAm!, nama: r.namaAm || r.nikAm!, divisi: r.divisi || "DPS", witel: r.witel || "SURAMADU" })),
     "import_funnel"
   );
 
@@ -460,6 +460,21 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
     const batch = cleaned.slice(i, i + BATCH_SIZE).map(row => ({ ...row, snapshotDate: snapshotDate || null, importId: imp.id }));
     await db.insert(salesFunnelTable).values(batch);
   }
+
+  // ── Back-fill NULL tahun_anggaran: prefer snapshot_date year, fallback to report_date year
+  await db.execute(sql`
+    UPDATE sales_funnel
+    SET tahun_anggaran = COALESCE(
+      CASE WHEN snapshot_date IS NOT NULL AND snapshot_date ~ '^[0-9]{4}'
+        THEN EXTRACT(YEAR FROM snapshot_date::date)::integer
+      END,
+      CASE WHEN report_date IS NOT NULL AND report_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        THEN EXTRACT(YEAR FROM report_date::date)::integer
+      END
+    )
+    WHERE import_id = ${imp.id}
+      AND tahun_anggaran IS NULL
+  `);
 
   // ── Back-fill empty nama_am from accounts
   const allMasterAms = await db.select().from(accountManagersTable);

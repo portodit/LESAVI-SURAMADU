@@ -234,6 +234,7 @@ function FunnelTable({ rows, search }: { rows: any[]; search: string }) {
               <th className="px-3 py-2.5">Masa Kontrak</th>
               <th className="px-4 py-2.5">Nama AM</th>
               <th className="px-3 py-2.5">Report Date</th>
+              <th className="px-3 py-2.5">Tahun Anggaran</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
@@ -249,6 +250,7 @@ function FunnelTable({ rows, search }: { rows: any[]; search: string }) {
                 <td className="px-3 py-2 font-semibold text-teal-700 whitespace-nowrap">{formatDurasi(r.monthSubs)}</td>
                 <td className="px-4 py-2">{r.namaAm}</td>
                 <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{r.reportDate}</td>
+                <td className="px-3 py-2 text-center font-mono text-[10px] font-bold text-foreground">{r.tahunAnggaran ?? "–"}</td>
               </tr>
             ))}
           </tbody>
