@@ -48,16 +48,11 @@ router.get("/public/activity", async (req, res): Promise<void> => {
 
   let acts = allActs;
 
-  // Cumulative snapshot filter: tampilkan semua aktivitas s/d tanggal snapshot yang dipilih
+  // Exact snapshot filter: hanya tampilkan aktivitas dari import_id yang dipilih
   if (import_id && String(import_id) !== "" && String(import_id) !== "all") {
     const impId = parseInt(String(import_id), 10);
     if (!isNaN(impId)) {
-      const selectedImport = activityImports.find(i => i.id === impId);
-      if (selectedImport?.snapshotDate) {
-        acts = acts.filter(a => a.snapshotDate != null && a.snapshotDate <= selectedImport.snapshotDate!);
-      } else {
-        acts = acts.filter(a => a.importId === impId);
-      }
+      acts = acts.filter(a => a.importId === impId);
     }
   }
 
