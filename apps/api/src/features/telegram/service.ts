@@ -443,7 +443,7 @@ async function buildActivityMessage(nik: string, period: string): Promise<string
   const firstName = am.nama.split(" ")[0];
 
   const acts = await db.select().from(salesActivityTable).where(eq(salesActivityTable.nik, nik));
-  const monthActs = acts.filter(a => a.activityEndDate?.startsWith(period));
+  const monthActs = acts.filter(a => a.createdatActivity?.startsWith(period));
   const achieved = monthActs.length >= am.kpiActivity;
   const remaining = am.kpiActivity - monthActs.length;
   const greeting = greetingByTime();

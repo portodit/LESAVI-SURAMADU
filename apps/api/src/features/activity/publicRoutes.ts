@@ -64,12 +64,12 @@ router.get("/public/activity", async (req, res): Promise<void> => {
   const months = req.query.months ? String(req.query.months).split(",").filter(Boolean) : null;
   if (year && months && months.length > 0) {
     const prefixes = months.map(m => `${year}-${m.padStart(2, "0")}`);
-    acts = acts.filter(a => prefixes.some(p => a.activityEndDate?.startsWith(p)));
+    acts = acts.filter(a => prefixes.some(p => a.createdatActivity?.startsWith(p)));
   } else if (year && month && String(month) !== "all") {
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
-    acts = acts.filter(a => a.activityEndDate?.startsWith(prefix));
+    acts = acts.filter(a => a.createdatActivity?.startsWith(prefix));
   } else if (year) {
-    acts = acts.filter(a => a.activityEndDate?.startsWith(String(year)));
+    acts = acts.filter(a => a.createdatActivity?.startsWith(String(year)));
   }
 
   const masterAms = registeredAms.map(a => ({ nik: a.nik, nama: a.nama, divisi: a.divisi ?? "" }));
