@@ -31,7 +31,7 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
 router.get("/public/funnel", async (req, res): Promise<void> => {
   Object.entries(PUBLIC_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
-  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, rd_year, durasi_filter } = req.query;
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, rd_year, durasi_filter, is_report, project_type } = req.query;
 
   const masterAms = await db.select().from(accountManagersTable);
   const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
@@ -96,6 +96,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
   if (kategori_kontrak) allLops = allLops.filter(l => l.kategoriKontrak === String(kategori_kontrak));
+  if (is_report) allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === String(is_report).toUpperCase());
+  if (project_type) allLops = allLops.filter(l => String(project_type).toUpperCase().split(",").some(pt => (l.projectType || "").toUpperCase().includes(pt.trim())));
   if (durasi_filter === "single_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs <= 12);
   else if (durasi_filter === "multi_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs > 12);
 
@@ -104,6 +106,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
 
   const totalLop = allLops.length;
   const totalNilai = allLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+  const totalEstRev = allLops.reduce((s, l) => s + (l.estRev || 0), 0);
   const namedLops = allLops.filter(l => l.namaAm && l.namaAm !== "");
   const amSet = new Set(namedLops.map(l => l.nikAm).filter(Boolean));
   const pelangganSet = new Set(allLops.map(l => l.pelanggan).filter(Boolean));
@@ -202,7 +205,7 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
 
   res.json({
-    totalLop, totalNilai,
+    totalLop, totalNilai, totalEstRev,
     targetHo: targetHoVal,
     targetFullHo: targetFullHoVal,
     targetByDivisi,
@@ -222,12 +225,15 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       judulProyek: l.judulProyek,
       pelanggan: l.pelanggan,
       nilaiProyek: l.nilaiProyek,
+      estRev: l.estRev ?? null,
       divisi: l.divisi,
       segmen: l.segmen,
       statusF: l.statusF,
       proses: l.proses,
       statusProyek: l.statusProyek,
       kategoriKontrak: l.kategoriKontrak,
+      projectType: l.projectType ?? null,
+      isReport: l.isReport ?? null,
       estimateBulan: l.estimateBulan,
       monthSubs: l.monthSubs ?? null,
       namaAm: l.namaAm,
