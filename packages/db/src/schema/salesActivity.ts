@@ -27,7 +27,7 @@ export const salesActivityTable = pgTable("sales_activity", {
   importId: integer("import_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  uniqActivity: unique("sales_activity_nik_createdat_unique").on(t.nik, t.createdatActivity),
+  uniqActivity: unique("sales_activity_nik_startdate_nipnas_ca_unique").on(t.nik, t.activityStartDate, t.nipnas, t.caName),
 }));
 
 export const insertSalesActivitySchema = createInsertSchema(salesActivityTable).omit({ id: true, createdAt: true });
