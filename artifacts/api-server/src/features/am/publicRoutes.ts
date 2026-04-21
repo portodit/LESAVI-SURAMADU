@@ -29,7 +29,7 @@ router.get("/public/am/:slug", async (req, res): Promise<void> => {
 
   const acts = await db.select().from(salesActivityTable)
     .where(eq(salesActivityTable.nik, am.nik));
-  const monthActs = acts.filter(a => a.activityEndDate?.startsWith(`${year}-${String(month).padStart(2, "0")}`));
+  const monthActs = acts.filter(a => a.createdatActivity?.startsWith(`${year}-${String(month).padStart(2, "0")}`));
 
   res.json({
     nik: am.nik, nama: am.nama, slug: am.slug,
