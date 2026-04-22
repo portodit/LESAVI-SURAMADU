@@ -1080,7 +1080,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return (nik:string)=>map.get(nik)||nik;
   },[periodFilteredLops]);
   const kontrakOptions = useMemo(()=>{
-    return [...new Set(periodFilteredLops.map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[])].sort();
+    // Hanya tampilkan kategori yang relevan untuk PIVOT F — jangan tampilkan Uncategorized, Reseller, dll
+    const ALLOWED = new Set(["GTMA","Own Channel","New GTMA"]);
+    const inData = new Set(periodFilteredLops.map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[]);
+    return [...ALLOWED].filter(k => inData.has(k)).sort();
   },[periodFilteredLops]);
 
   const filteredLops = useMemo(()=>{
