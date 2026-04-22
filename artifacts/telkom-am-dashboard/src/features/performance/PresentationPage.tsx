@@ -1086,6 +1086,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return [...ALLOWED].filter(k => inData.has(k)).sort();
   },[periodFilteredLops]);
 
+  // Bersihkan filterKontrak dari kategori yang tidak ada di kontrakOptions (e.g. Uncategorized)
+  useEffect(()=>{
+    if(kontrakOptions.length===0) return;
+    const allowed=new Set(kontrakOptions);
+    const cleaned=new Set([...filterKontrak].filter(k=>allowed.has(k)));
+    if(cleaned.size!==filterKontrak.size) setFilterKontrak(cleaned);
+  },[kontrakOptions]);// eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredLops = useMemo(()=>{
     const q=search.toLowerCase();
     const allApiLops:any[] = data?.lops||[];
