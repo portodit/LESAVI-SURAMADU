@@ -45,6 +45,8 @@ export const amFunnelTargetTable = pgTable("am_funnel_target", {
   nikAm: text("nik_am").notNull(),
   tahun: integer("tahun").notNull(),
   targetValue: real("target_value").notNull().default(0),
+  targetValueDss: real("target_value_dss"),
+  targetValueDps: real("target_value_dps"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [unique("am_funnel_target_nik_tahun").on(t.nikAm, t.tahun)]);
