@@ -1742,62 +1742,114 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
       ):(
         <div className="space-y-4">
-          {/* LOP per Fase + DPS/DSS gauges — one row on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr_2fr] gap-4">
-            {/* LOP per Fase */}
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0 flex flex-col">
-              <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
-              <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
-              {data&&(()=>{
-                const pm:Record<string,{count:number;nilai:number}>={};
-                for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
-                for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
-                return (
-                  <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
-                    <div className="flex-1 flex gap-1.5">
-                      {FS_PHASES.map(phase=>{
-                        const d=pm[phase];const c=FS_PHASE_COLORS[phase];
-                        return (
-                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
-                            <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
-                            <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
-                            <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
-                          </div>
-                        );
-                      })}
+          {/* LOP per Fase — full width shared */}
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+            <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
+            <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
+            {data&&(()=>{
+              const pm:Record<string,{count:number;nilai:number}>={};
+              for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
+              for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+              return (
+                <div className="flex gap-1.5 mt-3 pt-3 border-t border-border/60">
+                  {FS_PHASES.map(phase=>{
+                    const d=pm[phase];const c=FS_PHASE_COLORS[phase];
+                    return (
+                      <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
+                        <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
+                        <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                        <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* DPS | DSS — masing-masing dengan mini bar + kotak fase + capaian + CR */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {(["DPS","DSS"] as const).map(div=>{
+              const divStats = div==="DPS"?dpsStats:dssStats;
+              const tgtHo   = div==="DPS"?dpsTgtHo:dssTgtHo;
+              const tgtFull = div==="DPS"?dpsTgtFullHo:dssTgtFullHo;
+              const real    = divStats.totalNilai;
+              const divPct  = div==="DPS"?dpsPct:dssPct;
+              const crDiv   = crStats?.[div==="DPS"?"dps":"dss"];
+              const pm:Record<string,{count:number;nilai:number}>={};
+              for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
+              for(const s of (divStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+              const maxCount=Math.max(...FS_PHASES.map(p=>pm[p].count),1);
+              const isDPS=div==="DPS";
+              return (
+                <div key={div} className={cn("bg-card border rounded-xl p-4 shadow-sm",isDPS?"border-blue-200":"border-emerald-200")}>
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className={cn("w-2.5 h-2.5 rounded-full",isDPS?"bg-blue-500":"bg-emerald-500")}/>
+                        <span className="text-base font-display font-black text-foreground">{div}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 ml-[18px]">{isDPS?"Private Service":"State Service"}</div>
+                    </div>
+                    <div className="flex items-start gap-5 text-right">
+                      <div><div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Total LOP</div><div className="text-2xl font-black leading-tight text-foreground">{divStats.totalLop}</div></div>
+                      <div><div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Total Nilai</div><div className="text-sm font-bold text-foreground">{fmtCompactFS(divStats.totalNilai)}</div></div>
+                      <div><div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Pelanggan</div><div className="text-sm font-bold text-foreground">{divStats.pelangganCount}</div></div>
                     </div>
                   </div>
-                );
-              })()}
-            </div>
-            {/* DPS | DSS gauges */}
-            {(["DPS","DSS"] as const).map(div=>{
-              const tgtHo  =div==="DPS"?dpsTgtHo:dssTgtHo;
-              const tgtFull=div==="DPS"?dpsTgtFullHo:dssTgtFullHo;
-              const real   =div==="DPS"?dpsStats.totalNilai:dssStats.totalNilai;
-              const divPct =div==="DPS"?dpsPct:dssPct;
-              const crDiv  =crStats?.[div==="DPS"?"dps":"dss"];
-              return (
-                <div key={div} className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0">
-                  <h3 className="text-base font-display font-bold text-foreground mb-2 flex items-center gap-2">
-                    Capaian Real vs Target
-                    <span className={cn("text-xs font-black px-2.5 py-0.5 rounded",
-                      div==="DPS"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"
-                    )}>{div}</span>
-                  </h3>
-                  <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode} divisi={div}/>
-                  {crDiv&&(
-                    <>
-                      <div className="border-t border-border my-3"/>
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                        Conversion Rate
-                        <span className={cn("text-xs font-black px-2 py-0.5 rounded",
-                          div==="DPS"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"
-                        )}>{div}</span>
-                      </h4>
-                      <FSCRGauge f5={crDiv.f5} denom={crDiv.denom} cr={crDiv.cr} divisi={div}/>
-                    </>
-                  )}
+
+                  {/* Body: mini LOP per Fase (left) + Capaian+CR (right) */}
+                  <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+                    {/* Mini LOP per Fase */}
+                    <div>
+                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">LOP per Fase</div>
+                      {/* Horizontal bar rows */}
+                      <div className="space-y-1 mb-3">
+                        {FS_PHASES.map(phase=>{
+                          const d=pm[phase]; const c=FS_PHASE_COLORS[phase];
+                          const pct=d.count/maxCount*100;
+                          return (
+                            <div key={phase} className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-black w-5 shrink-0" style={{color:c.text}}>{phase}</span>
+                              <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,backgroundColor:c.bar}}/>
+                              </div>
+                              <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-14 text-right shrink-0">{d.count} LOP</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Kotak fase F0–F5 */}
+                      <div className="flex gap-1">
+                        {FS_PHASES.map(phase=>{
+                          const d=pm[phase]; const c=FS_PHASE_COLORS[phase];
+                          return (
+                            <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-1.5 py-2 border border-border/50 flex flex-col gap-0.5">
+                              <span className="text-[10px] font-black leading-none" style={{color:c.text}}>{phase}</span>
+                              <span className="text-xs font-black tabular-nums leading-tight text-foreground truncate">{fmtCompactFS(d.nilai)||"—"}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground tabular-nums">{d.count} LOP</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Capaian + CR */}
+                    <div className="w-44 shrink-0 flex flex-col gap-3">
+                      <div>
+                        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Capaian FULL (HO+BA)</div>
+                        <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode} divisi={div}/>
+                      </div>
+                      {crDiv&&(
+                        <div>
+                          <div className="border-t border-border/60 mb-3"/>
+                          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Conversion Rate</div>
+                          <FSCRGauge f5={crDiv.f5} denom={crDiv.denom} cr={crDiv.cr} divisi={div}/>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
