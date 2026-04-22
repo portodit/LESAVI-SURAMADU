@@ -178,11 +178,17 @@ function parseDate(val: any): string {
   // Excel serial date number
   const num = parseFloat(s);
   if (!isNaN(num) && num > 30000 && num < 100000) {
-    const jsDate = XLSX.SSF.parse_date_code(num);
-    if (jsDate) {
-      const d = new Date(jsDate.y, jsDate.m - 1, jsDate.d);
-      return d.toISOString().slice(0, 10);
+    if (XLSX?.SSF?.parse_date_code) {
+      const jsDate = XLSX.SSF.parse_date_code(num);
+      if (jsDate) {
+        const d = new Date(jsDate.y, jsDate.m - 1, jsDate.d);
+        return d.toISOString().slice(0, 10);
+      }
     }
+    // Fallback (tsx ESM tidak expose XLSX.SSF) — Excel epoch 1899-12-30
+    const ms = Math.round((num - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
   // dd/MM/yyyy format (from GSheets: "07/03/2026")
   const ddmmyyyy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);

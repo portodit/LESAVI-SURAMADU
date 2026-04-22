@@ -275,7 +275,10 @@ export async function importPerformance(rows: ParsedRow[], sourceUrl: string, pe
 }
 
 export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period: string | null, snapshotDate: string, _fileName: string) {
-  const cleaned = cleanFunnelRows(rows, { preferPembuat: true, skipIsReportFilter: true });
+  // pembuatOnly=true → AM attribution mengikuti `nik_pembuat_lop` saja, persis seperti Power BI / Excel pivot "PIVOT F".
+  // Tanpa ini, default `nik_handling[0]` ikut nyangkut sehingga LOP yang HANDLE-nya AM lain tetap terhitung
+  // → over-count NI MADE/ERVINA/SAFIRINA → total LOP > pivot Excel.
+  const cleaned = cleanFunnelRows(rows, { pembuatOnly: true, skipIsReportFilter: true });
   const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, divisi: accountManagersTable.divisi }).from(accountManagersTable);
 
   function findAm(nikRaw: string, namaRaw: string) {
