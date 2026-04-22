@@ -888,8 +888,8 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   const [importId,setImportId] = useState<number|null>(null);
   const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
-  // Default: GTMA & Own Channel (termasuk New GTMA) — sesuai filter PIVOT F "GTMA & Own Chanel"
-  const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set(["GTMA","New GTMA","Own Channel"]));
+  // Default: GTMA & Own Channel saja — sesuai filter PIVOT F Excel MyTENS
+  const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set(["GTMA","Own Channel"]));
   const [filterDurasi,setFilterDurasi] = useState<"all"|"single_year"|"multi_year">("all");
   const [filterTahunAnggaran,setFilterTahunAnggaran] = useState<Set<string>>(new Set());
   const [filterAm,setFilterAm] = useState<Set<string>>(new Set());
