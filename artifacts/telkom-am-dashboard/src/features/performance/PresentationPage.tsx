@@ -1120,6 +1120,18 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     });
   },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
+  // Stats dihitung dari filteredLops (SEMUA filter aktif — termasuk filterKontrak, filterAm, dll)
+  const filteredStats = useMemo(()=>{
+    const byStatusMap: Record<string,{status:string;count:number;totalNilai:number}>={};
+    for(const l of filteredLops){
+      const s=(l as any).statusF||"Unknown";
+      if(!byStatusMap[s]) byStatusMap[s]={status:s,count:0,totalNilai:0};
+      byStatusMap[s].count++;
+      byStatusMap[s].totalNilai+=((l as any).nilaiProyek||0);
+    }
+    return {byStatus:Object.values(byStatusMap)};
+  },[filteredLops]);
+
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
     const divisiAllMap=new Map<string,Set<string>>();
@@ -1735,11 +1747,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             {/* LOP per Fase */}
             <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0 flex flex-col">
               <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
-              <FSFaseBarChart data={data?{...data,byStatus:periodStats.byStatus}:undefined}/>
+              <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
               {data&&(()=>{
                 const pm:Record<string,{count:number;nilai:number}>={};
                 for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
-                for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+                for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
                 return (
                   <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
                     <div className="flex-1 flex gap-1.5">
