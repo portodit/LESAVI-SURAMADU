@@ -1779,10 +1779,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               );
             })}
           </div>
-          {/* KPI Ringkasan using period stats */}
+          {/* KPI Ringkasan menggunakan filteredLops (period + kategori_kontrak + dll) */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-display font-semibold text-foreground mb-3">Ringkasan</h3>
-            <FSKpiGrid data={data?{...data,totalLop:periodStats.totalLop,totalNilai:periodStats.totalNilai,pelangganCount:periodStats.pelangganCount}:undefined}/>
+            <FSKpiGrid data={data?{
+              ...data,
+              totalLop:filteredLops.length,
+              totalNilai:filteredLops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
+              pelangganCount:new Set(filteredLops.map((l:any)=>l.pelanggan).filter(Boolean)).size,
+            }:undefined}/>
           </div>
         </div>
       ))}
