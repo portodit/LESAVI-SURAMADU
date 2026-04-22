@@ -1301,7 +1301,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
 
   // ── reusable tbody renderer for presentation split panels ──────────────────
-  function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string) {
+  function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string, divisiCtx?: "DPS" | "DSS") {
     if (isLoading) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
     if (ams.length===0) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
     return <>{ams.map((am,amIdx)=>{
@@ -1343,7 +1343,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               const f345Val=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
               const cr=f345Val>0?f5Val/f345Val:null;
               const amTargetInfo=data?.amTargets?.[am.nikAm];
-              const amTargetVal=amTargetInfo?.targetValue??0;
+              const amTargetVal=divisiCtx==="DPS"?(amTargetInfo?.targetValueDps??amTargetInfo?.targetValue??0):divisiCtx==="DSS"?(amTargetInfo?.targetValueDss??amTargetInfo?.targetValue??0):(amTargetInfo?.targetValue??0);
               const pctRaw=amTargetVal>0?(amTotal/amTargetVal)*100:0;
               const pctBar=Math.min(pctRaw,100);
               const barColor=pctRaw>=100?"#10b981":pctRaw>=70?"#f97316":"#3b82f6";
@@ -1970,7 +1970,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
-                      {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`)}
+                      {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`,div)}
                     </tbody>
                   </table>
                 </div>

@@ -214,8 +214,8 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     return new Date().getFullYear();
   })();
   const amTargetRows = await db.select().from(amFunnelTargetTable).where(eq(amFunnelTargetTable.tahun, amTargetYear));
-  const amTargets: Record<string, { id: number; targetValue: number; tahun: number }> = {};
-  for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
+  const amTargets: Record<string, { id: number; targetValue: number; targetValueDss: number | null; targetValueDps: number | null; tahun: number }> = {};
+  for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, targetValueDss: r.targetValueDss ?? null, targetValueDps: r.targetValueDps ?? null, tahun: r.tahun };
 
   res.json({
     totalLop, totalNilai, totalEstRev,
