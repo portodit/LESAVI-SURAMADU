@@ -881,13 +881,15 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
 }
 
 function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void }) {
-  const [filterYears,setFilterYears] = useState<Set<string>>(new Set(["2026"]));
+  // Default: All years (empty Set) — sesuai PIVOT F MyTENS yg "Years (report_date) All"
+  const [filterYears,setFilterYears] = useState<Set<string>>(new Set());
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
   const filterYear = useMemo(()=>[...filterYears].sort().reverse()[0]||"2026",[filterYears]);
   const [importId,setImportId] = useState<number|null>(null);
   const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
-  const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set());
+  // Default: GTMA & Own Channel (termasuk New GTMA) — sesuai filter PIVOT F "GTMA & Own Chanel"
+  const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set(["GTMA","New GTMA","Own Channel"]));
   const [filterDurasi,setFilterDurasi] = useState<"all"|"single_year"|"multi_year">("all");
   const [filterTahunAnggaran,setFilterTahunAnggaran] = useState<Set<string>>(new Set());
   const [filterAm,setFilterAm] = useState<Set<string>>(new Set());

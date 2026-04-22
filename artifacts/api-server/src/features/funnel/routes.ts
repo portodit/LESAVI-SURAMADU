@@ -145,8 +145,13 @@ router.get("/funnel", requireAuth, async (req, res): Promise<void> => {
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
   if (kategori_kontrak) allLops = allLops.filter(l => l.kategoriKontrak === String(kategori_kontrak));
-  if (is_report) allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === String(is_report).toUpperCase());
-  if (project_type) allLops = allLops.filter(l => String(project_type).toUpperCase().split(",").some(pt => (l.projectType || "").toUpperCase().includes(pt.trim())));
+  // ── AUTO FILTERS (sesuai PIVOT F MyTENS, hidden dari UI) ──────────────────
+  // 1. is_report = 'Y'    2. project_type ∈ {AO, MO}    3. status_proyek ≠ Lose/Cancel
+  allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === "Y");
+  allLops = allLops.filter(l => ["AO", "MO"].includes((l.projectType || "").toUpperCase()));
+  allLops = allLops.filter(l => !["LOSE", "CANCEL"].includes((l.statusProyek || "").toUpperCase()));
+  // Backward-compat no-op: query params ignored (auto-applied above)
+  void is_report; void project_type;
 
   // Only include LOPs from registered AMs (role=AM, aktif=true) — same rule as activity/performance visualizations
   allLops = allLops.filter(l => l.nikAm && activeNikSet.has(l.nikAm));

@@ -92,12 +92,25 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   }
   // Witel Suramadu hanya handle customer DPS dan DSS — singkirkan DGS
   allLops = allLops.filter(l => (l.divisi || "").toUpperCase() !== "DGS");
+
+  // ── AUTO FILTERS (sesuai PIVOT F MyTENS, hidden dari UI) ──────────────────
+  // 1. is_report = 'Y' (hanya LOP yang sudah valid/approved)
+  allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === "Y");
+  // 2. project_type ∈ {AO, MO}
+  allLops = allLops.filter(l => ["AO", "MO"].includes((l.projectType || "").toUpperCase()));
+  // 3. status_proyek bukan Lose/Cancel
+  allLops = allLops.filter(l => !["LOSE", "CANCEL"].includes((l.statusProyek || "").toUpperCase()));
+
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
-  if (kategori_kontrak) allLops = allLops.filter(l => l.kategoriKontrak === String(kategori_kontrak));
-  if (is_report) allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === String(is_report).toUpperCase());
-  if (project_type) allLops = allLops.filter(l => String(project_type).toUpperCase().split(",").some(pt => (l.projectType || "").toUpperCase().includes(pt.trim())));
+  // kategori_kontrak: support multi-value comma list (e.g. "GTMA,New GTMA,Own Channel")
+  if (kategori_kontrak) {
+    const wanted = String(kategori_kontrak).split(",").map(s => s.trim()).filter(Boolean);
+    if (wanted.length > 0) allLops = allLops.filter(l => wanted.includes(l.kategoriKontrak || ""));
+  }
+  // is_report and project_type query params kept for backward compat but no-op (already auto-applied above)
+  void is_report; void project_type;
   if (durasi_filter === "single_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs <= 12);
   else if (durasi_filter === "multi_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs > 12);
 
