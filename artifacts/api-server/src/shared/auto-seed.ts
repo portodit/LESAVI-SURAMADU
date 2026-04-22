@@ -1,7 +1,8 @@
 import { ensureDefaultSeed } from "./seed";
+import { seedFunnelApr22Json } from "../seeds/seed-funnel-apr22-json.js";
 
 export async function ensureFullSeed(): Promise<void> {
   await ensureDefaultSeed();
-  // NOTE: seedFunnelApr22 disabled — Excel 53MB (77K rows) causes OOM on production
-  // (~1914MB heap vs 1024MB limit). Use the import UI to upload new funnel data.
+  // JSON-based seed: reads pre-built 4.5MB JSON (not 53MB Excel) → no OOM risk
+  await seedFunnelApr22Json();
 }
