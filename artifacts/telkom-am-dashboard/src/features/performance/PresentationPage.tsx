@@ -939,7 +939,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   ,[snapshots,filterYear,filterMonths]);
 
-  useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
+  // Default: filterYears empty = ALL tahun (sesuai PIVOT F Excel default ALL)
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
@@ -973,17 +973,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
 
-  // Saat filterTahunAnggaran berubah:
-  // - TA aktif → reset period picker ke kosong (user pilih sendiri jika ingin mempersempit)
-  // - TA dihapus → kembali ke Report Date mode, set filterYears ke tahun terkini
+  // Saat filterTahunAnggaran berubah → reset period picker ke kosong (default ALL)
   useEffect(()=>{
-    if(filterTahunAnggaran.size > 0){
-      setFilterYears(new Set());     // TA mode: tidak ada restriksi period secara default
-      setFilterMonths(new Set());
-    } else {
-      if(yearOptions.length>0) setFilterYears(new Set([yearOptions[0].value]));
-      setFilterMonths(new Set());
-    }
+    setFilterYears(new Set());
+    setFilterMonths(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[filterTahunAnggaran]);
 
