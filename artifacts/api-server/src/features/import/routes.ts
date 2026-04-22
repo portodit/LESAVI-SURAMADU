@@ -405,6 +405,7 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
   const cleaned = cleanFunnelRows(rows, {
     preferPembuat: true,
     skipIsReportFilter: true,
+    skipWitelFilter: true,
   });
 
   if (cleaned.length === 0) {
