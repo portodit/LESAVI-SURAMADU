@@ -74,6 +74,33 @@ Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client insta
 
 Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
 
+## Sales Funnel Import Logic (PENTING)
+
+### Target Data: PIVOT F Excel MyTENS Suramadu
+- **Total target**: 362 LOP (DSS=120, DPS=242), Nilai Rp 201,857,949,498
+- **11 AM aktif Witel Suramadu**: ANA, CAESAR, ERVINA, HANDIKA, HAVEA, NADYA, NI MADE, NYARI, SAFIRINA, VIVIN, WILDAN
+- **Active snapshot**: ID 67, snapshotDate=2026-04-14, file=MyTENS_Sales_Funnel_Form_140426_1776792658239.xlsx
+- **filterKontrak default**: `{GTMA, Own Channel}` (tidak termasuk "New GTMA" atau lainnya)
+
+### Kunci Import: `cleanFunnelRows` Options
+Di `artifacts/api-server/src/features/gdrive/importer.ts` baris ~289:
+```
+cleanFunnelRows(rows, { pembuatOnly: true, skipIsReportFilter: true, skipWitelFilter: true })
+```
+- **`pembuatOnly: true`** — hanya `nik_pembuat_lop`, bukan `nik_handling`. Sesuai logika PIVOT F (group by `nama_pembuat_lop`)
+- **`skipIsReportFilter: true`** — karena filter `is_report=Y` sudah diterapkan di filter query API, bukan di level import
+- **`skipWitelFilter: true`** — KRITIS: AM Suramadu bisa handle customer di witel lain (contoh: ERVINA handle 2 LOP JATIM TIMUR: LOP257524, LOP258475). PIVOT F tidak filter by witel customer, hanya by nama AM. Tanpa flag ini, total hanya 360 (bukan 362).
+
+### Remap NIK RENI→HAVEA
+Di `importFunnel()`, NIK 850099 (RENI WULANSARI) di-remap ke 870022 (HAVEA PERTIWI) untuk `report_year >= 2026`. Ini karena RENI bergabung ke tim HAVEA per 2026. LOPs lama RENI (ratusan LOP sebelum 2026) tetap di NIK aslinya.
+
+### Cara Reimport
+```bash
+# Build dan run script reimport (butuh API server sudah running)
+cd artifacts/api-server
+node /path/to/tsx/dist/cli.mjs src/scripts/reimport-fix-witel.ts
+```
+
 ## GitHub Push Configuration
 
 - **Script**: `push-to-github.mjs`

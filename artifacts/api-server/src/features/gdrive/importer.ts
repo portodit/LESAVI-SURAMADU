@@ -281,7 +281,9 @@ export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period:
 
   const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, divisi: accountManagersTable.divisi }).from(accountManagersTable);
 
-  const cleaned = cleanFunnelRows(rows, { pembuatOnly: true, skipIsReportFilter: true });
+  // skipWitelFilter: true → AM Suramadu bisa handle customer di witel lain (e.g. ERVINA handle JATIM TIMUR),
+  // PIVOT F Excel tidak filter by witel customer, hanya by nama_pembuat_lop. Tanpa ini 2 LOP ERVINA (LOP257524, LOP258475) ter-exclude → total 360 bukan 362.
+  const cleaned = cleanFunnelRows(rows, { pembuatOnly: true, skipIsReportFilter: true, skipWitelFilter: true });
 
   function findAm(nikRaw: string, namaRaw: string) {
     const nik = String(nikRaw || "").trim();
