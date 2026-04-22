@@ -1742,33 +1742,36 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
       ):(
         <div className="space-y-4">
-          {/* LOP per Fase — full width shared */}
-          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-            <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
-            <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
-            {data&&(()=>{
-              const pm:Record<string,{count:number;nilai:number}>={};
-              for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
-              for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
-              return (
-                <div className="flex gap-1.5 mt-3 pt-3 border-t border-border/60">
-                  {FS_PHASES.map(phase=>{
-                    const d=pm[phase];const c=FS_PHASE_COLORS[phase];
-                    return (
-                      <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
-                        <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
-                        <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
-                        <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+          {/* LOP per Fase + DPS/DSS — satu baris sejajar */}
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr_2fr] gap-4">
+            {/* LOP per Fase */}
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0 flex flex-col">
+              <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
+              <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
+              {data&&(()=>{
+                const pm:Record<string,{count:number;nilai:number}>={};
+                for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
+                for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+                return (
+                  <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
+                    <div className="flex-1 flex gap-1.5">
+                      {FS_PHASES.map(phase=>{
+                        const d=pm[phase];const c=FS_PHASE_COLORS[phase];
+                        return (
+                          <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-2.5 py-2.5 border border-border/50 flex flex-col justify-between">
+                            <span className="text-xs font-black leading-none" style={{color:c.text,fontFamily:"Inter,sans-serif"}}>{phase}</span>
+                            <span className="text-[17px] font-black tabular-nums leading-tight text-foreground truncate" style={{fontFamily:"Inter,sans-serif"}}>{fmtCompactFS(d.nilai)||"—"}</span>
+                            <span className="text-[11px] font-bold text-muted-foreground tabular-nums leading-none">{d.count} LOP</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
 
-          {/* DPS | DSS — masing-masing dengan mini bar + kotak fase + capaian + CR */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* DPS | DSS — masing-masing dengan mini bar + kotak fase + capaian + CR */}
             {(["DPS","DSS"] as const).map(div=>{
               const divStats = div==="DPS"?dpsStats:dssStats;
               const tgtHo   = div==="DPS"?dpsTgtHo:dssTgtHo;
