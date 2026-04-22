@@ -1803,35 +1803,21 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                   </div>
 
                   {/* Body: mini LOP per Fase (left) + Capaian+CR (right) */}
-                  <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-                    {/* Mini LOP per Fase */}
-                    <div>
-                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">LOP per Fase</div>
-                      {/* Horizontal bar rows */}
-                      <div className="space-y-1 mb-3">
+                  <div className="flex gap-3 items-start">
+                    {/* Mini bar chart saja — tanpa kotak nilai */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">LOP per Fase</div>
+                      <div className="space-y-1">
                         {FS_PHASES.map(phase=>{
                           const d=pm[phase]; const c=FS_PHASE_COLORS[phase];
                           const pct=d.count/maxCount*100;
                           return (
                             <div key={phase} className="flex items-center gap-1.5">
                               <span className="text-[11px] font-black w-5 shrink-0" style={{color:c.text}}>{phase}</span>
-                              <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,backgroundColor:c.bar}}/>
+                              <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{width:`${pct}%`,backgroundColor:c.bar}}/>
                               </div>
-                              <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-14 text-right shrink-0">{d.count} LOP</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Kotak fase F0–F5 */}
-                      <div className="flex gap-1">
-                        {FS_PHASES.map(phase=>{
-                          const d=pm[phase]; const c=FS_PHASE_COLORS[phase];
-                          return (
-                            <div key={phase} className="flex-1 min-w-0 bg-secondary/60 rounded-lg px-1.5 py-2 border border-border/50 flex flex-col gap-0.5">
-                              <span className="text-[10px] font-black leading-none" style={{color:c.text}}>{phase}</span>
-                              <span className="text-xs font-black tabular-nums leading-tight text-foreground truncate">{fmtCompactFS(d.nilai)||"—"}</span>
-                              <span className="text-[10px] font-bold text-muted-foreground tabular-nums">{d.count} LOP</span>
+                              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums w-12 text-right shrink-0">{d.count} LOP</span>
                             </div>
                           );
                         })}
@@ -1839,14 +1825,14 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
 
                     {/* Capaian + CR */}
-                    <div className="w-44 shrink-0 flex flex-col gap-3">
+                    <div className="shrink-0 flex flex-col gap-2">
                       <div>
                         <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Capaian FULL (HO+BA)</div>
                         <FSGauge pct={divPct} targetHo={tgtHo} targetFullHo={tgtFull} real={real} mode={filterMode} divisi={div}/>
                       </div>
                       {crDiv&&(
                         <div>
-                          <div className="border-t border-border/60 mb-3"/>
+                          <div className="border-t border-border/60 mb-2"/>
                           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Conversion Rate</div>
                           <FSCRGauge f5={crDiv.f5} denom={crDiv.denom} cr={crDiv.cr} divisi={div}/>
                         </div>
