@@ -1158,6 +1158,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── Split mode state + computed ─────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"all"|"split">("all");
+  const [splitTableDiv, setSplitTableDiv] = useState<"DPS"|"DSS">("DPS");
 
   // Resolve divisi dari LOPs dalam phases jika AM-level divisi kosong
   function resolveAmDivisi(am: {divisi:string;phases:Map<string,any[]>}): string {
@@ -1941,58 +1942,74 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           })}
         </div>
 
-        {/* Row 2: Tabel AM (card terpisah) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(["DPS","DSS"] as const).map(div=>{
-            const st=div==="DPS"?dpsStats:dssStats;
-            const grp=div==="DPS"?dpsGrouped:dssGrouped;
-            const isDps=div==="DPS";
-            const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
-            const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
-            return (
-              <div key={div} className={`bg-card border border-border rounded-xl shadow-sm flex flex-col ${borderTop}`}>
-                {/* Table Toolbar */}
-                <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0">
-                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none"/>
-                      <input type="text" placeholder="Cari AM, LOP, pelanggan…" value={search} onChange={e=>setSearch(e.target.value)}
-                        className="pl-6 pr-5 py-1 text-xs bg-background border border-border rounded-md w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
-                      {search&&<button onClick={()=>setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3 h-3"/></button>}
-                    </div>
-                    <button onClick={handleToggleAll} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2.5 py-1 transition-colors whitespace-nowrap">
-                      {allExpanded?<Minimize2 className="w-3 h-3"/>:<Expand className="w-3 h-3"/>}
-                      {allExpanded?"Collapse":"Expand"}
-                    </button>
+        {/* Row 2: Tabel AM — full width, toggle DPS/DSS */}
+        {(()=>{
+          const div=splitTableDiv;
+          const st=div==="DPS"?dpsStats:dssStats;
+          const grp=div==="DPS"?dpsGrouped:dssGrouped;
+          const isDps=div==="DPS";
+          const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
+          const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
+          return (
+            <div className={`bg-card border border-border rounded-xl shadow-sm flex flex-col ${borderTop}`}>
+              {/* Table Toolbar */}
+              <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+                <div className="flex items-center gap-3">
+                  {/* Toggle DPS / DSS */}
+                  <div className="flex rounded-lg overflow-hidden border border-border text-xs font-bold">
+                    <button
+                      onClick={()=>setSplitTableDiv("DPS")}
+                      className={cn("px-3 py-1.5 transition-colors",
+                        div==="DPS"?"bg-blue-600 text-white":"bg-background text-muted-foreground hover:text-foreground"
+                      )}
+                    >DPS</button>
+                    <button
+                      onClick={()=>setSplitTableDiv("DSS")}
+                      className={cn("px-3 py-1.5 border-l border-border transition-colors",
+                        div==="DSS"?"bg-emerald-600 text-white":"bg-background text-muted-foreground hover:text-foreground"
+                      )}
+                    >DSS</button>
                   </div>
+                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
                 </div>
-                {/* AM Tree Table — horizontal scroll, full content height */}
-                <div className="p-3">
-                <div className="border border-border rounded">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
-                    <thead>
-                      <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
-                        <th className="px-4 py-2.5 min-w-[240px] text-left">Account Manager</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-left">Pelanggan</th>
-                        <th className="px-3 py-2.5 min-w-[210px] text-center">Target 2026</th>
-                        <th className="px-3 py-2.5 min-w-[200px] text-left">Nilai Proyek</th>
-                        <th className="px-4 py-2.5 min-w-[130px] text-right whitespace-nowrap">Conversion Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`,div)}
-                    </tbody>
-                  </table>
-                </div>
-                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none"/>
+                    <input type="text" placeholder="Cari AM, LOP, pelanggan…" value={search} onChange={e=>setSearch(e.target.value)}
+                      className="pl-6 pr-5 py-1 text-xs bg-background border border-border rounded-md w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
+                    {search&&<button onClick={()=>setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3 h-3"/></button>}
+                  </div>
+                  <button onClick={handleToggleAll} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2.5 py-1 transition-colors whitespace-nowrap">
+                    {allExpanded?<Minimize2 className="w-3 h-3"/>:<Expand className="w-3 h-3"/>}
+                    {allExpanded?"Collapse":"Expand"}
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              {/* AM Tree Table — full width, horizontal scroll */}
+              <div className="p-3">
+              <div className="border border-border rounded">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
+                  <thead>
+                    <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                      <th className="px-4 py-2.5 min-w-[240px] text-left">Account Manager</th>
+                      <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
+                      <th className="px-3 py-2.5 whitespace-nowrap text-left">Pelanggan</th>
+                      <th className="px-3 py-2.5 min-w-[210px] text-center">Target 2026</th>
+                      <th className="px-3 py-2.5 min-w-[200px] text-left">Nilai Proyek</th>
+                      <th className="px-4 py-2.5 min-w-[130px] text-right whitespace-nowrap">Conversion Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`,div)}
+                  </tbody>
+                </table>
+              </div>
+              </div>
+              </div>
+            </div>
+          );
+        })()}
         </div>
       )}
 
