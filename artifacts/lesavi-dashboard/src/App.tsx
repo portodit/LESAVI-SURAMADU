@@ -22,6 +22,7 @@ import TelegramBot from "@/features/telegram/TelegramPage";
 import PengaturanPage from "@/features/settings/PengaturanPage";
 import ManajemenAmPage from "@/features/am/ManajemenAmPage";
 import CorporateCustomerPage from "@/features/corporate/CorporateCustomerPage";
+import KuadranAmPage from "@/features/kuadran/KuadranAmPage";
 
 function PublicAmPage() {
   return (
@@ -84,6 +85,7 @@ function ProtectedApp() {
         <Route path="/import" component={ImportData} />
         <Route path="/import/detail/:id">{(params: any) => <ImportDetail params={params} />}</Route>
         <Route path="/visualisasi/performa" component={PerformaVis} />
+        <Route path="/visualisasi/kuadran-am" component={KuadranAmPage} />
         <Route path="/visualisasi/funnel" component={FunnelVis} />
         <Route path="/visualisasi/activity" component={ActivityVis} />
         <Route path="/manajemen-akun" component={ManajemenAmPage} />
