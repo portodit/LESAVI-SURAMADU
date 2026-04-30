@@ -1,7 +1,6 @@
 -- Migration: seed account_managers, am_funnel_target, sales_funnel_target
 -- Generated at 2026-04-30
-
-BEGIN;
+-- Run each table separately to avoid multi-conflict issues
 
 -- ── account_managers ──────────────────────────────────────────────────────────
 INSERT INTO "account_managers" ("id","nik","nama","slug","email","password_hash","role","tipe","divisi","segmen","witel","jabatan","aktif","cross_witel","telegram_chat_id","telegram_code","telegram_code_expiry","kpi_activity","created_at","discovered_from")
@@ -24,14 +23,7 @@ VALUES
   (1141,'940094','KARENDIYA KINASIH','karendiya-kinasih',NULL,NULL,'OFFICER','LESA','DPS',NULL,'SURAMADU',NULL,'true','false',NULL,NULL,NULL,'0','2026-04-10T00:23:58.288Z',NULL),
   (1284,'405075','KATATA VEKANIDYA SEKAR PUSPITASARI','katata-vekanidya-sekar-puspitasari',NULL,NULL,'AM','LESA','DPS',NULL,'SURAMADU',NULL,'false','false',NULL,NULL,NULL,'30','2026-04-10T00:23:58.288Z','seeder'),
   (1290,'850046','MOH RIZAL BIN MOH. FERRY Y.P. DARA','moh-rizal-bin-moh-ferry-yp-dara',NULL,NULL,'AM','LESA','DPS',NULL,'SURAMADU',NULL,'false','false',NULL,NULL,NULL,'30','2026-04-10T00:23:58.293Z','seeder')
-ON CONFLICT (id) DO UPDATE SET
-  "nik"=EXCLUDED."nik","nama"=EXCLUDED."nama","slug"=EXCLUDED."slug","email"=EXCLUDED."email",
-  "password_hash"=EXCLUDED."password_hash","role"=EXCLUDED."role","tipe"=EXCLUDED."tipe",
-  "divisi"=EXCLUDED."divisi","segmen"=EXCLUDED."segmen","witel"=EXCLUDED."witel",
-  "jabatan"=EXCLUDED."jabatan","aktif"=EXCLUDED."aktif","cross_witel"=EXCLUDED."cross_witel",
-  "telegram_chat_id"=EXCLUDED."telegram_chat_id","telegram_code"=EXCLUDED."telegram_code",
-  "telegram_code_expiry"=EXCLUDED."telegram_code_expiry","kpi_activity"=EXCLUDED."kpi_activity",
-  "created_at"=EXCLUDED."created_at","discovered_from"=EXCLUDED."discovered_from";
+ON CONFLICT (id) DO NOTHING;
 
 -- ── am_funnel_target ─────────────────────────────────────────────────────────
 INSERT INTO "am_funnel_target" ("id","nik_am","tahun","target_value","created_at","updated_at","target_value_dss","target_value_dps")
@@ -47,19 +39,11 @@ VALUES
   (9,'403613','2026','9265053000','2026-04-06T08:21:03.065Z','2026-04-30T09:27:50.307Z','0','9265053000'),
   (10,'405690','2026','9232103000','2026-04-06T08:21:03.070Z','2026-04-30T09:27:50.315Z','1018147100','8213956600'),
   (11,'402478','2026','2386441500','2026-04-06T08:21:03.074Z','2026-04-30T09:27:50.322Z','1921132900','465308500')
-ON CONFLICT (("am_funnel_target_nik_tahun")) DO UPDATE SET
-  "nik_am"=EXCLUDED."nik_am","tahun"=EXCLUDED."tahun",
-  "target_value"=EXCLUDED."target_value","target_value_dss"=EXCLUDED."target_value_dss",
-  "target_value_dps"=EXCLUDED."target_value_dps","updated_at"=EXCLUDED."updated_at";
+ON CONFLICT (nik_am, tahun) DO NOTHING;
 
 -- ── sales_funnel_target (bulan is NULL in source data) ────────────────────────
 INSERT INTO "sales_funnel_target" ("id","divisi","tahun","bulan","target_full_ho","target_ho","created_at")
 VALUES
   (1,'DPS','2026',NULL,'97076000000','95973000000','2026-03-31T03:26:33.106Z'),
   (2,'DSS','2026',NULL,'73780000000','57036000000','2026-03-31T03:26:33.109Z')
-ON CONFLICT (id) DO UPDATE SET
-  "divisi"=EXCLUDED."divisi","tahun"=EXCLUDED."tahun","bulan"=EXCLUDED."bulan",
-  "target_full_ho"=EXCLUDED."target_full_ho","target_ho"=EXCLUDED."target_ho",
-  "created_at"=EXCLUDED."created_at";
-
-COMMIT;
+ON CONFLICT (id) DO NOTHING;
