@@ -42,6 +42,20 @@ router.get("/public/activity", async (req, res): Promise<void> => {
   ]);
   const kpiDefault = settingsArr[0]?.kpiActivityDefault ?? 30;
 
+  // DEBUG: log first few activity dates
+  console.log("[activity] allActs sample:", (allActs as any[]).slice(0, 3).map((a: any) => a.activityEndDate));
+  console.log("[activity] allActs count:", allActs.length);
+
+  // availableMonths: distinct (YYYY, MM) pairs from activityEndDate — for defaulting the filter
+  const monthSet = new Set<string>();
+  for (const a of allActs) {
+    const d = (a as any).activityEndDate;
+    if (d && typeof d === "string" && d.length >= 7) {
+      monthSet.add(d.slice(0, 7));
+    }
+  }
+  const availableMonths = [...monthSet].sort().reverse();
+
   // Hanya AM terdaftar (role=AM, aktif=true) — bukan officer/manager
   const registeredAms = ams.filter(a => a.aktif && a.role === "AM");
   const registeredNikSet = new Set(registeredAms.map(a => a.nik));
