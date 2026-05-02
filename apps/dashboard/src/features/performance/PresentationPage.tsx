@@ -2157,7 +2157,7 @@ function ActivityPeriodeDropdown({filterYear,setFilterYear,filterMonths,setFilte
 function ActivitySlide() {
   const now = new Date();
   const [filterYear,  setFilterYear]  = useState(String(now.getFullYear()));
-  const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth()+1)]));
+  const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set()); // empty = all months initially
   const [filterDivisi, setFilterDivisi] = useState("LESA");
   const [filterSnapId, setFilterSnapId] = useState<string>("all");
   const [filterKategori, setFilterKategori] = useState<Set<string>>(new Set());
@@ -2167,6 +2167,18 @@ function ActivitySlide() {
   const [actSearch, setActSearch] = useState("");
   const [actExpandAll, setActExpandAll] = useState<boolean|null>(null);
   const actSearchRef = useRef<HTMLInputElement>(null);
+  const initRef = useRef(false);
+
+  // Set default to latest available month from data — only runs once on first data load
+  useEffect(() => {
+    if (initRef.current) return;
+    const months = (data as any)?.availableMonths as string[] | undefined;
+    if (!months || months.length === 0) return;
+    initRef.current = true;
+    const latest = months[0]; // sorted newest-first by API
+    setFilterYear(latest.slice(0, 4));
+    setFilterMonths(new Set([latest.slice(5, 7)]));
+  }, [data]);
 
   // Sync horizontal scroll between sticky header and scrollable body
   const actHeaderScrollRef = useRef<HTMLDivElement>(null);
