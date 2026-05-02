@@ -161,15 +161,6 @@ router.get("/public/activity", async (req, res): Promise<void> => {
     divisiAll: [..._divisiSet].sort(),
   }));
 
-  // Available months: distinct (YYYY, MM) pairs from activityEndDate — for defaulting the filter
-  const monthSet = new Set<string>();
-  for (const a of allActs) {
-    if (a.activityEndDate && a.activityEndDate.length >= 7) {
-      monthSet.add(a.activityEndDate.slice(0, 7)); // "YYYY-MM"
-    }
-  }
-  const availableMonths = [...monthSet].sort().reverse(); // newest first
-
   res.json({
     totalKpiActivities,
     kpiDefault,
