@@ -16,7 +16,9 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.2.4",
-    "lightningcss-win32-x64-msvc": "^1.32.0"
+    "lightningcss-win32-x64-msvc": "^1.32.0",
+    "pg": "^8.20.0"
   }
 }
