@@ -1928,9 +1928,9 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                     <FSGauge
                       compact
-                      pct={effectiveTargetFullHo>0?(st.totalNilai/effectiveTargetFullHo)*100:0}
-                      targetHo={effectiveTargetHo}
-                      targetFullHo={effectiveTargetFullHo}
+                      pct={div==="DPS"?(dpsTgt?dpsStats.totalNilai/dpsTgt*100:0):(dssTgt?dssStats.totalNilai/dssTgt*100:0)}
+                      targetHo={div==="DPS"?dpsTgtHo:dssTgtHo}
+                      targetFullHo={div==="DPS"?dpsTgtFullHo:dssTgtFullHo}
                       real={st.totalNilai}
                       mode={filterMode}
                       divisi={div}
