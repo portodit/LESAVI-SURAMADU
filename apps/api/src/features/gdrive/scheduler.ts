@@ -39,13 +39,33 @@ function extractFolderId(urlOrId: string): string | null {
   return null;
 }
 
+function parseValidDate(raw: string): string | null {
+  const y = parseInt(raw.slice(0, 4));
+  const m = parseInt(raw.slice(4, 6));
+  const d = parseInt(raw.slice(6, 8));
+  if (y < 2020 || y > 2100) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  if (d > daysInMonth) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 function extractDateFromFilename(name: string): string | null {
-  const match = name.match(/[_-](\d{8})[._?\s&]|(\d{8})\./);
-  const raw = match?.[1] || match?.[2];
-  if (!raw) return null;
-  const y = parseInt(raw.slice(0, 4)), m = parseInt(raw.slice(4, 6)), d = parseInt(raw.slice(6, 8));
-  if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
-  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  if (!name) return null;
+
+  // Find ALL YYYYMMDD patterns in filename
+  const matches = name.match(/(\d{8})/g);
+  if (!matches || matches.length === 0) return null;
+
+  // Filter valid dates and sort by year-month-day descending (newest first)
+  const validDates = matches
+    .map(raw => parseValidDate(raw))
+    .filter(d => d !== null)
+    .sort((a, b) => b!.localeCompare(a!));
+
+  // Return the most recent valid date
+  return validDates[0] || null;
 }
 
 async function listFiles(folderId: string, apiKey: string) {
@@ -63,9 +83,11 @@ async function listFiles(folderId: string, apiKey: string) {
 
 function isSupportedFile(name: string, mimeType: string): boolean {
   return (
-    name.endsWith(".xlsx") || name.endsWith(".xls") ||
+    name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv") ||
     mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
     mimeType === "application/vnd.ms-excel" ||
+    mimeType === "text/csv" ||
+    mimeType === "application/csv" ||
     mimeType === "application/vnd.google-apps.spreadsheet"
   );
 }

@@ -41,9 +41,10 @@ const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.s
 
 function isSupportedFile(name: string, mimeType: string): boolean {
   return (
-    name.endsWith(".xlsx") || name.endsWith(".xls") ||
+    name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv") ||
     mimeType === XLSX_MIME ||
     mimeType === "application/vnd.ms-excel" ||
+    mimeType === "text/csv" ||
     mimeType === GOOGLE_SHEET_MIME
   );
 }

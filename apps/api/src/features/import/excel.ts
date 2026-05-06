@@ -142,13 +142,52 @@ export function detectPeriodFromUrl(url: string): string | null {
 }
 
 export function extractSnapshotDateFromUrl(url: string): string | null {
-  // Returns YYYY-MM-DD from YYYYMMDD in filename (handles with or without extension)
-  const match = url.match(/[_-](\d{8})(?:[._?&\s]|$)/);
-  if (match) {
-    const raw = match[1];
-    return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  // Returns YYYY-MM-DD from YYYYMMDD in filename (handles various formats)
+  // Supports: TREG3_SALES_FUNNEL_20260505(Data).csv, FILE_20260505.xlsx, etc.
+  if (!url) return null;
+
+  // Pattern 1: After common separators (_, -, space, parens) - YYYYMMDD
+  const patterns = [
+    // Standard: _YYYYMMDD or -YYYYMMDD or space+YYYYMMDD
+    /[_\- ](\d{8})(?:[._?&\s\(\)\[\]]|$)/,
+    // Inside/before parens: (YYYYMMDD) or YYYYMMDD(...)
+    /[(\[]?(\d{8})(?:\)|\]|$)/,
+    // After @ which sometimes appears in URLs
+    /@(\d{8})(?:[._?&\s]|$)/,
+    // Multiple YYYYMMDD in filename - extract ALL and pick the most recent
+    /(\d{8})/g,
+  ];
+
+  // Strategy: try to find YYYYMMDD patterns in the URL
+  const allMatches = url.match(/(\d{8})/g);
+  if (allMatches && allMatches.length > 0) {
+    // Filter to only valid dates and sort descending (newest first)
+    const validDates = allMatches
+      .map(raw => parseValidDate(raw))
+      .filter(d => d !== null)
+      .sort((a, b) => b!.localeCompare(a!)); // Sort descending: newest first
+
+    return validDates[0] || null;
   }
+
   return null;
+}
+
+function parseValidDate(raw: string): string | null {
+  const y = parseInt(raw.slice(0, 4));
+  const m = parseInt(raw.slice(4, 6));
+  const d = parseInt(raw.slice(6, 8));
+
+  // Validate year range and real date
+  if (y < 2020 || y > 2100) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+
+  // Check for invalid month-day combinations
+  const daysInMonth = new Date(y, m, 0).getDate();
+  if (d > daysInMonth) return null;
+
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
 export function detectPeriod(rows: ParsedRow[], url?: string): string {

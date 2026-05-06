@@ -9,8 +9,8 @@ import {
   parseExcelBuffer, parseRaw2DArray, getWorkbookSheetNames,
   detectPeriod, extractSnapshotDateFromUrl,
   cleanFunnelRows, cleanActivityRows, parseIndonesianNumber, slugify,
+  type ParsedRow
 } from "../import/excel";
-import type { ParsedRow } from "../import/excel";
 
 const GOOGLE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 
@@ -46,6 +46,7 @@ export async function downloadDriveFileAsRows(
   if (mimeType === GOOGLE_SHEET_MIME) {
     return downloadGoogleSheetRows(fileId, apiKey, type, preferredSheet);
   }
+
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) {
@@ -53,6 +54,12 @@ export async function downloadDriveFileAsRows(
     throw new Error(`Gagal download file dari Drive: ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
   }
   const buf = Buffer.from(await res.arrayBuffer());
+
+  // Handle CSV files
+  const isCsv = mimeType === "text/csv" || mimeType === "application/csv";
+  if (isCsv) {
+    return parseCsvBuffer(buf);
+  }
 
   // Auto-deteksi sheet terbaik untuk performance jika file multi-sheet
   let resolvedSheet = preferredSheet;
@@ -63,6 +70,110 @@ export async function downloadDriveFileAsRows(
     }
   }
   return parseExcelBuffer(buf, resolvedSheet);
+}
+
+/**
+ * Parse CSV buffer to ParsedRow[]
+ * Handles UTF-8 BOM, various delimiters (comma, semicolon, tab)
+ */
+function parseCsvBuffer(buf: Buffer): ParsedRow[] {
+  let content = buf.toString("utf-8");
+  // Remove BOM if present
+  if (content.charCodeAt(0) === 0xFEFF) {
+    content = content.slice(1);
+  }
+
+  // Detect delimiter - check first few lines
+  const firstLines = content.split("\n").slice(0, 5);
+  let delimiter = ",";
+  for (const line of firstLines) {
+    const commaCount = (line.match(/,/g) || []).length;
+    const semiCount = (line.match(/;/g) || []).length;
+    const tabCount = (line.match(/\t/g) || []).length;
+    if (semiCount > commaCount && semiCount > tabCount) {
+      delimiter = ";";
+      break;
+    } else if (tabCount > commaCount && tabCount > semiCount) {
+      delimiter = "\t";
+      break;
+    }
+  }
+
+  const rows = parseCSVLines(content, delimiter);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0] as string[];
+  return rows.slice(1)
+    .filter(row => row.some(v => v !== null && v !== ""))
+    .map(row => {
+      const obj: ParsedRow = {};
+      headers.forEach((h, i) => {
+        if (h) obj[h] = row[i] ?? null;
+      });
+      return obj;
+    });
+}
+
+/**
+ * Parse CSV content handling quoted fields with delimiters inside
+ */
+function parseCSVLines(content: string, delimiter: string): any[][] {
+  const lines: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const nextChar = content[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "\r" && nextChar === "\n") {
+      if (!inQuotes) {
+        lines.push(current);
+        current = "";
+        i++;
+      } else {
+        current += char;
+      }
+    } else if (char === "\n") {
+      if (!inQuotes) {
+        lines.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    } else if (char === "\r") {
+      if (!inQuotes) {
+        lines.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      current += "\t"; // Use tab as internal delimiter for splitting
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) lines.push(current);
+
+  // Split by internal tab delimiter
+  return lines.map(line => line.split("\t").map(cell => {
+    // Trim and clean up
+    cell = cell.trim();
+    // Remove surrounding quotes
+    if ((cell.startsWith('"') && cell.endsWith('"')) ||
+        (cell.startsWith("'") && cell.endsWith("'"))) {
+      cell = cell.slice(1, -1);
+    }
+    return cell;
+  }));
 }
 
 async function downloadGoogleSheetRows(
