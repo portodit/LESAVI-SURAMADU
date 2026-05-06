@@ -16,10 +16,15 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
   const imports = await db
     .select()
     .from(dataImportsTable)
-    .where(eq(dataImportsTable.type, "funnel"))
-    .orderBy(desc(dataImportsTable.createdAt));
+    .where(eq(dataImportsTable.type, "funnel"));
 
-  res.json(imports.map(imp => ({
+  const sorted = [...imports].sort((a, b) => {
+    const da = a.snapshotDate || a.createdAt?.toISOString() || "";
+    const db2 = b.snapshotDate || b.createdAt?.toISOString() || "";
+    return db2.localeCompare(da);
+  });
+
+  res.json(sorted.map(imp => ({
     id: imp.id,
     period: imp.period,
     rowsImported: imp.rowsImported,

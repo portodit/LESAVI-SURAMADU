@@ -61,7 +61,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "https://lesavi-suramadu.biz.id",
+        target: "http://127.0.0.1:3002",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,

@@ -5,7 +5,8 @@ import { requireAuth } from "../../shared/auth";
 import {
   parseExcelFromUrl, parseExcelFromBase64,
   detectPeriod, extractSnapshotDateFromUrl, slugify,
-  cleanFunnelRows, cleanActivityRows, parseIndonesianNumber
+  cleanFunnelRows, cleanActivityRows, parseIndonesianNumber,
+  detectExcelFormat, parsePivotCache, pivotCacheRowsToParsedRows
 } from "./excel";
 import { sendReminderToAllAMs } from "../telegram/service";
 
@@ -36,17 +37,30 @@ async function autoRegisterNewAms(entries: { nik: string; nama: string; divisi: 
 const router: IRouter = Router();
 
 // ── Helper: resolve rows from URL or base64 file ─────────────────────────────
-async function resolveRows(body: any): Promise<{ rows: any[]; sourceUrl: string | null; snapshotDate: string | null }> {
+async function resolveRows(body: any): Promise<{ rows: any[]; sourceUrl: string | null; snapshotDate: string | null; isPivotFormat: boolean }> {
   const { url, fileData, snapshotDate, sheetName } = body;
 
   if (fileData) {
+    const buffer = Buffer.from(fileData, "base64");
+    const fmt = await detectExcelFormat(buffer);
+
+    if (fmt.isPivot && fmt.cacheCount >= 2) {
+      // Pivot cache format: use Cache 2 (Perf. AM) which has NIK/DIVISI columns.
+      // NAMA_AM may be absent in this file — resolve afterward via account_managers lookup.
+      const cache = await parsePivotCache(buffer, 2);
+      const rows = pivotCacheRowsToParsedRows(cache);
+      return { rows, sourceUrl: null, snapshotDate: snapshotDate || null, isPivotFormat: true };
+    }
+
+    // Fallback to normal sheet parsing
     const rows = parseExcelFromBase64(fileData, sheetName || undefined);
-    return { rows, sourceUrl: null, snapshotDate: snapshotDate || null };
+    return { rows, sourceUrl: null, snapshotDate: snapshotDate || null, isPivotFormat: false };
   }
+
   if (url) {
     const rows = await parseExcelFromUrl(url, sheetName || undefined);
     const detectedDate = snapshotDate || extractSnapshotDateFromUrl(url);
-    return { rows, sourceUrl: url, snapshotDate: detectedDate };
+    return { rows, sourceUrl: url, snapshotDate: detectedDate, isPivotFormat: false };
   }
   throw new Error("URL SharePoint atau file Excel diperlukan");
 }
@@ -62,15 +76,29 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
   let rows: any[];
   let sourceUrl: string | null;
   let snapshotDate: string | null;
+  let isPivotFormat = false;
 
   try {
-    ({ rows, sourceUrl, snapshotDate } = await resolveRows(req.body));
+    ({ rows, sourceUrl, snapshotDate, isPivotFormat } = await resolveRows(req.body));
   } catch (e: any) {
     res.status(400).json({ error: e.message });
     return;
   }
 
   const rawCount = rows.length;
+
+  // ── Pivot cache format: NAMA_AM may be absent — resolve names via account_managers
+  if (isPivotFormat) {
+    const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama }).from(accountManagersTable);
+    const nameByNik = new Map(allAms.map(a => [a.nik, a.nama]));
+
+    for (const row of rows) {
+      const nik = String(row.NIK || row.nik || "").trim();
+      if (!nik) continue;
+      const resolved = nameByNik.get(nik);
+      if (resolved) row.NAMA_AM = resolved;
+    }
+  }
 
   // ── Detect format
   // RAW_WITH_AM: has PERIODE + NAMA_AM/NIK  (per-customer, AM already identified)

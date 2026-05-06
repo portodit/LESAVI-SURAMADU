@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 
 export interface ParsedRow {
   [key: string]: string | number | null;
@@ -484,4 +485,188 @@ export function cleanActivityRows(rows: ParsedRow[]): CleanedActivityRow[] {
       } as CleanedActivityRow;
     })
     .filter((r): r is CleanedActivityRow => r !== null);
+}
+
+// ── Detect whether a Buffer is pivot-cache format ─────────────────────────────
+export async function detectExcelFormat(buffer: Buffer): Promise<{ isPivot: boolean; cacheCount: number }> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    let count = 0;
+    if (zip.file("xl/pivotCache/pivotCacheDefinition1.xml")) count++;
+    if (zip.file("xl/pivotCache/pivotCacheDefinition2.xml")) count++;
+    return { isPivot: count > 0, cacheCount: count };
+  } catch {
+    return { isPivot: false, cacheCount: 0 };
+  }
+}
+
+/**
+ * Parse a specific pivot cache from an Excel buffer.
+ * cacheIndex 1 = Perf. CC (no AM attribution), 2 = Perf. AM (has NIK/NAMA_AM).
+ * Returns flat records compatible with the RAW format handling in routes.ts.
+ */
+export interface PivotCacheResult {
+  fields: string[];
+  records: Record<string, string | number | null>[];
+  recordCount: number;
+}
+export async function parsePivotCache(buffer: Buffer, cacheIndex: 1 | 2 = 2): Promise<PivotCacheResult> {
+  const zip = await JSZip.loadAsync(buffer);
+  const defFile = zip.file(`xl/pivotCache/pivotCacheDefinition${cacheIndex}.xml`);
+  const recFile = zip.file(`xl/pivotCache/pivotCacheRecords${cacheIndex}.xml`);
+
+  if (!defFile || !recFile) {
+    throw new Error(`Pivot cache ${cacheIndex} tidak ditemukan dalam file Excel`);
+  }
+
+  const defXml = await defFile.async("string");
+  const recXml = await recFile.async("string");
+
+  // ── Step 1: Parse field names and shared-items lookup tables ─────────────
+  // Format: each <cacheField name="FIELDNAME"> block contains <sharedItems ...>
+  // We extract per-field blocks by splitting on <cacheField boundaries.
+  // We MUST NOT use a greedy global regex — iterating defXml.matchAll() once
+  // gives us field names in document order without needing split.
+  const fieldNames: string[] = [];
+  const sharedItemsList: string[][] = [];
+
+  // Use a global scan — safe since we only read the name attribute here
+  const fieldBlockMap = new Map<number, string>();
+  for (const m of defXml.matchAll(/<cacheField\s[^>]*name="([^"]+)"[^>]*>/g)) {
+    fieldBlockMap.set(m.index!, m[1]);
+  }
+
+  // Build per-field blocks by extracting content between cacheField tags
+  for (const [startIdx, fieldName] of [...fieldBlockMap.entries()].sort((a, b) => a[0] - b[0])) {
+    fieldNames.push(fieldName);
+    // Find the range of this cacheField: from startIdx to the next <cacheField or </pivotCacheDefinition>
+    const afterStart = defXml.slice(startIdx);
+    const nextCacheIdx = afterStart.indexOf("<cacheField ");
+    const nextDefIdx = afterStart.indexOf("</pivotCacheDefinition>");
+    const blockEnd = nextCacheIdx > 0 && nextCacheIdx < nextDefIdx ? nextCacheIdx : nextDefIdx;
+    const fieldBlock = afterStart.slice(0, blockEnd);
+
+    const siMatch = fieldBlock.match(/<sharedItems[^>]*>([\s\S]*?)<\/sharedItems>/);
+    if (siMatch) {
+      const vals: string[] = [];
+      for (const sm of siMatch[1].matchAll(/<s\s[^>]*v="([^"]*)"[^>]*>/g)) {
+        vals.push(sm[1]);
+      }
+      sharedItemsList.push(vals);
+    } else {
+      sharedItemsList.push([]); // Numeric field — no shared items lookup
+    }
+  }
+
+  // ── Step 2: Parse records (rows) ─────────────────────────────────────────
+  // Each <r> element contains field values as <x v="idx"/> | <n v="num"/> | <s v="str"/> | <m/>
+  // <m/> has NO v= attribute (missing/null value), count them separately.
+  // Records are split on the closing tag so we get clean per-record XML strings.
+  const records: Record<string, string | number | null>[] = [];
+
+  // Tagged values: <x v="..."/>, <n v="..."/>, <s v="..."/>  (note: no 'm' here — handled separately)
+  // NON-GREEDY [^>]*? is critical: self-closing tags like <x v="0"/> must not swallow the
+  // next tag's v= value. Without the ? the greedy [^>]* matches past /> and consumes v="next".
+  const taggedRegex = /<(x|n|s)\s[^>]*?v="([^"]*)"[^>]*?(?:\/>|>)/g;
+  const missingRegex = /<m\s*\/>/g;
+  // Split on </r> — each record ends with this tag
+  const recRows = recXml.split("</r>");
+
+  for (const rowXml of recRows) {
+    if (!rowXml.trim()) continue;
+    // Skip XML declaration and root element chunks
+    const trimmed = rowXml.trim();
+    if (trimmed.startsWith("<?xml") || trimmed.startsWith("<pivotCacheRecords")) continue;
+
+    // Collect non-missing tagged values in field order
+    const tagMatches: Array<{ type: string; value: string }> = [];
+    let m: RegExpExecArray | null;
+    const localTagged = new RegExp(taggedRegex.source, "g");
+    while ((m = localTagged.exec(rowXml)) !== null) {
+      tagMatches.push({ type: m[1], value: m[2] });
+    }
+
+    // Count missing-value placeholders (each consumes one field slot)
+    const missingCount = (rowXml.match(missingRegex) || []).length;
+    const totalVals = tagMatches.length + missingCount;
+
+    const record: Record<string, string | number | null> = {};
+    let tagPos = 0; // next read position in tagMatches
+
+    for (let f = 0; f < fieldNames.length; f++) {
+      if (tagPos < tagMatches.length) {
+        const { type, value } = tagMatches[tagPos];
+        if (type === "x") {
+          // Shared-item index → resolve via lookup table for this field
+          const idx = parseInt(value, 10);
+          record[fieldNames[f]] = sharedItemsList[f]?.[idx] ?? null;
+          tagPos++;
+        } else if (type === "n") {
+          record[fieldNames[f]] = parseFloat(value) || 0;
+          tagPos++;
+        } else if (type === "s") {
+          record[fieldNames[f]] = value || "";
+          tagPos++;
+        } else {
+          // shouldn't happen (type x/n/s only in taggedRegex)
+          record[fieldNames[f]] = null;
+        }
+      } else {
+        // No more tagged values → remaining fields are null
+        record[fieldNames[f]] = null;
+      }
+    }
+
+    records.push(record);
+  }
+
+  return { fields: fieldNames, records, recordCount: records.length };
+}
+
+/**
+ * Convert parsePivotCache result to the same flat ParsedRow format
+ * used by the existing RAW format handler in routes.ts.
+ *
+ * Column renaming (pivot cache field → expected column name):
+ *   NIP_NAS_GROUP  → NIK       (AM's NIK — unique per AM, primary lookup key)
+ *   NAMA           → NAMA_AM  (AM name — may not exist in some files; skip if absent)
+ *   DIVISI         → DIVISI   (already correct — DPS/DSS)
+ *   WITEL          → WITEL_AM (AM's witel)
+ *   LEVEL          → LEVEL_AM (AM level — may be absent)
+ *
+ * Note: PERIODE values are shared-item indices resolved to actual strings
+ * (e.g. "202612"). Numeric revenue fields are stored as <n/> in pivot cache,
+ * so parseFloat() already extracted them.
+ */
+export function pivotCacheRowsToParsedRows(result: PivotCacheResult): ParsedRow[] {
+  const hasNamaField = result.fields.includes("NAMA");
+  return result.records.map(record => {
+    const row: ParsedRow = {};
+    for (const [k, v] of Object.entries(record)) {
+      if (k === "NIP_NAS_GROUP") {
+        row["NIK"] = v;
+      } else if (k === "NAMA" && hasNamaField) {
+        row["NAMA_AM"] = v;
+      } else if (k === "WITEL") {
+        row["WITEL_AM"] = v;
+      } else if (k === "LEVEL") {
+        row["LEVEL_AM"] = v;
+      } else {
+        row[k] = v;
+      }
+    }
+    return row;
+  });
+}
+
+/**
+ * Export pivot cache data back to a simple XLSX Buffer.
+ * Useful for debugging / verifying the parsed data.
+ */
+export function exportPivotCacheToXlsx(result: PivotCacheResult): Buffer {
+  const ws = XLSX.utils.json_to_sheet(result.records);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "PivotCache");
+  const xlsxb = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  return Buffer.from(xlsxb);
 }

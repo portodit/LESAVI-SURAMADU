@@ -37,8 +37,6 @@ export async function seedAmFunnelTargets(opts: { truncate?: boolean } = {}) {
       await db.update(amFunnelTargetTable)
         .set({
           targetValue: t.targetValue,
-          targetValueDss: t.targetValueDss,
-          targetValueDps: t.targetValueDps,
           updatedAt: new Date(),
         })
         .where(eq(amFunnelTargetTable.id, existing[0].id));

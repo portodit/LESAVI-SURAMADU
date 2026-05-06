@@ -636,7 +636,12 @@ export default function FunnelPage() {
 
   const snapshotOptions = useMemo(() =>
     [...snapshots]
-      .sort((a, b) => b.id - a.id)
+      .sort((a, b) => {
+        // Prioritize snapshotDate, fall back to createdAt, then id
+        const da = a.snapshotDate || a.createdAt || "";
+        const db = b.snapshotDate || b.createdAt || "";
+        return db.localeCompare(da);
+      })
       .map(s => ({
         value: String(s.id),
         label: s.snapshotDate

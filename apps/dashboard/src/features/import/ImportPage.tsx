@@ -1486,6 +1486,14 @@ export default function ImportData() {
                           ...p,
                           [driveType]: { ...(p[driveType] || {}), [fid]: !(p[driveType] || {})[fid] },
                         }));
+                        // Sync snapshot date picker to the clicked file's detected date
+                        const clickedFile = driveFilesList.find((f: any) => f.id === fid);
+                        if (clickedFile) {
+                          const detected = extractDateFromFilename(clickedFile.name);
+                          if (detected) {
+                            setDriveSnapshotOverride(p => ({ ...p, [driveType]: detected.isoDate }));
+                          }
+                        }
                       };
                       return (
                         <div className="border border-border rounded-xl overflow-hidden">
