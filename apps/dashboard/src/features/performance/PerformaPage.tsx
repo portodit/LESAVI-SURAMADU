@@ -357,7 +357,15 @@ export default function PerformaVis() {
 
   // Performance imports (for snapshot dropdown)
   const perfImports = useMemo(() =>
+<<<<<<< HEAD
     ((importHistory || []) as any[]).filter(i => i.type === "performance").sort((a, b) => b.id - a.id),
+=======
+    ((importHistory || []) as any[]).filter(i => i.type === "performance").sort((a, b) => {
+      const da = a.snapshotDate || a.period || a.createdAt || "";
+      const db = b.snapshotDate || b.period || b.createdAt || "";
+      return db.localeCompare(da);
+    }),
+>>>>>>> origin/master
     [importHistory]
   );
 

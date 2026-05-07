@@ -8,6 +8,10 @@ export const salesFunnelTable = pgTable("sales_funnel", {
   judulProyek: text("judul_proyek").notNull(),
   pelanggan: text("pelanggan").notNull(),
   nilaiProyek: real("nilai_proyek").notNull().default(0),
+<<<<<<< HEAD
+=======
+  estRev: real("est_rev"),
+>>>>>>> origin/master
   divisi: text("divisi").notNull(),
   segmen: text("segmen"),
   witel: text("witel"),
@@ -15,6 +19,11 @@ export const salesFunnelTable = pgTable("sales_funnel", {
   proses: text("proses"),
   statusProyek: text("status_proyek"),
   kategoriKontrak: text("kategori_kontrak"),
+<<<<<<< HEAD
+=======
+  projectType: text("project_type"),
+  isReport: text("is_report"),
+>>>>>>> origin/master
   estimateBulan: text("estimate_bulan"),
   monthSubs: integer("month_subs"),
   namaAm: text("nama_am"),
@@ -22,6 +31,10 @@ export const salesFunnelTable = pgTable("sales_funnel", {
   reportDate: text("report_date"),
   createdDate: text("created_date"),
   snapshotDate: text("snapshot_date"),
+<<<<<<< HEAD
+=======
+  tahunAnggaran: integer("tahun_anggaran"),
+>>>>>>> origin/master
   importId: integer("import_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -41,6 +54,11 @@ export const amFunnelTargetTable = pgTable("am_funnel_target", {
   nikAm: text("nik_am").notNull(),
   tahun: integer("tahun").notNull(),
   targetValue: real("target_value").notNull().default(0),
+<<<<<<< HEAD
+=======
+  targetValueDss: real("target_value_dss"),
+  targetValueDps: real("target_value_dps"),
+>>>>>>> origin/master
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [unique("am_funnel_target_nik_tahun").on(t.nikAm, t.tahun)]);

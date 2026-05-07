@@ -16,10 +16,22 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
   const imports = await db
     .select()
     .from(dataImportsTable)
+<<<<<<< HEAD
     .where(eq(dataImportsTable.type, "funnel"))
     .orderBy(desc(dataImportsTable.createdAt));
 
   res.json(imports.map(imp => ({
+=======
+    .where(eq(dataImportsTable.type, "funnel"));
+
+  const sorted = [...imports].sort((a, b) => {
+    const da = a.snapshotDate || a.createdAt?.toISOString() || "";
+    const db2 = b.snapshotDate || b.createdAt?.toISOString() || "";
+    return db2.localeCompare(da);
+  });
+
+  res.json(sorted.map(imp => ({
+>>>>>>> origin/master
     id: imp.id,
     period: imp.period,
     rowsImported: imp.rowsImported,
@@ -31,7 +43,11 @@ router.get("/public/funnel/snapshots", async (req, res): Promise<void> => {
 router.get("/public/funnel", async (req, res): Promise<void> => {
   Object.entries(PUBLIC_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
+<<<<<<< HEAD
   const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, rd_year, durasi_filter } = req.query;
+=======
+  const { import_id, divisi, status, nama_am, kategori_kontrak, tahun, tahun_list, rd_year, durasi_filter, is_report, project_type } = req.query;
+>>>>>>> origin/master
 
   const masterAms = await db.select().from(accountManagersTable);
   const masterAmByNik = new Map(masterAms.map(m => [m.nik, m.nama]));
@@ -92,10 +108,32 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
   }
   // Witel Suramadu hanya handle customer DPS dan DSS — singkirkan DGS
   allLops = allLops.filter(l => (l.divisi || "").toUpperCase() !== "DGS");
+<<<<<<< HEAD
   if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
   if (status) allLops = allLops.filter(l => l.statusF === String(status));
   if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
   if (kategori_kontrak) allLops = allLops.filter(l => l.kategoriKontrak === String(kategori_kontrak));
+=======
+
+  // ── AUTO FILTERS (sesuai PIVOT F MyTENS, hidden dari UI) ──────────────────
+  // 1. is_report = 'Y' (hanya LOP yang sudah valid/approved)
+  allLops = allLops.filter(l => (l.isReport || "").toUpperCase() === "Y");
+  // 2. project_type ∈ {AO, MO}
+  allLops = allLops.filter(l => ["AO", "MO"].includes((l.projectType || "").toUpperCase()));
+  // 3. status_proyek bukan Lose/Cancel
+  allLops = allLops.filter(l => !["LOSE", "CANCEL"].includes((l.statusProyek || "").toUpperCase()));
+
+  if (divisi && String(divisi) !== "all") allLops = allLops.filter(l => matchesDivisi(l.divisi, String(divisi)));
+  if (status) allLops = allLops.filter(l => l.statusF === String(status));
+  if (nama_am) allLops = allLops.filter(l => l.namaAm?.toLowerCase().includes(String(nama_am).toLowerCase()));
+  // kategori_kontrak: support multi-value comma list (e.g. "GTMA,New GTMA,Own Channel")
+  if (kategori_kontrak) {
+    const wanted = String(kategori_kontrak).split(",").map(s => s.trim()).filter(Boolean);
+    if (wanted.length > 0) allLops = allLops.filter(l => wanted.includes(l.kategoriKontrak || ""));
+  }
+  // is_report and project_type query params kept for backward compat but no-op (already auto-applied above)
+  void is_report; void project_type;
+>>>>>>> origin/master
   if (durasi_filter === "single_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs <= 12);
   else if (durasi_filter === "multi_year") allLops = allLops.filter(l => l.monthSubs != null && l.monthSubs > 12);
 
@@ -104,6 +142,10 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
 
   const totalLop = allLops.length;
   const totalNilai = allLops.reduce((s, l) => s + (l.nilaiProyek || 0), 0);
+<<<<<<< HEAD
+=======
+  const totalEstRev = allLops.reduce((s, l) => s + (l.estRev || 0), 0);
+>>>>>>> origin/master
   const namedLops = allLops.filter(l => l.namaAm && l.namaAm !== "");
   const amSet = new Set(namedLops.map(l => l.nikAm).filter(Boolean));
   const pelangganSet = new Set(allLops.map(l => l.pelanggan).filter(Boolean));
@@ -198,11 +240,19 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
     return new Date().getFullYear();
   })();
   const amTargetRows = await db.select().from(amFunnelTargetTable).where(eq(amFunnelTargetTable.tahun, amTargetYear));
+<<<<<<< HEAD
   const amTargets: Record<string, { id: number; targetValue: number; tahun: number }> = {};
   for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, tahun: r.tahun };
 
   res.json({
     totalLop, totalNilai,
+=======
+  const amTargets: Record<string, { id: number; targetValue: number; targetValueDss: number | null; targetValueDps: number | null; tahun: number }> = {};
+  for (const r of amTargetRows) amTargets[r.nikAm] = { id: r.id, targetValue: r.targetValue, targetValueDss: r.targetValueDss ?? null, targetValueDps: r.targetValueDps ?? null, tahun: r.tahun };
+
+  res.json({
+    totalLop, totalNilai, totalEstRev,
+>>>>>>> origin/master
     targetHo: targetHoVal,
     targetFullHo: targetFullHoVal,
     targetByDivisi,
@@ -222,12 +272,21 @@ router.get("/public/funnel", async (req, res): Promise<void> => {
       judulProyek: l.judulProyek,
       pelanggan: l.pelanggan,
       nilaiProyek: l.nilaiProyek,
+<<<<<<< HEAD
+=======
+      estRev: l.estRev ?? null,
+>>>>>>> origin/master
       divisi: l.divisi,
       segmen: l.segmen,
       statusF: l.statusF,
       proses: l.proses,
       statusProyek: l.statusProyek,
       kategoriKontrak: l.kategoriKontrak,
+<<<<<<< HEAD
+=======
+      projectType: l.projectType ?? null,
+      isReport: l.isReport ?? null,
+>>>>>>> origin/master
       estimateBulan: l.estimateBulan,
       monthSubs: l.monthSubs ?? null,
       namaAm: l.namaAm,

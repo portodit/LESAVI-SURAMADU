@@ -92,6 +92,10 @@ export interface ImportRecord {
   type: string;
   rowsImported: number;
   period: string;
+<<<<<<< HEAD
+=======
+  snapshotDate?: string | null;
+>>>>>>> origin/master
   createdAt: string;
   autoTelegramSent: boolean;
 }

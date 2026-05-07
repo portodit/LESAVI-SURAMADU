@@ -881,13 +881,23 @@ function FSCRGauge({ f5, denom, cr, divisi }: { f5:number; denom:number; cr:numb
 }
 
 function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void }) {
+<<<<<<< HEAD
   const [filterYears,setFilterYears] = useState<Set<string>>(new Set(["2026"]));
+=======
+  // Default: All years (empty Set) — sesuai PIVOT F MyTENS yg "Years (report_date) All"
+  const [filterYears,setFilterYears] = useState<Set<string>>(new Set());
+>>>>>>> origin/master
   const [filterMonths,setFilterMonths] = useState<Set<string>>(new Set());
   const filterYear = useMemo(()=>[...filterYears].sort().reverse()[0]||"2026",[filterYears]);
   const [importId,setImportId] = useState<number|null>(null);
   const [filterMode,setFilterMode] = useState<"ho"|"fullho">("fullho");
   const [filterStatus,setFilterStatus] = useState<Set<string>>(new Set());
+<<<<<<< HEAD
   const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set());
+=======
+  // Default: GTMA & Own Channel saja — sesuai filter PIVOT F Excel MyTENS
+  const [filterKontrak,setFilterKontrak] = useState<Set<string>>(new Set(["GTMA","Own Channel"]));
+>>>>>>> origin/master
   const [filterDurasi,setFilterDurasi] = useState<"all"|"single_year"|"multi_year">("all");
   const [filterTahunAnggaran,setFilterTahunAnggaran] = useState<Set<string>>(new Set());
   const [filterAm,setFilterAm] = useState<Set<string>>(new Set());
@@ -937,7 +947,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   ,[snapshots,filterYear,filterMonths]);
 
+<<<<<<< HEAD
   useEffect(()=>{if(yearOptions.length>0)setFilterYears(new Set([yearOptions[0].value]));},[yearOptions.length]);
+=======
+  // Default: filterYears empty = ALL tahun (sesuai PIVOT F Excel default ALL)
+>>>>>>> origin/master
   useEffect(()=>{ if(snapshotOptions.length>0 && importId===null) setImportId(Number(snapshotOptions[0].value)); },[snapshotOptions, importId]);
   const funnelParams = useMemo(()=>{
     const p=new URLSearchParams();
@@ -971,6 +985,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
   // string array for FSCheckboxDropdown
   const tahunAnggaranStringOptions = useMemo(()=>tahunAnggaranOptions.map(o=>o.value),[tahunAnggaranOptions]);
 
+<<<<<<< HEAD
   // Saat filterTahunAnggaran berubah:
   // - TA aktif → reset period picker ke kosong (user pilih sendiri jika ingin mempersempit)
   // - TA dihapus → kembali ke Report Date mode, set filterYears ke tahun terkini
@@ -982,6 +997,12 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
       if(yearOptions.length>0) setFilterYears(new Set([yearOptions[0].value]));
       setFilterMonths(new Set());
     }
+=======
+  // Saat filterTahunAnggaran berubah → reset period picker ke kosong (default ALL)
+  useEffect(()=>{
+    setFilterYears(new Set());
+    setFilterMonths(new Set());
+>>>>>>> origin/master
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[filterTahunAnggaran]);
 
@@ -1085,9 +1106,26 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     return (nik:string)=>map.get(nik)||nik;
   },[periodFilteredLops]);
   const kontrakOptions = useMemo(()=>{
+<<<<<<< HEAD
     return [...new Set(periodFilteredLops.map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[])].sort();
   },[periodFilteredLops]);
 
+=======
+    // Hanya tampilkan kategori yang relevan untuk PIVOT F — jangan tampilkan Uncategorized, Reseller, dll
+    const ALLOWED = new Set(["GTMA","Own Channel","New GTMA"]);
+    const inData = new Set(periodFilteredLops.map((l:any)=>l.kategoriKontrak).filter(Boolean) as string[]);
+    return [...ALLOWED].filter(k => inData.has(k)).sort();
+  },[periodFilteredLops]);
+
+  // Bersihkan filterKontrak dari kategori yang tidak ada di kontrakOptions (e.g. Uncategorized)
+  useEffect(()=>{
+    if(kontrakOptions.length===0) return;
+    const allowed=new Set(kontrakOptions);
+    const cleaned=new Set([...filterKontrak].filter(k=>allowed.has(k)));
+    if(cleaned.size!==filterKontrak.size) setFilterKontrak(cleaned);
+  },[kontrakOptions]);// eslint-disable-line react-hooks/exhaustive-deps
+
+>>>>>>> origin/master
   const filteredLops = useMemo(()=>{
     const q=search.toLowerCase();
     const allApiLops:any[] = data?.lops||[];
@@ -1114,6 +1152,21 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
     });
   },[data,periodFilteredLops,filterAm,filterStatus,filterKontrak,filterDurasi,search]);
 
+<<<<<<< HEAD
+=======
+  // Stats dihitung dari filteredLops (SEMUA filter aktif — termasuk filterKontrak, filterAm, dll)
+  const filteredStats = useMemo(()=>{
+    const byStatusMap: Record<string,{status:string;count:number;totalNilai:number}>={};
+    for(const l of filteredLops){
+      const s=(l as any).statusF||"Unknown";
+      if(!byStatusMap[s]) byStatusMap[s]={status:s,count:0,totalNilai:0};
+      byStatusMap[s].count++;
+      byStatusMap[s].totalNilai+=((l as any).nilaiProyek||0);
+    }
+    return {byStatus:Object.values(byStatusMap)};
+  },[filteredLops]);
+
+>>>>>>> origin/master
   const groupedByAm = useMemo(()=>{
     const amMap=new Map<string,{namaAm:string;nikAm:string;divisi:string;phases:Map<string,any[]>}>();
     const divisiAllMap=new Map<string,Set<string>>();
@@ -1140,6 +1193,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
   // ── Split mode state + computed ─────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"all"|"split">("all");
+<<<<<<< HEAD
+=======
+  const [splitTableDiv, setSplitTableDiv] = useState<"DPS"|"DSS">("DPS");
+>>>>>>> origin/master
 
   // Resolve divisi dari LOPs dalam phases jika AM-level divisi kosong
   function resolveAmDivisi(am: {divisi:string;phases:Map<string,any[]>}): string {
@@ -1295,7 +1352,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
 
 
   // ── reusable tbody renderer for presentation split panels ──────────────────
+<<<<<<< HEAD
   function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string) {
+=======
+  function renderAmTbodyContentFS(ams: typeof groupedByAm, emptyMsg?: string, divisiCtx?: "DPS" | "DSS") {
+>>>>>>> origin/master
     if (isLoading) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">Memuat data...</td></tr>;
     if (ams.length===0) return <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">{emptyMsg??"Belum ada data"}</td></tr>;
     return <>{ams.map((am,amIdx)=>{
@@ -1337,7 +1398,11 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               const f345Val=(["F3","F4","F5"].flatMap(p=>(am.phases.get(p)as any[])||[]) as any[]).reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0);
               const cr=f345Val>0?f5Val/f345Val:null;
               const amTargetInfo=data?.amTargets?.[am.nikAm];
+<<<<<<< HEAD
               const amTargetVal=amTargetInfo?.targetValue??0;
+=======
+              const amTargetVal=divisiCtx==="DPS"?(amTargetInfo?.targetValueDps??amTargetInfo?.targetValue??0):divisiCtx==="DSS"?(amTargetInfo?.targetValueDss??amTargetInfo?.targetValue??0):(amTargetInfo?.targetValue??0);
+>>>>>>> origin/master
               const pctRaw=amTargetVal>0?(amTotal/amTargetVal)*100:0;
               const pctBar=Math.min(pctRaw,100);
               const barColor=pctRaw>=100?"#10b981":pctRaw>=70?"#f97316":"#3b82f6";
@@ -1724,16 +1789,28 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
         </div>
       ):(
         <div className="space-y-4">
+<<<<<<< HEAD
           {/* LOP per Fase + DPS/DSS gauges — one row on desktop */}
+=======
+          {/* LOP per Fase + DPS/DSS — satu baris sejajar */}
+>>>>>>> origin/master
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr_2fr] gap-4">
             {/* LOP per Fase */}
             <div className="bg-card border border-border rounded-xl p-4 shadow-sm min-w-0 flex flex-col">
               <h3 className="text-base font-display font-bold text-foreground mb-3">LOP per Fase</h3>
+<<<<<<< HEAD
               <FSFaseBarChart data={data?{...data,byStatus:periodStats.byStatus}:undefined}/>
               {data&&(()=>{
                 const pm:Record<string,{count:number;nilai:number}>={};
                 for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
                 for(const s of (periodStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+=======
+              <FSFaseBarChart data={data?{...data,byStatus:filteredStats.byStatus}:undefined}/>
+              {data&&(()=>{
+                const pm:Record<string,{count:number;nilai:number}>={};
+                for(const p of FS_PHASES) pm[p]={count:0,nilai:0};
+                for(const s of (filteredStats.byStatus||[])){if(pm[s.status]){pm[s.status].count=s.count;pm[s.status].nilai=s.totalNilai;}}
+>>>>>>> origin/master
                 return (
                   <div className="flex-1 flex flex-col mt-3 pt-3 border-t border-border/60">
                     <div className="flex-1 flex gap-1.5">
@@ -1752,6 +1829,10 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                 );
               })()}
             </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
             {/* DPS | DSS gauges */}
             {(["DPS","DSS"] as const).map(div=>{
               const tgtHo  =div==="DPS"?dpsTgtHo:dssTgtHo;
@@ -1784,10 +1865,22 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
               );
             })}
           </div>
+<<<<<<< HEAD
           {/* KPI Ringkasan using period stats */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-display font-semibold text-foreground mb-3">Ringkasan</h3>
             <FSKpiGrid data={data?{...data,totalLop:periodStats.totalLop,totalNilai:periodStats.totalNilai,pelangganCount:periodStats.pelangganCount}:undefined}/>
+=======
+          {/* KPI Ringkasan menggunakan filteredLops (period + kategori_kontrak + dll) */}
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+            <h3 className="text-sm font-display font-semibold text-foreground mb-3">Ringkasan</h3>
+            <FSKpiGrid data={data?{
+              ...data,
+              totalLop:filteredLops.length,
+              totalNilai:filteredLops.reduce((s:number,l:any)=>s+(l.nilaiProyek||0),0),
+              pelangganCount:new Set(filteredLops.map((l:any)=>l.pelanggan).filter(Boolean)).size,
+            }:undefined}/>
+>>>>>>> origin/master
           </div>
         </div>
       ))}
@@ -1903,9 +1996,15 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
                     </div>
                     <FSGauge
                       compact
+<<<<<<< HEAD
                       pct={effectiveTargetFullHo>0?(st.totalNilai/effectiveTargetFullHo)*100:0}
                       targetHo={effectiveTargetHo}
                       targetFullHo={effectiveTargetFullHo}
+=======
+                      pct={div==="DPS"?(dpsTgt?dpsStats.totalNilai/dpsTgt*100:0):(dssTgt?dssStats.totalNilai/dssTgt*100:0)}
+                      targetHo={div==="DPS"?dpsTgtHo:dssTgtHo}
+                      targetFullHo={div==="DPS"?dpsTgtFullHo:dssTgtFullHo}
+>>>>>>> origin/master
                       real={st.totalNilai}
                       mode={filterMode}
                       divisi={div}
@@ -1917,6 +2016,7 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
           })}
         </div>
 
+<<<<<<< HEAD
         {/* Row 2: Tabel AM (card terpisah) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(["DPS","DSS"] as const).map(div=>{
@@ -1969,6 +2069,76 @@ function FunnelSlide({ onTitleChange }: { onTitleChange?: (t: string) => void })
             );
           })}
         </div>
+=======
+        {/* Row 2: Tabel AM — full width, toggle DPS/DSS */}
+        {(()=>{
+          const div=splitTableDiv;
+          const st=div==="DPS"?dpsStats:dssStats;
+          const grp=div==="DPS"?dpsGrouped:dssGrouped;
+          const isDps=div==="DPS";
+          const headerBg=isDps?"bg-blue-700":"bg-emerald-700";
+          const borderTop=isDps?"border-t-[3px] border-blue-500":"border-t-[3px] border-emerald-500";
+          return (
+            <div className={`bg-card border border-border rounded-xl shadow-sm flex flex-col ${borderTop}`}>
+              {/* Table Toolbar */}
+              <div className="px-3 py-2 border-b border-border bg-secondary/20 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+                <div className="flex items-center gap-3">
+                  {/* Toggle DPS / DSS */}
+                  <div className="flex rounded-lg overflow-hidden border border-border text-xs font-bold">
+                    <button
+                      onClick={()=>setSplitTableDiv("DPS")}
+                      className={cn("px-3 py-1.5 transition-colors",
+                        div==="DPS"?"bg-blue-600 text-white":"bg-background text-muted-foreground hover:text-foreground"
+                      )}
+                    >DPS</button>
+                    <button
+                      onClick={()=>setSplitTableDiv("DSS")}
+                      className={cn("px-3 py-1.5 border-l border-border transition-colors",
+                        div==="DSS"?"bg-emerald-600 text-white":"bg-background text-muted-foreground hover:text-foreground"
+                      )}
+                    >DSS</button>
+                  </div>
+                  <span className="text-xs font-semibold text-muted-foreground">{grp.length} AM · {st.totalLop} LOP</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none"/>
+                    <input type="text" placeholder="Cari AM, LOP, pelanggan…" value={search} onChange={e=>setSearch(e.target.value)}
+                      className="pl-6 pr-5 py-1 text-xs bg-background border border-border rounded-md w-52 focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"/>
+                    {search&&<button onClick={()=>setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3 h-3"/></button>}
+                  </div>
+                  <button onClick={handleToggleAll} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2.5 py-1 transition-colors whitespace-nowrap">
+                    {allExpanded?<Minimize2 className="w-3 h-3"/>:<Expand className="w-3 h-3"/>}
+                    {allExpanded?"Collapse":"Expand"}
+                  </button>
+                </div>
+              </div>
+              {/* AM Tree Table — full width, horizontal scroll */}
+              <div className="p-3">
+              <div className="border border-border rounded">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse" style={{minWidth:"600px"}}>
+                  <thead>
+                    <tr className={`${headerBg} text-white font-black uppercase tracking-wide text-xs`}>
+                      <th className="px-4 py-2.5 min-w-[240px] text-left">Account Manager</th>
+                      <th className="px-3 py-2.5 whitespace-nowrap text-left">LOP</th>
+                      <th className="px-3 py-2.5 whitespace-nowrap text-left">Pelanggan</th>
+                      <th className="px-3 py-2.5 min-w-[210px] text-center">Target 2026</th>
+                      <th className="px-3 py-2.5 min-w-[200px] text-left">Nilai Proyek</th>
+                      <th className="px-4 py-2.5 min-w-[130px] text-right whitespace-nowrap">Conversion Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {renderAmTbodyContentFS(grp,`Tidak ada AM ${div}`,div)}
+                  </tbody>
+                </table>
+              </div>
+              </div>
+              </div>
+            </div>
+          );
+        })()}
+>>>>>>> origin/master
         </div>
       )}
 
@@ -2116,7 +2286,11 @@ function ActivityPeriodeDropdown({filterYear,setFilterYear,filterMonths,setFilte
 function ActivitySlide() {
   const now = new Date();
   const [filterYear,  setFilterYear]  = useState(String(now.getFullYear()));
+<<<<<<< HEAD
   const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set([String(now.getMonth()+1)]));
+=======
+  const [filterMonths, setFilterMonths] = useState<Set<string>>(new Set()); // shows all months by default
+>>>>>>> origin/master
   const [filterDivisi, setFilterDivisi] = useState("LESA");
   const [filterSnapId, setFilterSnapId] = useState<string>("all");
   const [filterKategori, setFilterKategori] = useState<Set<string>>(new Set());
@@ -2243,7 +2417,11 @@ function ActivitySlide() {
   //            (2) kpiActivityDefault dari settings API (fallback jika activity belum loaded)
   //            (3) hardcoded 30 (last resort)
   const actSettingsKpi:number = (data as any)?.kpiDefault ?? actSettingsData?.kpiActivityDefault ?? 30;
+<<<<<<< HEAD
   const actEffectiveMonths = filterMonths.size > 0 ? filterMonths.size : 12;
+=======
+
+>>>>>>> origin/master
 
   const amList = useMemo(()=>{
     if(!data) return [];
@@ -2268,7 +2446,12 @@ function ActivitySlide() {
       .map((m:any)=>{
         const ex=byAmMap[m.nama];
         const perAmOverride=ex?.perAmKpiTarget;
+<<<<<<< HEAD
         const baseKpiTarget=(perAmOverride??actSettingsKpi)*actEffectiveMonths;
+=======
+        // kpiTarget = nilai settingan saja, tidak dikalikan jumlah bulan
+        const baseKpiTarget=perAmOverride??actSettingsKpi;
+>>>>>>> origin/master
         const baseActs=(ex?.activities||[]);
         const activityDivisis=Array.from(new Set(baseActs.map((a:any)=>a.divisi).filter(Boolean)));
         const base=ex
@@ -2277,7 +2460,11 @@ function ActivitySlide() {
         const visibleActs=filterKategori.size===0?base.activities:base.activities.filter((a:any)=>filterKategori.has(a.label));
         return {...base,visibleActivities:visibleActs};
       });
+<<<<<<< HEAD
   },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi,actEffectiveMonths]);
+=======
+  },[data,filterDivisi,actSearch,filterKategori,actSettingsKpi]);
+>>>>>>> origin/master
 
   const stats = useMemo(()=>{
     const totalKpi=amList.reduce((s:number,a:any)=>s+a.kpiCount,0);
@@ -2399,7 +2586,11 @@ function ActivitySlide() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-foreground uppercase tracking-wide mb-1">AM Capai KPI</div>
                 <div className="text-3xl font-black tabular-nums leading-tight text-foreground">{stats.reach}</div>
+<<<<<<< HEAD
                 <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??(actSettingsKpi*actEffectiveMonths)} aktivitas</strong> / {actEffectiveMonths===1?"bulan":`${actEffectiveMonths} bulan`}</div>
+=======
+                <div className="text-sm font-bold text-foreground mt-1">target <strong className="text-primary">≥{amList[0]?.kpiTarget??actSettingsKpi} aktivitas</strong> / bulan</div>
+>>>>>>> origin/master
               </div>
             </div>
             {/* Card 3: AM Di Bawah KPI */}
