@@ -36,6 +36,61 @@ function findBestPerformanceSheet(sheetNames: string[]): string {
   return sheetNames[0];
 }
 
+class ImportConflictError extends Error {
+  status: number;
+  conflict: boolean;
+  existingId: number;
+  existingRows: number;
+  period: string;
+  importedAt: string;
+
+  constructor(message: string, params: { existingId: number; existingRows: number; period: string; importedAt: string }) {
+    super(message);
+    this.name = "ImportConflictError";
+    this.status = 409;
+    this.conflict = true;
+    this.existingId = params.existingId;
+    this.existingRows = params.existingRows;
+    this.period = params.period;
+    this.importedAt = params.importedAt;
+  }
+}
+
+async function resolveDuplicateImport(
+  type: "performance" | "funnel" | "activity",
+  period: string,
+  forceOverwrite?: boolean,
+) {
+  const [existing] = await db.select().from(dataImportsTable)
+    .where(and(eq(dataImportsTable.type, type), eq(dataImportsTable.period, period)));
+
+  if (!existing) return;
+
+  if (!forceOverwrite) {
+    const typeLabel =
+      type === "performance" ? "Performa" :
+      type === "funnel" ? "Sales Funnel" : "Sales Activity";
+    throw new ImportConflictError(
+      `Sudah ada data ${typeLabel} periode ${period} yang diimport sebelumnya.`,
+      {
+        existingId: existing.id,
+        existingRows: existing.rowsImported,
+        period,
+        importedAt: existing.createdAt.toISOString(),
+      },
+    );
+  }
+
+  if (type === "performance") {
+    await db.delete(performanceDataTable).where(eq(performanceDataTable.importId, existing.id));
+  } else if (type === "funnel") {
+    await db.delete(salesFunnelTable).where(eq(salesFunnelTable.importId, existing.id));
+  } else {
+    await db.delete(salesActivityTable).where(eq(salesActivityTable.importId, existing.id));
+  }
+  await db.delete(dataImportsTable).where(eq(dataImportsTable.id, existing.id));
+}
+
 export async function downloadDriveFileAsRows(
   fileId: string,
   mimeType: string,
@@ -116,7 +171,14 @@ async function getAmSlugMap() {
   return map;
 }
 
-export async function importPerformance(rows: ParsedRow[], sourceUrl: string, period: string | null, snapshotDate: string, _fileName: string) {
+export async function importPerformance(
+  rows: ParsedRow[],
+  sourceUrl: string,
+  period: string | null,
+  snapshotDate: string,
+  _fileName: string,
+  options?: { forceOverwrite?: boolean },
+) {
   const isRawFormat = rows.length > 0 && ("PERIODE" in rows[0] || "NAMA_AM" in rows[0]);
 
   type CustomerEntry = {
@@ -250,6 +312,8 @@ export async function importPerformance(rows: ParsedRow[], sourceUrl: string, pe
       ? `${firstRow.tahun}-${String(firstRow.bulan).padStart(2, "0")}`
       : new Date().toISOString().slice(0, 7));
 
+  await resolveDuplicateImport("performance", resolvedPeriod, options?.forceOverwrite);
+
   const [importRecord] = await db.insert(dataImportsTable).values({
     type: "performance", sourceUrl, period: resolvedPeriod,
     rowsImported: toInsert.length, snapshotDate,
@@ -274,7 +338,14 @@ export async function importPerformance(rows: ParsedRow[], sourceUrl: string, pe
   return { imported: toInsert.length, importId: importRecord.id, period: resolvedPeriod };
 }
 
-export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period: string | null, snapshotDate: string, _fileName: string) {
+export async function importFunnel(
+  rows: ParsedRow[],
+  sourceUrl: string,
+  period: string | null,
+  snapshotDate: string,
+  _fileName: string,
+  options?: { forceOverwrite?: boolean },
+) {
   const cleaned = cleanFunnelRows(rows, { preferPembuat: true, skipIsReportFilter: true });
   const allAms = await db.select({ nik: accountManagersTable.nik, nama: accountManagersTable.nama, divisi: accountManagersTable.divisi }).from(accountManagersTable);
 
@@ -327,8 +398,11 @@ export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period:
     }
   }
 
+  const resolvedPeriod = period || new Date().toISOString().slice(0, 7);
+  await resolveDuplicateImport("funnel", resolvedPeriod, options?.forceOverwrite);
+
   const [importRecord] = await db.insert(dataImportsTable).values({
-    type: "funnel", sourceUrl, period: period || new Date().toISOString().slice(0, 7),
+    type: "funnel", sourceUrl, period: resolvedPeriod,
     rowsImported: toInsert.length, snapshotDate,
   }).returning();
 
@@ -343,15 +417,25 @@ export async function importFunnel(rows: ParsedRow[], sourceUrl: string, period:
       .onConflictDoNothing();
   }
 
-  return { imported: toInsert.length, importId: importRecord.id, period: period || new Date().toISOString().slice(0, 7) };
+  return { imported: toInsert.length, importId: importRecord.id, period: resolvedPeriod };
 }
 
-export async function importActivity(rows: ParsedRow[], sourceUrl: string, period: string | null, snapshotDate: string, _fileName: string) {
+export async function importActivity(
+  rows: ParsedRow[],
+  sourceUrl: string,
+  period: string | null,
+  snapshotDate: string,
+  _fileName: string,
+  options?: { forceOverwrite?: boolean },
+) {
   const { salesActivityTable } = await import("@workspace/db");
   const cleaned = cleanActivityRows(rows);
 
+  const resolvedPeriod = period || new Date().toISOString().slice(0, 7);
+  await resolveDuplicateImport("activity", resolvedPeriod, options?.forceOverwrite);
+
   const [importRecord] = await db.insert(dataImportsTable).values({
-    type: "activity", sourceUrl, period: period || new Date().toISOString().slice(0, 7),
+    type: "activity", sourceUrl, period: resolvedPeriod,
     rowsImported: cleaned.length, snapshotDate,
   }).returning();
 
@@ -360,7 +444,7 @@ export async function importActivity(rows: ParsedRow[], sourceUrl: string, perio
       ...row, snapshotDate, importId: importRecord.id,
     }))).onConflictDoNothing();
   }
-  return { imported: cleaned.length, importId: importRecord.id, period: period || new Date().toISOString().slice(0, 7) };
+  return { imported: cleaned.length, importId: importRecord.id, period: resolvedPeriod };
 }
 
 /** Top-level: download + import for a given type+fileId — used by scheduler */
@@ -372,6 +456,7 @@ export async function runDriveImport(
   apiKey: string,
   snapshotDate: string,
   preferredSheet?: string,
+  options?: { forceOverwrite?: boolean },
 ) {
   const rows = await downloadDriveFileAsRows(fileId, mimeType, apiKey, type, preferredSheet);
   if (rows.length === 0) throw new Error("File kosong atau tidak dapat dibaca");
@@ -379,8 +464,8 @@ export async function runDriveImport(
   const sourceUrl = `https://drive.google.com/file/d/${fileId}`;
   const period = detectPeriod(rows, fileName);
 
-  if (type === "performance") return importPerformance(rows, sourceUrl, period, snapshotDate, fileName);
-  if (type === "funnel" || type === "target") return importFunnel(rows, sourceUrl, period, snapshotDate, fileName);
-  if (type === "activity") return importActivity(rows, sourceUrl, period, snapshotDate, fileName);
+  if (type === "performance") return importPerformance(rows, sourceUrl, period, snapshotDate, fileName, options);
+  if (type === "funnel" || type === "target") return importFunnel(rows, sourceUrl, period, snapshotDate, fileName, options);
+  if (type === "activity") return importActivity(rows, sourceUrl, period, snapshotDate, fileName, options);
   throw new Error(`Tipe tidak dikenali: ${type}`);
 }

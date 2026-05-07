@@ -7,6 +7,7 @@ import { pool } from "@workspace/db";
 import { startTelegramPoller } from "./features/telegram/poller";
 import { startGSheetsScheduler } from "./features/gsheets/scheduler";
 import { startGDriveScheduler } from "./features/gdrive/scheduler";
+import { startTelegramWeeklyFunnelScheduler } from "./features/telegram/scheduler";
 
 async function ensureSessionTable(): Promise<void> {
   await pool.query(`
@@ -83,4 +84,5 @@ app.listen(port, (err) => {
   startTelegramPoller(15000);
   startGSheetsScheduler();
   startGDriveScheduler();
+  startTelegramWeeklyFunnelScheduler();
 });

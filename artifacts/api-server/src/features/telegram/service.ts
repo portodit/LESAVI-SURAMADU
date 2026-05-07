@@ -1,5 +1,5 @@
 import { db, appSettingsTable, accountManagersTable, performanceDataTable, salesFunnelTable, salesActivityTable, telegramLogsTable, dataImportsTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count, isNotNull } from "drizzle-orm";
 import { logger } from "../../shared/logger";
 import { generatePerfFeedback } from "./ai";
 
@@ -139,8 +139,12 @@ async function buildPerformanceMessage(
 
   const firstName = am.nama.split(" ")[0];
 
-  // Fetch all AMs' performance data for this period — latest snapshot first, fallback to all
-  const allPerfs = await getSnapshotAwarePerfs(year, month);
+  // Fetch performance data and YTD data in parallel
+  const [allPerfs, ytdPerfsRaw] = await Promise.all([
+    getSnapshotAwarePerfs(year, month),
+    db.select().from(performanceDataTable)
+      .where(and(eq(performanceDataTable.nik, nik), eq(performanceDataTable.tahun, year))),
+  ]);
 
   const p = allPerfs.find(x => x.nik === nik);
   const totalAMs = allPerfs.length;
@@ -156,12 +160,9 @@ async function buildPerformanceMessage(
   const achCm = p?.achRate || 0;
   const achYtd = p?.achRateYtd || 0;
 
-  // Fetch YTD data for sub-categories: all months in same year up to this month
-  const ytdPerfs = await db.select().from(performanceDataTable)
-    .where(and(eq(performanceDataTable.nik, nik), eq(performanceDataTable.tahun, year)));
-  const ytdUpTo = ytdPerfs.filter(x => x.bulan <= month);
+  const ytdUpTo = ytdPerfsRaw.filter(x => x.bulan <= month);
 
-  function sumYtdAch(realKey: keyof typeof ytdPerfs[0], targetKey: keyof typeof ytdPerfs[0]): number {
+  function sumYtdAch(realKey: keyof typeof ytdPerfsRaw[0], targetKey: keyof typeof ytdPerfsRaw[0]): number {
     const totalReal = ytdUpTo.reduce((s, x) => s + ((x[realKey] as number) || 0), 0);
     const totalTarget = ytdUpTo.reduce((s, x) => s + ((x[targetKey] as number) || 0), 0);
     return totalTarget > 0 ? (totalReal / totalTarget) * 100 : 0;
@@ -622,4 +623,44 @@ export async function sendReminderToAllAMs(
   }
 
   return { sent, failed, skipped, details };
+}
+
+// ── Manager helpers: AM picker ─────────────────────────────────────────────
+
+export async function getActiveAMs(page: number = 0, perPage: number = 5): Promise<{ nik: string; nama: string; divisi: string }[]> {
+  const ams = await db.select({
+    nik: accountManagersTable.nik,
+    nama: accountManagersTable.nama,
+    divisi: accountManagersTable.divisi,
+  }).from(accountManagersTable)
+    .where(and(eq(accountManagersTable.aktif, true), eq(accountManagersTable.role, "AM")))
+    .orderBy(accountManagersTable.nama);
+
+  return ams.filter(a => a.nik).slice(page * perPage, (page + 1) * perPage);
+}
+
+export async function getActiveAMsCount(): Promise<number> {
+  const [result] = await db.select({ count: count() })
+    .from(accountManagersTable)
+    .where(and(
+      eq(accountManagersTable.aktif, true),
+      eq(accountManagersTable.role, "AM"),
+      isNotNull(accountManagersTable.nik),
+    ));
+  return result?.count ?? 0;
+}
+
+export async function searchAMs(query: string): Promise<{ nik: string; nama: string; divisi: string }[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const ams = await db.select({
+    nik: accountManagersTable.nik,
+    nama: accountManagersTable.nama,
+    divisi: accountManagersTable.divisi,
+  }).from(accountManagersTable)
+    .where(and(eq(accountManagersTable.aktif, true), eq(accountManagersTable.role, "AM")));
+
+  return ams
+    .filter(a => a.nik && (a.nama.toLowerCase().includes(q) || a.nik.startsWith(q)))
+    .slice(0, 10);
 }

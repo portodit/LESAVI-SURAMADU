@@ -76,7 +76,7 @@ router.get("/gdrive/list", requireAuth, async (req, res): Promise<void> => {
 // ── POST /api/gdrive/sync?type=performance ────────────────────────────────────
 router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
   const { type } = req.query;
-  const { fileId: explicitFileId, snapshotDate: snapshotDateBodyOverride, sheetName } = req.body;
+  const { fileId: explicitFileId, snapshotDate: snapshotDateBodyOverride, sheetName, forceOverwrite } = req.body;
   const folderKey = DRIVE_FOLDER_KEYS[String(type)];
   if (!folderKey) { res.status(400).json({ error: "type tidak valid" }); return; }
 
@@ -122,11 +122,20 @@ router.post("/gdrive/sync", requireAuth, async (req, res): Promise<void> => {
       apiKey,
       snapshotDate,
       sheetName || undefined,
+      { forceOverwrite: !!forceOverwrite },
     );
 
     res.json({ ...result, fileName: targetFile.name, fileModified: targetFile.modifiedTime, snapshotDate });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    const status = typeof e?.status === "number" ? e.status : 500;
+    res.status(status).json({
+      error: e?.message || "Gagal sinkronisasi data dari Google Drive",
+      conflict: !!e?.conflict,
+      existingId: e?.existingId,
+      existingRows: e?.existingRows,
+      period: e?.period,
+      importedAt: e?.importedAt,
+    });
   }
 });
 

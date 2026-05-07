@@ -5,6 +5,7 @@ import { requireAuth } from "../../shared/auth";
 import { rescheduleGSheets } from "../gsheets/scheduler";
 import { rescheduleGDrive } from "../gdrive/scheduler";
 import { rescheduleTelegramPoller } from "../telegram/poller";
+import { rescheduleTelegramWeeklyFunnelScheduler } from "../telegram/scheduler";
 
 const router: IRouter = Router();
 
@@ -110,6 +111,7 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
 
   rescheduleGSheets();
   rescheduleGDrive();
+  rescheduleTelegramWeeklyFunnelScheduler();
   if (updates.telegramBotToken) rescheduleTelegramPoller(updates.telegramBotToken);
 
   res.json(buildSettingsResponse(settings));
