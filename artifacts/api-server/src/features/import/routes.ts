@@ -329,17 +329,30 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
   const importPeriod = req.body.period ||
     ((isRawFormat || isNoAmFormat) ? `${firstInserted.tahun}-${String(firstInserted.bulan).padStart(2, "0")}` : detectPeriod(rows, sourceUrl || undefined));
 
-  // ── Cek duplikat: sudah ada import type+period yang sama?
+  // ── Cek duplikat: sudah ada import type+period+snapshotDate yang sama?
+  // Jika snapshotDate disediakan, cek berdasarkan tanggal snapshot, bukan hanya periode
+  const existingConditions = [
+    eq(dataImportsTable.type, "performance"),
+    eq(dataImportsTable.period, importPeriod),
+  ];
+  if (snapshotDate) {
+    existingConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
+  }
+
   const [existingPerf] = await db.select().from(dataImportsTable)
-    .where(and(eq(dataImportsTable.type, "performance"), eq(dataImportsTable.period, importPeriod)));
+    .where(and(...existingConditions));
 
   if (existingPerf && !req.body.forceOverwrite) {
+    const existingDate = existingPerf.snapshotDate || existingPerf.createdAt.toISOString().slice(0, 10);
     res.status(409).json({
       conflict: true,
-      error: `Sudah ada data Performa periode ${importPeriod} yang diimport sebelumnya.`,
+      error: snapshotDate
+        ? `Sudah ada Snapshot Performa Tanggal ${existingDate} yang diimport. Gunakan data baru atau hapus yang lama.`
+        : `Sudah ada data Performa periode ${importPeriod} yang diimport sebelumnya.`,
       existingId: existingPerf.id,
       existingRows: existingPerf.rowsImported,
       period: importPeriod,
+      snapshotDate: existingDate,
       importedAt: existingPerf.createdAt.toISOString(),
     });
     return;
@@ -424,17 +437,29 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
     "import_funnel"
   );
 
-  // ── Cek duplikat
+  // ── Cek duplikat: cek berdasarkan type+period+snapshotDate
+  const funnelConditions = [
+    eq(dataImportsTable.type, "funnel"),
+    eq(dataImportsTable.period, importPeriod),
+  ];
+  if (snapshotDate) {
+    funnelConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
+  }
+
   const [existingFunnel] = await db.select().from(dataImportsTable)
-    .where(and(eq(dataImportsTable.type, "funnel"), eq(dataImportsTable.period, importPeriod)));
+    .where(and(...funnelConditions));
 
   if (existingFunnel && !req.body.forceOverwrite) {
+    const existDate = existingFunnel.snapshotDate || existingFunnel.createdAt.toISOString().slice(0, 10);
     res.status(409).json({
       conflict: true,
-      error: `Sudah ada data Sales Funnel periode ${importPeriod} yang diimport sebelumnya.`,
+      error: snapshotDate
+        ? `Sudah ada Snapshot Funnel Tanggal ${existDate}. Gunakan data baru atau hapus yang lama.`
+        : `Sudah ada data Sales Funnel periode ${importPeriod} yang diimport sebelumnya.`,
       existingId: existingFunnel.id,
       existingRows: existingFunnel.rowsImported,
       period: importPeriod,
+      snapshotDate: existDate,
       importedAt: existingFunnel.createdAt.toISOString(),
     });
     return;
@@ -537,17 +562,29 @@ router.post("/import/activity", requireAuth, async (req, res): Promise<void> => 
 
   const importPeriod = req.body.period || detectPeriod(rows, sourceUrl || undefined);
 
-  // ── Cek duplikat
+  // ── Cek duplikat: cek berdasarkan type+period+snapshotDate
+  const actConditions = [
+    eq(dataImportsTable.type, "activity"),
+    eq(dataImportsTable.period, importPeriod),
+  ];
+  if (snapshotDate) {
+    actConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
+  }
+
   const [existingAct] = await db.select().from(dataImportsTable)
-    .where(and(eq(dataImportsTable.type, "activity"), eq(dataImportsTable.period, importPeriod)));
+    .where(and(...actConditions));
 
   if (existingAct && !req.body.forceOverwrite) {
+    const existDate = existingAct.snapshotDate || existingAct.createdAt.toISOString().slice(0, 10);
     res.status(409).json({
       conflict: true,
-      error: `Sudah ada data Sales Activity periode ${importPeriod} yang diimport sebelumnya.`,
+      error: snapshotDate
+        ? `Sudah ada Snapshot Activity Tanggal ${existDate}. Gunakan data baru atau hapus yang lama.`
+        : `Sudah ada data Sales Activity periode ${importPeriod} yang diimport sebelumnya.`,
       existingId: existingAct.id,
       existingRows: existingAct.rowsImported,
       period: importPeriod,
+      snapshotDate: existDate,
       importedAt: existingAct.createdAt.toISOString(),
     });
     return;
