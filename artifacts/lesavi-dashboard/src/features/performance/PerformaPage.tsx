@@ -63,8 +63,9 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }
   return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">{value}</text>;
 };
 
-function formatSnapshotLabel(createdAt: string): string {
-  return format(new Date(createdAt), "d MMM yyyy", { locale: idLocale });
+function formatSnapshotLabel(createdAt: string, snapshotDate?: string | null): string {
+  const dateStr = snapshotDate || createdAt;
+  return format(new Date(dateStr), "d MMM yyyy", { locale: idLocale });
 }
 
 // Parse komponenDetail JSON safely
@@ -733,7 +734,7 @@ export default function PerformaVis() {
             label="📷 Snapshot"
             value={String(filterSnapshotId ?? "")}
             onChange={v => { setFilterSnapshotId(Number(v)); setFilterPeriodes(new Set()); }}
-            options={perfImports.length === 0 ? [{ value: "", label: "Belum ada data" }] : perfImports.map((imp: any) => ({ value: String(imp.id), label: formatSnapshotLabel(imp.createdAt) }))}
+            options={perfImports.length === 0 ? [{ value: "", label: "Belum ada data" }] : perfImports.map((imp: any) => ({ value: String(imp.id), label: formatSnapshotLabel(imp.createdAt, imp.snapshotDate) }))}
             disabled={!perfImports.length}
             className="flex-1 min-w-0"
           />
