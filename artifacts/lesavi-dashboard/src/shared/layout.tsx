@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   LayoutDashboard, Upload, BarChart2, Filter, Activity,
   Users, MessageSquare, Settings, LogOut, ChevronDown,
-  Menu, X, Code2, Copy, Check, ExternalLink, Building2
+  Menu, X, Code2, Copy, Check, ExternalLink, Building2, Grid2X2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -86,9 +86,10 @@ const NAV_GROUPS = [
       {
         label: "Visualisasi", icon: BarChart2,
         children: [
-          { href: "/visualisasi/performa", label: "Performa AM", icon: BarChart2, pageTitle: "Performansi Account Manager LESA VI WITEL SURAMADU" },
-          { href: "/visualisasi/funnel", label: "Sales Funnel", icon: Filter, pageTitle: "Sales Funneling LOP MYTENS LESA VI Witel Suramadu" },
-          { href: "/visualisasi/activity", label: "Sales Activity", icon: Activity, pageTitle: "AM Sales Activity Report · LESA VI Witel Suramadu" },
+          { href: "/visualisasi/performa",    label: "Performa AM",   icon: BarChart2,  pageTitle: "Performansi Account Manager LESA VI WITEL SURAMADU" },
+          { href: "/visualisasi/funnel",      label: "Sales Funnel",  icon: Filter,     pageTitle: "Sales Funneling LOP MYTENS LESA VI Witel Suramadu" },
+          { href: "/visualisasi/activity",    label: "Sales Activity", icon: Activity,  pageTitle: "AM Sales Activity Report · LESA VI Witel Suramadu" },
+          { href: "/visualisasi/kuadran-am",  label: "Kuadran AM",    icon: Grid2X2,    pageTitle: "Kuadran AM · DPS & DSS · LESA VI Witel Suramadu" },
         ]
       },
       { href: "/manajemen-akun", label: "Manajemen Akun", icon: Users },
