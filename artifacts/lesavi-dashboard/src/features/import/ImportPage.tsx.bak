@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
@@ -37,6 +36,21 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   return r.json();
 }
 
+function extractDateFromFilename(source: string): { display: string; isoDate: string; period: string } | null {
+  const match = source.match(/[_-](\d{8})[._?&\s]/);
+  if (!match) return null;
+  const raw = match[1];
+  const year = raw.slice(0, 4);
+  const month = raw.slice(4, 6);
+  const day = raw.slice(6, 8);
+  const y = parseInt(year), mo = parseInt(month), d = parseInt(day);
+  if (y < 2000 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return {
+    isoDate: `${year}-${month}-${day}`,
+    period: `${year}-${month}`,
+    display: `${day}/${month}/${year}`,
+  };
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -359,7 +373,7 @@ export default function ImportData() {
       setDriveFiles(p => ({ ...p, [type]: files }));
       // Auto-detect snapshot date from latest file name
       if (files.length > 0) {
-        const detected = window.extractDateFromFilename(files[0].name);
+        const detected = extractDateFromFilename(files[0].name);
         if (detected) {
           setDriveSnapshotOverride(p => ({ ...p, [type]: detected.isoDate }));
         }
@@ -444,7 +458,7 @@ export default function ImportData() {
       const f = filesToSync[i];
       setSyncLog(prev => ({ ...prev, [type]: (prev[type] || []).map((e, idx) => idx === i ? { ...e, status: "running", message: "Sedang download & import..." } : e) }));
       try {
-        const fDetected = window.extractDateFromFilename(f.name);
+        const fDetected = extractDateFromFilename(f.name);
         const result = await apiFetch<any>(`/api/gdrive/sync?type=${type}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileId: f.id, snapshotDate: fDetected?.isoDate || driveSnapshotOverride[type] || undefined }),
@@ -515,7 +529,7 @@ export default function ImportData() {
   const currentSnapshotOverride = snapshotOverride[activeTab] || "";
   const currentSheetName = sheetNames[activeTab] || "";
 
-  const fileDetected = currentFile ? window.extractDateFromFilename(currentFile.name) : null;
+  const fileDetected = currentFile ? extractDateFromFilename(currentFile.name) : null;
   // Final snapshot = override OR auto-detected from filename
   const finalSnapshotDate = currentSnapshotOverride || fileDetected?.isoDate || null;
   const finalPeriod = finalSnapshotDate ? finalSnapshotDate.slice(0, 7) : fileDetected?.period || null;
@@ -554,7 +568,7 @@ export default function ImportData() {
     setFiles(prev => ({ ...prev, [activeTab]: file }));
     setSheetNames(prev => ({ ...prev, [activeTab]: sheet }));
     // Auto-fill snapshot date from filename
-    const detected = window.extractDateFromFilename(file.name);
+    const detected = extractDateFromFilename(file.name);
     if (detected) {
       setSnapshotOverride(prev => ({ ...prev, [activeTab]: detected.isoDate }));
     }
@@ -1196,7 +1210,7 @@ export default function ImportData() {
           const isSyncing = !!driveSyncing[driveType];
           const syncResult = driveSyncResult[driveType];
           const curDriveSnap = driveSnapshotOverride[driveType] || "";
-          const driveDetected = driveFilesList.length > 0 ? window.extractDateFromFilename(driveFilesList[0].name) : null;
+          const driveDetected = driveFilesList.length > 0 ? extractDateFromFilename(driveFilesList[0].name) : null;
           const curDriveProgress = driveProgress[driveType] || null;
 
           return (
@@ -1509,7 +1523,7 @@ export default function ImportData() {
                           </div>
                           <div className="divide-y divide-border/50 max-h-60 overflow-y-auto">
                             {driveFilesList.map((f: any, i: number) => {
-                              const fDetected = window.extractDateFromFilename(f.name);
+                              const fDetected = extractDateFromFilename(f.name);
                               const isGSheet = f.mimeType === "application/vnd.google-apps.spreadsheet";
                               const isChecked = !!(selMap[f.id]);
                               return (

@@ -28,6 +28,7 @@
     "express": "^5",
     "express-session": "^1.19.0",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^8.0.10",
     "pino": "^9",
     "pino-http": "^10",
     "xlsx": "^0.18.5"

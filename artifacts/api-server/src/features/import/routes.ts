@@ -330,29 +330,27 @@ router.post("/import/performance", requireAuth, async (req, res): Promise<void> 
     ((isRawFormat || isNoAmFormat) ? `${firstInserted.tahun}-${String(firstInserted.bulan).padStart(2, "0")}` : detectPeriod(rows, sourceUrl || undefined));
 
   // ── Cek duplikat: sudah ada import type+period+snapshotDate yang sama?
-  // Jika snapshotDate disediakan, cek berdasarkan tanggal snapshot, bukan hanya periode
-  const existingConditions = [
-    eq(dataImportsTable.type, "performance"),
-    eq(dataImportsTable.period, importPeriod),
-  ];
-  if (snapshotDate) {
-    existingConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
-  }
-
-  const [existingPerf] = await db.select().from(dataImportsTable)
-    .where(and(...existingConditions));
+  const [existingPerf] = snapshotDate
+    ? await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "performance"),
+        eq(dataImportsTable.period, importPeriod),
+        eq(dataImportsTable.snapshotDate, snapshotDate)
+      ))
+    : await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "performance"),
+        eq(dataImportsTable.period, importPeriod)
+      ));
 
   if (existingPerf && !req.body.forceOverwrite) {
-    const existingDate = existingPerf.snapshotDate || existingPerf.createdAt.toISOString().slice(0, 10);
     res.status(409).json({
       conflict: true,
       error: snapshotDate
-        ? `Sudah ada Snapshot Performa Tanggal ${existingDate} yang diimport. Gunakan data baru atau hapus yang lama.`
+        ? `Sudah ada Snapshot Performa Tanggal ${existingPerf.snapshotDate || existingPerf.createdAt.toISOString().slice(0, 10)} yang diimport. Gunakan data baru atau hapus yang lama.`
         : `Sudah ada data Performa periode ${importPeriod} yang diimport sebelumnya.`,
       existingId: existingPerf.id,
       existingRows: existingPerf.rowsImported,
       period: importPeriod,
-      snapshotDate: existingDate,
+      snapshotDate: existingPerf.snapshotDate || existingPerf.createdAt.toISOString().slice(0, 10),
       importedAt: existingPerf.createdAt.toISOString(),
     });
     return;
@@ -437,18 +435,18 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
     "import_funnel"
   );
 
-  // ── Cek duplikat: cek berdasarkan type+period+snapshotDate
-  const funnelConditions = [
-    eq(dataImportsTable.type, "funnel"),
-    eq(dataImportsTable.period, importPeriod),
-  ];
-  if (snapshotDate) {
-    funnelConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
-  }
-
-  const [existingFunnel] = await db.select().from(dataImportsTable)
-    .where(and(...funnelConditions));
-
+  // Cek duplikat: cek berdasarkan type+period+snapshotDate SEKALIGUS
+  // Agar bisa import multiple minggu untuk periode yang sama (beda tanggal snapshot)
+  const [existingFunnel] = snapshotDate
+    ? await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "funnel"),
+        eq(dataImportsTable.period, importPeriod),
+        eq(dataImportsTable.snapshotDate, snapshotDate)
+      ))
+    : await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "funnel"),
+        eq(dataImportsTable.period, importPeriod)
+      ));
   if (existingFunnel && !req.body.forceOverwrite) {
     const existDate = existingFunnel.snapshotDate || existingFunnel.createdAt.toISOString().slice(0, 10);
     res.status(409).json({
@@ -562,17 +560,18 @@ router.post("/import/activity", requireAuth, async (req, res): Promise<void> => 
 
   const importPeriod = req.body.period || detectPeriod(rows, sourceUrl || undefined);
 
-  // ── Cek duplikat: cek berdasarkan type+period+snapshotDate
-  const actConditions = [
-    eq(dataImportsTable.type, "activity"),
-    eq(dataImportsTable.period, importPeriod),
-  ];
-  if (snapshotDate) {
-    actConditions.push(eq(dataImportsTable.snapshotDate, snapshotDate));
-  }
-
-  const [existingAct] = await db.select().from(dataImportsTable)
-    .where(and(...actConditions));
+  // Cek duplikat: cek berdasarkan type+period+snapshotDate SEKALIGUS
+  // Agar bisa import multiple minggu untuk periode yang sama (beda tanggal snapshot)
+  const [existingAct] = snapshotDate
+    ? await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "activity"),
+        eq(dataImportsTable.period, importPeriod),
+        eq(dataImportsTable.snapshotDate, snapshotDate)
+      ))
+    : await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, "activity"),
+        eq(dataImportsTable.period, importPeriod)
+      ));
 
   if (existingAct && !req.body.forceOverwrite) {
     const existDate = existingAct.snapshotDate || existingAct.createdAt.toISOString().slice(0, 10);

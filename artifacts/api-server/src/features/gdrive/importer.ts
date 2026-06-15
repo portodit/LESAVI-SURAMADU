@@ -60,9 +60,20 @@ async function resolveDuplicateImport(
   type: "performance" | "funnel" | "activity",
   period: string,
   forceOverwrite?: boolean,
+  snapshotDate?: string,
 ) {
-  const [existing] = await db.select().from(dataImportsTable)
-    .where(and(eq(dataImportsTable.type, type), eq(dataImportsTable.period, period)));
+  // Cek duplikat berdasarkan type+period+snapshotDate SEKALIGUS
+  // Agar bisa import multiple minggu untuk periode yang sama
+  const [existing] = snapshotDate
+    ? await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, type),
+        eq(dataImportsTable.period, period),
+        eq(dataImportsTable.snapshotDate, snapshotDate)
+      ))
+    : await db.select().from(dataImportsTable).where(and(
+        eq(dataImportsTable.type, type),
+        eq(dataImportsTable.period, period)
+      ));
 
   if (!existing) return;
 
@@ -70,12 +81,16 @@ async function resolveDuplicateImport(
     const typeLabel =
       type === "performance" ? "Performa" :
       type === "funnel" ? "Sales Funnel" : "Sales Activity";
+    const existDate = existing.snapshotDate || existing.createdAt.toISOString().slice(0, 10);
     throw new ImportConflictError(
-      `Sudah ada data ${typeLabel} periode ${period} yang diimport sebelumnya.`,
+      snapshotDate
+        ? `Sudah ada Snapshot ${typeLabel} Tanggal ${existDate}. Gunakan data baru atau hapus yang lama.`
+        : `Sudah ada data ${typeLabel} periode ${period} yang diimport sebelumnya.`,
       {
         existingId: existing.id,
         existingRows: existing.rowsImported,
         period,
+        snapshotDate: existDate,
         importedAt: existing.createdAt.toISOString(),
       },
     );
@@ -312,7 +327,7 @@ export async function importPerformance(
       ? `${firstRow.tahun}-${String(firstRow.bulan).padStart(2, "0")}`
       : new Date().toISOString().slice(0, 7));
 
-  await resolveDuplicateImport("performance", resolvedPeriod, options?.forceOverwrite);
+  await resolveDuplicateImport("performance", resolvedPeriod, options?.forceOverwrite, snapshotDate);
 
   const [importRecord] = await db.insert(dataImportsTable).values({
     type: "performance", sourceUrl, period: resolvedPeriod,
@@ -399,7 +414,7 @@ export async function importFunnel(
   }
 
   const resolvedPeriod = period || new Date().toISOString().slice(0, 7);
-  await resolveDuplicateImport("funnel", resolvedPeriod, options?.forceOverwrite);
+  await resolveDuplicateImport("funnel", resolvedPeriod, options?.forceOverwrite, snapshotDate);
 
   const [importRecord] = await db.insert(dataImportsTable).values({
     type: "funnel", sourceUrl, period: resolvedPeriod,
@@ -432,7 +447,7 @@ export async function importActivity(
   const cleaned = cleanActivityRows(rows);
 
   const resolvedPeriod = period || new Date().toISOString().slice(0, 7);
-  await resolveDuplicateImport("activity", resolvedPeriod, options?.forceOverwrite);
+  await resolveDuplicateImport("activity", resolvedPeriod, options?.forceOverwrite, snapshotDate);
 
   const [importRecord] = await db.insert(dataImportsTable).values({
     type: "activity", sourceUrl, period: resolvedPeriod,

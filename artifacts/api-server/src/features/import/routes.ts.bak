@@ -5,8 +5,7 @@ import { requireAuth } from "../../shared/auth";
 import {
   parseExcelFromUrl, parseExcelFromBase64,
   detectPeriod, extractSnapshotDateFromUrl, slugify,
-  cleanFunnelRows, cleanActivityRows, parseIndonesianNumber,
-  hasPivotCache, extractFromPivotCache, getWorkbookSheetNames
+  cleanFunnelRows, cleanActivityRows, parseIndonesianNumber
 } from "./excel";
 import { sendReminderToAllAMs } from "../telegram/service";
 
@@ -41,18 +40,6 @@ async function resolveRows(body: any): Promise<{ rows: any[]; sourceUrl: string 
   const { url, fileData, snapshotDate, sheetName } = body;
 
   if (fileData) {
-    const buffer = Buffer.from(fileData, "base64");
-
-    // Check for pivot cache first - extract raw data directly
-    const isPivot = await hasPivotCache(buffer);
-    if (isPivot && (!sheetName || sheetName === "")) {
-      const pivotRows = await extractFromPivotCache(buffer);
-      if (pivotRows.length > 0) {
-        return { rows: pivotRows, sourceUrl: null, snapshotDate: snapshotDate || null };
-      }
-    }
-
-    // Fallback to normal sheet parsing
     const rows = parseExcelFromBase64(fileData, sheetName || undefined);
     return { rows, sourceUrl: null, snapshotDate: snapshotDate || null };
   }
@@ -418,7 +405,6 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
   const cleaned = cleanFunnelRows(rows, {
     preferPembuat: true,
     skipIsReportFilter: true,
-    skipWitelFilter: true,
   });
 
   if (cleaned.length === 0) {
@@ -471,13 +457,7 @@ router.post("/import/funnel", requireAuth, async (req, res): Promise<void> => {
   // ── Simpan SEMUA baris (termasuk AM baru yg belum aktif) — filter aktif dilakukan saat display
   const BATCH_SIZE = 200;
   for (let i = 0; i < cleaned.length; i += BATCH_SIZE) {
-    const batch = cleaned.slice(i, i + BATCH_SIZE).map(row => ({
-      ...row,
-      snapshotDate: snapshotDate || null,
-      importId: imp.id,
-      nikHandling: row.nikHandling,
-      namaPembuatLop: row.namaPembuatLop
-    }));
+    const batch = cleaned.slice(i, i + BATCH_SIZE).map(row => ({ ...row, snapshotDate: snapshotDate || null, importId: imp.id }));
     await db.insert(salesFunnelTable).values(batch);
   }
 

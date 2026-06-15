@@ -36,9 +36,24 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   return r.json();
 }
 
-function extractDateFromFilename(source: string): { display: string; isoDate: string; period: string } | null {
+export function extractDateFromFilename(source: string): { display: string; isoDate: string; period: string } | null {
   // Pattern 1: underscore or hyphen before date: PERFORMANSI_RLEGS_20260607.xlsx, TREG3_ACTIVITY_20260316.xlsx
   const match1 = source.match(/[_-](\d{8})[._?&\s]/);
+  if (match1) {
+    const raw = match1[1];
+    const year = raw.slice(0, 4);
+    const month = raw.slice(4, 6);
+    const day = raw.slice(6, 8);
+    const y = parseInt(year), mo = parseInt(month), d = parseInt(day);
+    if (y < 2000 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return {
+      isoDate: `${year}-${month}-${day}`,
+      period: `${year}-${month}`,
+      display: `${day}/${month}/${year}`,
+    };
+  }
+  // Pattern 2: parentheses around date: PERFORMANSI RLEGS 2026 (20260607).xlsx
+  const match2 = source.match(/\((\d{8})\)/);
   if (match1) {
     const raw = match1[1];
     const year = raw.slice(0, 4);
@@ -605,24 +620,25 @@ export default function ImportData() {
 
   // ── File selection handler ─────────────────────────────────────────────────
   const applyFile = useCallback(async (file: File) => {
+    // Check if this is a pivot cache file FIRST
+    const pivot = await isPivotCacheFile(file);
+
+    if (pivot) {
+      // For pivot cache files: auto-detect date and use without sheet selection
+      const detected = extractDateFromFilename(file.name);
+      if (detected) {
+        setSnapshotOverride(prev => ({ ...prev, [activeTab]: detected.isoDate }));
+      }
+      // Set file with empty sheet name (backend will extract from pivot cache)
+      setFiles(prev => ({ ...prev, [activeTab]: file }));
+      setSheetNames(prev => ({ ...prev, [activeTab]: ""}));
+      setSheetPicker(null);
+      return;
+    }
+
+    // Normal file: read sheet names and show picker if multiple
     const sheets = await readSheetNames(file);
     if (sheets.length > 1) {
-      // Check if this is a pivot cache file (data stored in pivotCache XML, not flat sheets)
-      const pivot = await isPivotCacheFile(file);
-      if (pivot) {
-        // For pivot cache files, auto-select "Perf. AM" if available (contains AM attribution)
-        const perfAmSheet = sheets.find(s => s.toLowerCase().includes("perf") && s.toLowerCase().includes("am"));
-        if (perfAmSheet) {
-          commitFile(file, perfAmSheet);
-          return;
-        }
-        // Fallback: first sheet that looks like a data sheet (not "KUADRAN" or "NIPNAS")
-        const dataSheet = sheets.find(s => !s.toLowerCase().includes("kuadran") && !s.toLowerCase().includes("nipnas"));
-        if (dataSheet) {
-          commitFile(file, dataSheet);
-          return;
-        }
-      }
       setSheetPicker({ file, sheets });
     } else {
       commitFile(file, sheets[0] || "");

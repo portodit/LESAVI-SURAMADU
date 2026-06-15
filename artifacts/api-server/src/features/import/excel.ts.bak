@@ -1,137 +1,7 @@
 import * as XLSX from "xlsx";
-import JSZip from "jszip";
 
 export interface ParsedRow {
   [key: string]: string | number | null;
-}
-
-/**
- * Check if Excel file has pivot cache (data stored in pivotCache XML, not flat sheets).
- * Returns true if pivotCacheDefinition files are found inside the ZIP.
- */
-export async function hasPivotCache(buffer: Buffer): Promise<boolean> {
-  try {
-    const uint8 = new Uint8Array(buffer);
-    // Check for ZIP signature (PK)
-    if (uint8[0] !== 0x50 || uint8[1] !== 0x4B) return false;
-
-    const zip = await JSZip.loadAsync(buffer);
-    const pivotFiles = Object.keys(zip.files).filter(k => k.includes("pivotCacheDefinition"));
-    return pivotFiles.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Extract raw data from Excel pivot cache.
- * Returns ParsedRow[] with field names from pivotCacheDefinition.
- */
-export async function extractFromPivotCache(buffer: Buffer): Promise<ParsedRow[]> {
-  try {
-    const uint8 = new Uint8Array(buffer);
-    if (uint8[0] !== 0x50 || uint8[1] !== 0x4B) return [];
-
-    const zip = await JSZip.loadAsync(buffer);
-
-    // Find pivotCacheDefinition files
-    const cacheDefFiles = Object.keys(zip.files).filter(k => k.includes("pivotCacheDefinition"));
-    const cacheRecFiles = Object.keys(zip.files).filter(k => k.includes("pivotCacheRecords"));
-
-    if (cacheDefFiles.length === 0 || cacheRecFiles.length === 0) return [];
-
-    // Read cache definition for field names
-    const defFile = cacheDefFiles[0];
-    const recFile = cacheRecFiles[0];
-
-    const defXml = await zip.files[defFile].async("string");
-    const recXml = await zip.files[recFile].async("string");
-
-    // Extract field names from cache definition
-    // Format: <field name="NIK" .../> or <field v="NIK"/>
-    const fieldMatches = defXml.matchAll(/<field[^>]*name="([^"]+)"/g);
-    const fieldNames: string[] = [];
-    for (const match of fieldMatches) {
-      fieldNames.push(match[1]);
-    }
-
-    // Fallback: try extracting from shared items
-    const sharedItemsFile = Object.keys(zip.files).find(k => k.includes("sharedItems"));
-    let sharedItems: string[] = [];
-    if (sharedItemsFile) {
-      const sharedXml = await zip.files[sharedItemsFile].async("string");
-      const itemMatches = sharedXml.matchAll(/<t[^>]*>([^<]+)<\/t>/g);
-      for (const match of itemMatches) {
-        sharedItems.push(match[1]);
-      }
-    }
-
-    // Parse cache records
-    // Format: <r> or <row> elements with field indices
-    const rowMatches = recXml.matchAll(/<(?:r|row)[^>]*>([^<]+)<\/(?:r|row)>/g);
-    const rows: ParsedRow[] = [];
-
-    // Also extract from <v> tags with indices
-    const vTagMatches = recXml.matchAll(/<v(?:\s[^>]*)?>([^<]*)<\/v>/g);
-
-    // Alternative: extract from x elements
-    const xMatches = recXml.matchAll(/<x r="([0-9]+)"[^>]*\/>/g);
-    const xValMatches = recXml.matchAll(/<x v="([0-9]+)"[^>]*\/>/g);
-
-    // Try parsing the complete row structure
-    const completeRowMatches = recXml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/gi);
-    for (const rowMatch of completeRowMatches) {
-      const rowContent = rowMatch[1];
-      const row: ParsedRow = {};
-
-      // Extract all v elements with their index
-      const vElements = rowContent.matchAll(/<v>([^<]*)<\/v>/g);
-      let colIndex = 0;
-      for (const vMatch of vElements) {
-        if (colIndex < fieldNames.length) {
-          const val = vMatch[1];
-          // Try to get shared item if index
-          const idx = parseInt(val);
-          if (!isNaN(idx) && idx >= 0 && sharedItems.length > 0 && idx < sharedItems.length) {
-            row[fieldNames[colIndex]] = sharedItems[idx];
-          } else if (!isNaN(idx)) {
-            row[fieldNames[colIndex]] = idx;
-          } else {
-            row[fieldNames[colIndex]] = val;
-          }
-        }
-        colIndex++;
-      }
-
-      if (Object.keys(row).length > 0) {
-        rows.push(row);
-      }
-    }
-
-    return rows;
-  } catch (e) {
-    console.error("Pivot cache extraction error:", e);
-    return [];
-  }
-}
-
-/**
- * Parse Excel buffer - auto-detects pivot cache and extracts raw data if needed.
- * Falls back to normal sheet parsing for non-pivot files.
- */
-export async function parseExcelBufferAsync(buffer: Buffer, sheetName?: string): Promise<ParsedRow[]> {
-  // Check for pivot cache
-  const isPivot = await hasPivotCache(buffer);
-  if (isPivot) {
-    const pivotRows = await extractFromPivotCache(buffer);
-    if (pivotRows.length > 0) {
-      console.log(`Extracted ${pivotRows.length} rows from pivot cache`);
-      return pivotRows;
-    }
-  }
-
-  // Fallback to normal sheet parsing
-  return parseExcelBuffer(buffer, sheetName);
 }
 
 export async function parseExcelFromUrl(url: string, sheetName?: string): Promise<ParsedRow[]> {
@@ -190,7 +60,8 @@ export function parseExcelBuffer(buffer: Buffer, sheetName?: string): ParsedRow[
 
 /**
  * Convert a 2-D array (e.g. from Google Sheets API) directly to ParsedRow[].
- * Same smart-title-row detection as parseExcelBuffer — but no XLSX library involved.
+ * Same smart-title-row detection as parseExcelBuffer — but no XLSX library involved,
+ * so memory usage is ~10x lower for large Google Sheets imports.
  */
 export function parseRaw2DArray(rawRows: any[][]): ParsedRow[] {
   if (rawRows.length < 2) return [];
@@ -201,9 +72,11 @@ export function parseRaw2DArray(rawRows: any[][]): ParsedRow[] {
   let dataRows: any[][];
 
   if (row0NonNull === 1 && rawRows.length > 2) {
+    // First row is a title row — use row 1 as header
     headers = rawRows[1] as string[];
     dataRows = rawRows.slice(2);
   } else {
+    // First row is the header
     headers = rawRows[0] as string[];
     dataRows = rawRows.slice(1);
   }
@@ -234,11 +107,14 @@ export function parseIndonesianNumber(val: any): number {
     const lastDot = s.lastIndexOf(".");
     const lastComma = s.lastIndexOf(",");
     if (lastComma > lastDot) {
+      // Indonesian format: 1.234.567,89 — remove dots, comma → dot
       s = s.replace(/\./g, "").replace(",", ".");
     } else {
+      // US/standard format: 1,234,567.89 — remove commas
       s = s.replace(/,/g, "");
     }
   } else if (hasComma && !hasDot) {
+    // Comma only: treat as decimal separator if it looks like one (e.g. "1234,56")
     const parts = s.split(",");
     if (parts.length === 2 && parts[1].length <= 3 && parts[0].length > 0) {
       s = s.replace(",", ".");
@@ -246,21 +122,26 @@ export function parseIndonesianNumber(val: any): number {
       s = s.replace(/,/g, "");
     }
   }
+  // Only dots (or no separators): treat as-is — dot is decimal point
 
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
 
 export function detectPeriodFromUrl(url: string): string | null {
+  // Extract YYYYMMDD from filename e.g. TREG3_ACTIVITY_20260316.xlsx or TREG3_ACTIVITY_20260316 (no ext)
   const match = url.match(/[_-](\d{8})(?:[._?&\s]|$)/);
   if (match) {
     const raw = match[1];
-    return `${raw.slice(0, 4)}-${raw.slice(4, 6)}`;
+    const year = raw.slice(0, 4);
+    const month = raw.slice(4, 6);
+    return `${year}-${month}`;
   }
   return null;
 }
 
 export function extractSnapshotDateFromUrl(url: string): string | null {
+  // Returns YYYY-MM-DD from YYYYMMDD in filename (handles with or without extension)
   const match = url.match(/[_-](\d{8})(?:[._?&\s]|$)/);
   if (match) {
     const raw = match[1];
@@ -286,31 +167,31 @@ export function slugify(name: string): string {
     .replace(/\s+/g, "-");
 }
 
-// â”—â”€â”€ Funnel Data Cleaning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Funnel Data Cleaning (mirip Power Query di Power BI) ─────────────────────
 
+/** Convert Excel serial date number or date string to "YYYY-MM-DD" */
 function parseDate(val: any): string {
   if (!val) return "";
+  // If it's already a Date object
   if (val instanceof Date) return val.toISOString().slice(0, 10);
   const s = String(val).trim();
+  // Excel serial date number
   const num = parseFloat(s);
   if (!isNaN(num) && num > 30000 && num < 100000) {
-    if (XLSX?.SSF?.parse_date_code) {
-      const jsDate = XLSX.SSF.parse_date_code(num);
-      if (jsDate) {
-        const d = new Date(jsDate.y, jsDate.m - 1, jsDate.d);
-        return d.toISOString().slice(0, 10);
-      }
+    const jsDate = XLSX.SSF.parse_date_code(num);
+    if (jsDate) {
+      const d = new Date(jsDate.y, jsDate.m - 1, jsDate.d);
+      return d.toISOString().slice(0, 10);
     }
-    const ms = Math.round((num - 25569) * 86400 * 1000);
-    const d = new Date(ms);
-    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
+  // dd/MM/yyyy format (from GSheets: "07/03/2026")
   const ddmmyyyy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (ddmmyyyy) {
     const [, dd, mm, yyyy] = ddmmyyyy;
     const d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
     if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
+  // YYYY-MM-DD or other ISO-like formats
   const isoDate = new Date(s);
   if (!isNaN(isoDate.getTime())) return isoDate.toISOString().slice(0, 10);
   return s;
@@ -341,7 +222,6 @@ export interface CleanedFunnelRow {
   judulProyek: string;
   pelanggan: string;
   nilaiProyek: number;
-  estRev: number;
   divisi: string;
   segmen: string;
   witel: string;
@@ -349,14 +229,10 @@ export interface CleanedFunnelRow {
   proses: string;
   statusProyek: string;
   kategoriKontrak: string;
-  projectType: string;
-  isReport: string;
   estimateBulan: string;
   monthSubs: number | null;
   namaAm: string;
   nikAm: string;
-  nikHandling: string | null;
-  namaPembuatLop: string | null;
   reportDate: string;
   createdDate: string;
   tahunAnggaran: number | null;
@@ -366,31 +242,47 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
   const passed: CleanedFunnelRow[] = [];
 
   for (const r of rows) {
+    // ── STEP 1: Filter witel = SURAMADU
+    // skipWitelFilter: include all LOPs for the AM regardless of customer witel
+    // (AMs may manage projects in other witel areas — e.g. NI MADE handles PLN NPS in Maluku)
     const witel = cleanUpper(r.witel);
     if (!opts?.skipWitelFilter && !witel.includes("SURAMADU")) continue;
 
+    // ── STEP 2: Filter divisi = DPS / DSS (Witel Suramadu tidak handle DGS)
+    // NOTE: In GSheets nationwide funnel, divisi = business segment (RSMES etc), NOT AM divisi.
+    // Skip this filter when importing from GSheets — rely on activeNikSet instead.
     const divisi = clean(r.divisi).toUpperCase();
     const VALID_DIVISI = new Set(["DPS", "DSS"]);
     if (!opts?.skipDivisiFilter && !VALID_DIVISI.has(divisi)) continue;
 
+    // ── STEP 3: NIK AM extraction
+    // pembuatOnly: use ONLY nik_pembuat_lop — discard non-numeric (Power BI: Int64 + RemoveRowsWithErrors)
+    // preferPembuat: nik_pembuat_lop first, nik_handling[0] as fallback
+    // default: nik_handling[0] first, nik_pembuat_lop as fallback (Excel/Power BI detail export)
     let nikRaw: number | null;
     if (opts?.pembuatOnly) {
-      nikRaw = toIntSafe(r.nik_pembuat_lop);
+      nikRaw = toIntSafe(r.nik_pembuat_lop); // ONLY pembuat — non-numeric = skip row
     } else {
       const nikHandlingFirst = String(r.nik_handling ?? "").split(",")[0].trim();
       nikRaw = opts?.preferPembuat
         ? (toIntSafe(r.nik_pembuat_lop) ?? toIntSafe(nikHandlingFirst))
         : (toIntSafe(nikHandlingFirst) ?? toIntSafe(r.nik_pembuat_lop));
     }
-    if (nikRaw === null) continue;
+    if (nikRaw === null) continue; // skip rows with non-numeric NIK
 
+    // Reni (850099) → Havea (870022): Power BI applies this only for report_date.Year >= 2026
+    // When pembuatOnly=true we honour the conditional; otherwise map unconditionally for safety
     const reportDateForNik = parseDate(r.report_date);
     const reportYearForNik = reportDateForNik ? parseInt(reportDateForNik.slice(0, 4), 10) : 0;
     let nikAm = String(nikRaw);
     if (nikAm === "850099" && (!opts?.pembuatOnly || reportYearForNik >= 2026)) nikAm = "870022";
 
+    // ── STEP 4: Reject garbage NIKs (too short or clearly invalid)
     if (nikAm.length < 4 || Number(nikAm) > 9999999) continue;
 
+    // ── STEP 5: Filter is_report = 'Y'
+    // skipIsReportFilter: skip filter entirely (Power BI behaviour — show all LOPs regardless of is_report)
+    // strictIsReport: reject rows where is_report is null/empty (treat as not-Y)
     if (!opts?.skipIsReportFilter) {
       const isReportRaw = r.is_report ?? r.IS_REPORT ?? r.isReport ?? null;
       if (opts?.strictIsReport) {
@@ -403,14 +295,17 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
       }
     }
 
+    // ── STEP 6: Fix AM name — RENI WULANSARI → HAVEA PERTIWI (unconditional)
     let namaAm = cleanUpper(r.nama_pembuat_lop);
+    // Reni→Havea for nama: same conditional as NIK (pembuatOnly: year>=2026 only; else unconditional)
     if (namaAm === "RENI WULANSARI" && (!opts?.pembuatOnly || reportYearForNik >= 2026)) namaAm = "HAVEA PERTIWI";
 
     const lopid = clean(r.lopid);
-    if (!lopid) continue;
+    if (!lopid) continue; // skip rows without lopid
 
     const reportDate = parseDate(r.report_date);
 
+    // Tahun Anggaran: try explicit column first, fallback to report_date year
     const taParsed = parseInt(String(
       r.TAHUN_ANGGARAN ?? r.tahun_anggaran ?? r["Tahun Anggaran"] ?? r["TAHUN ANGGARAN"] ?? ""
     ).trim(), 10);
@@ -421,18 +316,15 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
     passed.push({
       lopid,
       judulProyek: clean(r.judul_proyek),
-      pelanggan: cleanUpper(r.pelanggan) || "â€“",
+      pelanggan: cleanUpper(r.pelanggan) || "–",
       nilaiProyek: parseFloat(String(r.nilai_proyek ?? 0)) || 0,
-      estRev: parseIndonesianNumber(r[" est_rev "] ?? r.est_rev ?? r["est_rev"] ?? 0),
       divisi,
       segmen: clean(r.segmen),
       witel,
       statusF: clean(r.status_f),
       proses: clean(r.proses),
       statusProyek: clean(r.status_proyek),
-      kategoriKontrak: clean(r.kategori_kontrak) || "â€“",
-      projectType: clean(r.project_type),
-      isReport: clean(r.is_report).toUpperCase(),
+      kategoriKontrak: clean(r.kategori_kontrak) || "–",
       estimateBulan: parseDate(r.estimate_bulan_billcomp) || clean(r.estimate_bulan_billcomp),
       monthSubs: r.month_subs != null
         ? (parseInt(String(r.month_subs), 10) || null)
@@ -447,14 +339,14 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
                 : null,
       namaAm,
       nikAm,
-      nikHandling: clean(r.nik_handling),
-      namaPembuatLop: clean(r.nama_pembuat_lop),
       reportDate,
       createdDate: parseDate(r.created_date) || clean(r.created_date),
       tahunAnggaran,
     });
   }
 
+  // ── STEP 7: Deduplicate by lopid — keep only the row with the LATEST report_date
+  // MYTENS export files may contain the same LOP across multiple monthly snapshots
   const deduped = new Map<string, CleanedFunnelRow>();
   for (const row of passed) {
     const existing = deduped.get(row.lopid);
@@ -466,65 +358,118 @@ export function cleanFunnelRows(rows: ParsedRow[], opts?: { skipDivisiFilter?: b
   return Array.from(deduped.values());
 }
 
-// â”—â”€â”€ Activity Data Cleaning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Activity Data Cleaning ────────────────────────────────────────────────────
 
+/**
+ * Parse a datetime value from Excel/GSheets, preserving the full datetime string
+ * (tidak dipotong jadi date-only).
+ *
+ * Power BI menyimpan activity_end_date, activity_start_date, dan createdat sebagai
+ * `datetime` (bukan `date`). Kita harus simpan lengkap termasuk jam/menit/detik
+ * agar:
+ *   1. Filter bulan di API tetap benar (`startsWith("YYYY-MM")` bekerja pada datetime string)
+ *   2. Unique constraint `(nik, createdat_activity)` bisa membedakan dua aktivitas
+ *      yang terjadi pada hari yang sama
+ */
 function parseRawDateTimeStr(val: any): string {
   if (!val) return "";
+  // Date object dari XLSX cellDates:true — convert ke "YYYY-MM-DD HH:mm:ss" dalam waktu lokal server
   if (val instanceof Date) {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${val.getFullYear()}-${pad(val.getMonth() + 1)}-${pad(val.getDate())} ${pad(val.getHours())}:${pad(val.getMinutes())}:${pad(val.getSeconds())}`;
   }
   const s = String(val).trim();
   if (!s) return "";
-  return s.replace("T", " ");
-}
-
-function parseActivityDate(val: any): string {
-  if (!val) return "";
-  if (val instanceof Date) {
-    return val.toISOString().slice(0, 19).replace("T", " ");
+  // Jika sudah dalam format datetime ISO/SQL, kembalikan apa adanya (ganti T dengan spasi)
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s)) return s.replace("T", " ").slice(0, 19);
+  // Format US: "M/D/YYYY H:MM:SS AM/PM" (dari XLSX raw:false)
+  const usMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):?(\d{2})?\s*(AM|PM)?/i);
+  if (usMatch) {
+    const [, mm, dd, yyyy, hRaw, min, sec = "00", ampm] = usMatch;
+    let h = parseInt(hRaw, 10);
+    if (ampm?.toUpperCase() === "PM" && h < 12) h += 12;
+    if (ampm?.toUpperCase() === "AM" && h === 12) h = 0;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${yyyy}-${pad(parseInt(mm))}-${pad(parseInt(dd))} ${pad(h)}:${min}:${sec.padStart(2, "0")}`;
   }
-  return parseRawDateTimeStr(val);
+  // Fallback ke parseDate (tanpa jam) kalau tidak bisa parse datetime
+  return parseDate(val);
 }
 
 export interface CleanedActivityRow {
   nik: string;
   fullname: string;
   divisi: string;
+  segmen: string;
+  regional: string;
   witel: string;
+  nipnas: string;
   caName: string;
-  caNik: string;
   activityType: string;
+  label: string;
+  lopid: string;
+  createdatActivity: string;
   activityStartDate: string;
   activityEndDate: string;
-  createdat: string;
-  notes: string;
-  createdBy: string;
+  picName: string;
+  picJobtitle: string;
+  picRole: string;
+  picPhone: string;
+  activityNotes: string;
 }
 
+/**
+ * Prosedur cleaning data Sales Activity — mengikuti langkah Power Query Power BI:
+ *
+ * 1. Filter witel = SURAMADU (contains, case-insensitive)
+ * 2. Filter divisi = "DPS" atau "DSS"
+ * 3. Validasi NIK numerik (Int64 — baris dengan NIK non-numerik di-skip)
+ * 4. Simpan datetime penuh (termasuk jam) untuk createdat, start_date, end_date
+ *
+ * TIDAK ada filter fullname — Power BI tidak men-drop baris dengan fullname kosong.
+ * TIDAK ada dedup — dedup dilakukan di DB layer via unique constraint (nik, createdat_activity).
+ */
 export function cleanActivityRows(rows: ParsedRow[]): CleanedActivityRow[] {
-  const VALID_WITEL = new Set(["SURAMADU", "SURAMADU"]);
-  const VALID_DIVISI = new Set(["DPS", "DSS"]);
-
   return rows
-    .filter(r => {
+    .map(r => {
+      // ── STEP 1: Filter witel = SURAMADU AND divisi = DPS/DSS (Witel Suramadu tidak handle DGS)
       const witel = cleanUpper(r.witel);
-      const divisi = cleanUpper(r.divisi);
-      return VALID_WITEL.has(witel) && VALID_DIVISI.has(divisi);
+      const divisi = clean(r.divisi).toUpperCase();
+
+      if (!witel.includes("SURAMADU")) return null;
+      if (divisi !== "DPS" && divisi !== "DSS") return null;
+
+      // ── STEP 2: Validasi NIK numerik
+      // Power BI menggunakan Int64.Type untuk kolom nik — baris dengan NIK tidak-numerik
+      // menghasilkan error dan di-drop oleh RemoveRowsWithErrors (jika ada) atau diabaikan.
+      const nikRaw = toIntSafe(r.nik);
+      if (nikRaw === null) return null;
+
+      // ── STEP 3: fullname boleh kosong (tidak di-filter Power BI)
+      const fullname = clean(r.fullname);
+
+      return {
+        nik: String(nikRaw),
+        fullname,
+        divisi,
+        segmen: clean(r.segmen),
+        regional: clean(r.regional),
+        witel,
+        nipnas: clean(r.nipnas),
+        caName: cleanUpper(r.ca_name) || "",
+        activityType: clean(r.activity_type),
+        label: clean(r.label),
+        lopid: clean(r.lopid),
+        // ── Simpan datetime penuh (jam:menit:detik), bukan date-only
+        createdatActivity: parseRawDateTimeStr(r.createdat),
+        activityStartDate: parseRawDateTimeStr(r.activity_start_date),
+        activityEndDate: parseRawDateTimeStr(r.activity_end_date),
+        picName: clean(r.pic_name),
+        picJobtitle: clean(r.pic_jobtitle),
+        picRole: clean(r.pic_role),
+        picPhone: clean(r.pic_phone),
+        activityNotes: clean(r.activity_notes),
+      } as CleanedActivityRow;
     })
-    .map(r => ({
-      nik: String(r.nik || r.NIK || ""),
-      fullname: clean(r.fullname || r.FULLNAME || r.nama || ""),
-      divisi: cleanUpper(r.divisi),
-      witel: cleanUpper(r.witel),
-      caName: clean(r.ca_name || r.CA_NAME || ""),
-      caNik: String(r.ca_nik || r.CA_NIK || ""),
-      activityType: clean(r.activity_type || r.ACTIVITY_TYPE || r.jenis_aktivitas || ""),
-      activityStartDate: parseActivityDate(r.activity_start_date || r.START_DATE || r.start_date),
-      activityEndDate: parseActivityDate(r.activity_end_date || r.END_DATE || r.end_date),
-      createdat: parseActivityDate(r.createdat || r.CREATEDAT || r.created_at),
-      notes: clean(r.notes || r.NOTES || r.catatan || ""),
-      createdBy: clean(r.created_by || r.CREATED_BY || ""),
-    }))
-    .filter(r => r.nik && r.fullname);
+    .filter((r): r is CleanedActivityRow => r !== null);
 }
