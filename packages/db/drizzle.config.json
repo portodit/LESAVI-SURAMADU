@@ -2,6 +2,6 @@
   "schema": "./src/schema/index.ts",
   "dialect": "postgresql",
   "dbCredentials": {
-    "url": "postgresql://postgres:password@localhost:5432/lesavi"
+    "url": "postgresql://lesavi:lesavi123@127.0.0.1:5432/lesavi_db"
   }
 }
